@@ -1718,6 +1718,9 @@ DB
 
 
     nên học thêm : 
+    fault injection?
+    Integration Hub
+     CÀI PLAYWRIGHT PACKAGE ONLY
 1. Observer                php artisan module:make-observer AttendanceObserver Attendance
 2. Notification
 3. Mail                    composer require laravel/pail --dev      |    composer require symfony/mailer
@@ -2281,9 +2284,15 @@ SHOW CREATE TABLE salary_mechanisms;
 > gắn role cho permission 
 > gắn permission cho routes
 > gắn role cho user      |   Ví dụ: User id = 1  
+<<<<<<< ours
 $user = Modules\User\App\Models\User::find(2);
 
 $user->assignRole('Admin');  
+=======
+$user = Modules\User\App\Models\User::find(1);
+
+$user->assignRole('Super Admin');  
+>>>>>>> theirs
 
 xem 3 bảng có gắn đúng với nhau không : 
 use Spatie\Permission\Models\Role;
@@ -2650,3 +2659,32 @@ Không mang lại lợi ích chức năng.
 Warning này không làm ảnh hưởng đến CRUD, AJAX, DataTables, Reverb hay Queue.
 
 Nếu mục tiêu là hoàn thiện project để đưa vào Portfolio hoặc GitHub, mình sẽ để nguyên Bootstrap 4.6.1 và chấp nhận warning này, trừ khi bạn có kế hoạch nâng toàn bộ giao diện lên AdminLTE 4 / Bootstrap 5.
+<<<<<<< ours
+=======
+
+
+FLUSH PRIVILEGES;
+
+ALTER USER 'root'@'localhost'
+IDENTIFIED BY '123456';
+
+exit;
+
+
+Luồng ghi:
+
+Route
+→ Form Request
+→ Controller
+→ Command Bus
+→ HireCandidateCommand
+→ HireCandidateHandler
+→ HireCandidateService
+→ Repositories/Domain Services
+→ Database transaction
+→ Domain events after commit
+→ Listeners
+→ Notifications
+→ Broadcast
+→ Response
+>>>>>>> theirs

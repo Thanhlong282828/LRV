@@ -1,0 +1,31 @@
+Lệnh mysql -u root đang đăng nhập không có mật khẩu, nên bị từ chối:
+(using password: NO)
+Nếu nhớ mật khẩu root, dùng:
+mysql -u root -p
+
+Sau đó nhập mật khẩu. Khi nhập, Terminal không hiển thị ký tự nào — đây là bình thường.
+Nếu vẫn báo ERROR 1045 ... (using password: YES), bạn đã quên hoặc nhập sai mật khẩu root và cần đặt lại. Làm lần lượt:
+Dừng MySQL:
+brew services stop mysql
+
+Chạy chế độ phục hồi và giữ Terminal này mở:
+/opt/homebrew/opt/mysql/bin/mysqld_safe --skip-grant-tables --skip-networking
+
+Mở Terminal mới:
+mysql -u root
+
+Tại mysql>, đặt mật khẩu mới:
+FLUSH PRIVILEGES;
+
+ALTER USER 'root'@'localhost'
+IDENTIFIED BY '123456';
+
+exit;
+
+Tắt máy chủ phục hồi:
+mysqladmin -u root -p shutdown
+Nhập mật khẩu mới KeyagaRoot2026!, rồi bật lại MySQL:
+brew services start mysql
+Đăng nhập:
+mysql -u root -p
+Thấy dòng Welcome to the MySQL monitor và dấu nhắc mysql> là đã vào tài khoản root. Việc này không xóa database znews hoặc tài khoản znews_app.
