@@ -1718,9 +1718,47 @@ DB
 
 
     nên học thêm : 
-    fault injection?
-    Integration Hub
-     CÀI PLAYWRIGHT PACKAGE ONLY
+    Hai thứ bắt lỗi khác nhau:
+    PHPUnit
+├── Service
+├── Repository
+├── CQRS
+├── Policy
+├── Permission
+├── Validation
+├── Transaction
+├── API
+└── Business rules
+
+Playwright
+├── Chrome thật
+├── Login thật
+├── Click thật
+├── Form thật
+├── Sidebar thật
+├── JS thật
+├── CSS/layout
+├── Responsive
+└── luồng người dùng thật
+ !   Playwright/browser automation 
+ !  Artisan Command phục vụ test Payroll Adjustment
+ !   Laravel Debugbar   APP_DEBUG=true
+ !  fault injection?
+ !   Integration Hub
+ !    CÀI PLAYWRIGHT PACKAGE ONLY
+ 
+ 27  CloudFlare images : https://dash.cloudflare.com/profile/api-tokens?utm_source=chatgpt.com
+ Bấm Create Token > Chọn Create Custom Token 
+ > Token name đặt:laraveldji-cloudflare-images 
+ > Permissions chọn:Account | Cloudflare Images | Edit
+ > Account Resources chọn:Include
+Specific account → chọn account của bạn
+> Bấm:Continue to summary → Create Token
+> Cloudflare đưa: cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx 
+> .env : 
+CLOUDFLARE_ACCOUNT_ID=245c05f0b67c4ede11daf54bff2a076f             |     Account → vào Account Home > tìm : Account ID : 245c05f0b67c4ede11daf54bff2a076f
+CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 1. Observer                php artisan module:make-observer AttendanceObserver Attendance
 2. Notification
 3. Mail                    composer require laravel/pail --dev      |    composer require symfony/mailer
