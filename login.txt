@@ -1714,10 +1714,639 @@ Repository
 Model
  ↓
 DB
+ 
+findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
+  public function show(int $id)
+ {
+    $employee = Employee::findOrFail($id);
 
+    return view('employees.show', compact('employee'));
+ }
+ // Tìm trực tiếp bằng primary key
+ Employee::findOrFail(10);
+ // Tìm record đầu tiên thỏa query
+ Employee::where('email', 'abc@gmail.com')->firstOrFail();
+ nên học thêm : 
+    PHPUnit
+Eloquent | get(), first(), find(), firstOrFail()   |  get() Lấy nhiều record |  first() Lấy 1 record đầu tiên | find($id) Tìm 1 record theo Primary Key | firstOrFail() Lấy 1 record, không có thì báo lỗi                         <
+ Method	              Dùng để	                   Kết quả	     Không tìm thấy
+ get()	        Lấy nhiều record	             Collection	     Collection rỗng
+ first()	    Lấy 1 record đầu tiên	           Model	            null
+ find()	        Tìm 1 record theo Primary Key	    Model             	null
+ firstOrFail()	Lấy 1 record, không có thì báo lỗi	Model	   Exception → thường HTTP 404
+ * 1. get() — lấy nhiều record
+ $users = User::where('status', 'active')->get();
+ Ví dụ DB:
+ id | name | status
+ 1  | An   | active
+ 2  | Bình | inactive
+ 3  | Nam  | active
+ Kết quả:
+ Collection [
+     User(id=1, name="An"),
+     User(id=3, name="Nam")
+ ]
+ Bạn có thể:
+ foreach ($users as $user) {
+     echo $user->name;
+ }
+ Nếu không có user nào:
+ $users = User::where('status', 'xxx')->get();
+ thì:
+ $users->isEmpty(); // true
+ Chứ không phải null.
 
+ * 2. first() — lấy record đầu tiên
+ $user = User::where('status', 'active')->first();
+ Nếu có nhiều user active:
+ 1 | An  | active
+ 3 | Nam | active
+ thì chỉ lấy một Model:
+ $user->name;
+ Nếu không tìm thấy:
+ $user = User::where('email', 'abc@xyz.com')->first();
+ $user === null; // true
+ Vì vậy thường phải kiểm tra:
+ if (!$user) {
+     // xử lý không tìm thấy
+ }
+ get() vs first()
+  User::where('status', 'active')->get();
+ → nhiều User:
+  Collection<User>
+ Còn:
+  User::where('status', 'active')->first(); 
+ → một User:
+ User
 
-    nên học thêm : 
+ * 3. find() — tìm theo Primary Key
+ Đây là điểm rất quan trọng.
+ $user = User::find(10);
+ Laravel hiểu là tìm:
+ WHERE id = 10
+ Nếu Model có:
+ protected $primaryKey = 'id';
+ thì:
+ User::find(10);
+ gần tương đương:
+  User::where('id', 10)->first();
+ Ví dụ:
+  $user = User::find(5);
+ Có id = 5:
+  $user->name;
+ Không có:
+  $user === null; // true
+ Không dùng find() để tìm email
+ Sai:
+  User::find('abc@gmail.com');
+ Vì find() tìm theo primary key, không phải email.
+ Phải dùng:
+  User::where('email', 'abc@gmail.com')->first();
+
+ * 4. firstOrFail() — không có thì fail
+ Ví dụ:
+  $user = User::where('email', $email)->firstOrFail();
+ Nếu tìm thấy:
+  User
+ Nếu không tìm thấy, Laravel throw:
+  ModelNotFoundException
+ Trong request web/API, thông thường nó được chuyển thành:
+  404 Not Found
+ Nên bạn không cần viết:
+  $user = User::where('email', $email)->first();
+  if (!$user) {
+      abort(404);
+  }
+ Có thể viết:
+ $user = User::where('email', $email)->firstOrFail();
+ 
+ * 5. findOrFail()  -  tìm theo Primary Key 
+ Ngoài 4 method bạn hỏi, nên học luôn:
+  $user = User::findOrFail($id);
+ Nó là sự kết hợp ý tưởng của:
+  find()
+  +
+  OrFail
+ Ví dụ:
+  $user = User::findOrFail(10);
+ Có id = 10:
+  User
+ Không có:
+  ModelNotFoundException
+  → 404
+ So sánh:
+  User::find(10);
+ → không có:
+  null
+ Còn:
+  User::findOrFail(10);
+ → không có:
+  404
+Eloquent | whereHas() , with() , withWhereHas()  |  whereHas() lọc model cha dựa trên relationship. | with() LOAD + lọc theo con ( né N+1 ) | withWhereHas() lọc theo quan hệ và load luôn chính nó ( né N+1 )                           <
+ whereHas() lọc theo bảng quan hệ
+ Employee::query()
+    ->whereHas('contracts', function ($query) {
+        $query->where('status', 'active');
+    })
+    ->get();
+ with() load relationship:
+ Employee::query()
+    ->with('contracts')
+    ->get();
+ Có thể dùng cả hai:
+ Employee::query()
+    ->whereHas('contracts', fn ($query) =>
+        $query->where('status', 'active')
+    )
+    ->with([
+        'contracts' => fn ($query) =>
+            $query->where('status', 'active')
+    ])
+    ->get();
+ Giả sử:
+
+ class User extends Model
+ {
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+ }
+
+ 1. whereHas() — lọc theo bảng quan hệ
+ Ví dụ: lấy những User có ít nhất một Order trạng thái paid.
+ $users = User::whereHas('orders', function ($query) {
+    $query->where('status', 'paid');
+ })->get();
+ Có thể hiểu:
+ users
+ │
+ └── kiểm tra orders
+       │
+       └── có order status = paid?
+                │
+          ┌─────┴─────┐
+         Có          Không
+          │             │
+      lấy User       bỏ User
+
+ SQL về ý tưởng gần giống:
+ SELECT *
+ FROM users
+ WHERE EXISTS (
+    SELECT 1
+    FROM orders
+    WHERE orders.user_id = users.id
+      AND orders.status = 'paid'
+ );
+ whereHas() không có nghĩa là load orders
+ Đây là điểm rất quan trọng.
+ $users = User::whereHas('orders', function ($query) {
+    $query->where('status', 'paid');
+ })->get();
+ Nó chỉ nói:
+ "Chỉ lấy User nào có order paid."
+ Nó không yêu cầu Eloquent lấy danh sách orders về cùng.
+
+ 2. with() — Eager Loading
+ Ví dụ:
+ $users = User::with('orders')->get();
+ Nghĩa là:
+ Lấy User và load luôn relationship orders.
+ Sau đó:
+ foreach ($users as $user) {
+    foreach ($user->orders as $order) {
+        echo $order->status;
+    }
+ }
+ Không bị query orders riêng cho từng user.
+ Không dùng with() :
+ $users = User::all();
+ foreach ($users as $user) {
+    echo $user->orders;
+ }
+ Có thể xảy ra:
+
+ SELECT * FROM users;
+
+ SELECT * FROM orders WHERE user_id = 1;
+ SELECT * FROM orders WHERE user_id = 2;
+ SELECT * FROM orders WHERE user_id = 3;
+ SELECT * FROM orders WHERE user_id = 4;
+ ...
+ Đây là N+1 Query Problem.
+
+ Dùng with()
+ $users = User::with('orders')->get();
+
+ Eloquent về cơ bản làm:
+ Query 1:
+ SELECT * FROM users;
+ 
+ Query 2:
+ SELECT * FROM orders
+ WHERE user_id IN (1, 2, 3, 4, ...);
+
+ => Thường chỉ cần 2 query thay vì rất nhiều query.
+
+ 3. Thực tế thường dùng cả hai
+ Đây là trường hợp bạn sẽ gặp rất nhiều:
+ $users = User::whereHas('orders', function ($query) {
+        $query->where('status', 'paid');
+    })
+    ->with('orders')
+    ->get();
+ Nghĩa là:
+ whereHas()
+    ↓
+ lọc User
+    ↓
+ chỉ User có order paid
+    ↓
+ with()
+    ↓
+ load orders của những User đó
+
+ Nhưng có một điểm dễ nhầm.
+
+ Code trên:
+ ->whereHas('orders', function ($query) {
+    $query->where('status', 'paid');
+ })
+ ->with('orders')
+
+ whereHas() lọc User theo paid, nhưng with('orders') lại load tất cả orders của User đó.
+
+ Ví dụ:
+
+ User A
+ ├── Order 1 → paid
+ ├── Order 2 → pending
+ └── Order 3 → cancelled
+
+ User A vượt qua whereHas() vì có Order 1 là paid.
+ Nhưng:
+ with('orders')
+ sẽ lấy:
+ Order 1 paid
+ Order 2 pending
+ Order 3 cancelled
+
+ 4. Muốn chỉ load paid orders
+ Phải thêm điều kiện vào with():
+
+ $users = User::whereHas('orders', function ($query) {
+        $query->where('status', 'paid');
+    })
+    ->with([
+        'orders' => function ($query) {
+            $query->where('status', 'paid');
+        }
+    ])
+    ->get();
+
+ Bây giờ:
+
+ User A
+ └── Order 1 → paid
+
+ pending và cancelled không được load.
+
+ 5. Laravel có withWhereHas()
+
+ Khi điều kiện của whereHas() và with() giống nhau, có thể viết gọn:
+
+ $users = User::withWhereHas('orders', function ($query) {
+    $query->where('status', 'paid');
+ })->get();
+
+ Nó rất tiện cho trường hợp:
+
+ Lọc User có paid orders + load chính những paid orders đó.
+
+ Cách nhớ nhanh
+ whereHas = WHERE
+           ↓
+        LỌC CHA
+
+ with     = LOAD
+           ↓
+        LẤY CON
+
+ Ví dụ project Payroll của bạn:
+
+ PayrollRun::whereHas('items', function ($query) {
+    $query->where('status', 'failed');
+ })->get();
+ = Lấy PayrollRun nào có item failed.
+ Còn:
+ PayrollRun::with('items')->get();
+ = Lấy PayrollRun và load luôn items.
+ Còn:
+ PayrollRun::withWhereHas('items', function ($query) {                          <
+    $query->where('status', 'failed');
+ })->get();
+ = Chỉ lấy PayrollRun có item failed và load chính các item failed đó.          <
+Eloquent | chunk(), chunkById(), cursor(), lazyById() | chuck() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy 1000 tiếp ( lỗi nếu đang False chỉnh sang True )( Batch + OFFSET ) | chunkById() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy tiếp từ id > ID cuối ( Batch + ID ) | cursor() = lấy/duyệt từng model → xử lý → bỏ model cũ > sang model tiếp theo, không gom batch. ( Từng model một ) | lazyById() = lấy 1 batch > trả từng model > xoá batch(iải phóng/bỏ batch cũ khỏi bộ nhớ) > lấy batch mới( batch theo ID)                       <
+ 1. chunk() — chia thành từng lô
+ Ví dụ có 100.000 employees, xử lý mỗi lần 1.000:
+ Employee::chunk(1000, function ($employees) {
+    foreach ($employees as $employee) {
+        // xử lý
+    }
+ });
+ Nó hoạt động gần giống:
+
+ Query 1 → lấy record 1 → 1000
+ Query 2 → lấy record 1001 → 2000
+ Query 3 → lấy record 2001 → 3000
+ ...
+
+ Về SQL, ý tưởng gần như:
+
+ SELECT * FROM employees LIMIT 1000 OFFSET 0;
+ SELECT * FROM employees LIMIT 1000 OFFSET 1000;
+ SELECT * FROM employees LIMIT 1000 OFFSET 2000;
+ Vấn đề quan trọng của chunk()
+
+ Nếu trong lúc xử lý bạn update dữ liệu liên quan đến điều kiện query, có thể bị bỏ sót record.
+
+ Ví dụ:
+
+ Employee::where('processed', false)
+    ->chunk(1000, function ($employees) {
+        foreach ($employees as $employee) {
+            $employee->update([
+                'processed' => true,
+            ]);
+        }
+    });
+
+ Ban đầu:                            <
+
+ 10.000 records
+ processed = false
+
+ Lần đầu:                         <
+
+  OFFSET 0
+  → lấy 1000
+  → đổi 1000 record thành processed = true
+
+ Lần tiếp theo Laravel dùng kiểu:                   <
+
+  OFFSET 1000
+
+  Nhưng 1.000 record trước đã biến mất khỏi tập processed = false.           <
+
+ Kết quả có thể:
+ ❌ bỏ qua 1000 record tiếp theo
+ Đây là lý do có chunkById().
+
+ 2. chunkById() — chia lô dựa vào ID
+ Employee::where('processed', false)
+    ->chunkById(1000, function ($employees) {
+
+        foreach ($employees as $employee) {
+            $employee->update([
+                'processed' => true,
+            ]);
+        }
+
+    });
+ Thay vì:
+ LIMIT 1000 OFFSET 1000
+ nó đi theo ID, về ý tưởng:
+ SELECT *
+ FROM employees
+ WHERE id > 0
+ ORDER BY id
+ LIMIT 1000;
+
+ Giả sử batch đầu kết thúc:
+
+ id = 1000
+
+ batch tiếp:
+
+ SELECT *
+ FROM employees
+ WHERE id > 1000
+ ORDER BY id
+ LIMIT 1000;
+
+ rồi:
+
+ id > 2000
+ id > 3000
+ id > 4000
+ ...
+ Vì vậy
+ Nếu đang làm:
+ Employee::where('status', 'pending')
+    ->chunkById(1000, function ($employees) {
+
+        foreach ($employees as $employee) {
+            $employee->update([
+                'status' => 'processed',
+            ]);
+        }
+
+    });
+ thì chunkById() an toàn hơn chunk() rất nhiều.
+ Khi nào dùng?                                               <
+ Đặc biệt phù hợp:
+ Batch processing
+ Queue Job
+ Update hàng loạt
+ Migration dữ liệu
+ Payroll processing
+ Import/export
+ Cleanup database
+ Cron/Scheduler
+
+ 3. cursor() — lấy từng record một
+ foreach (Employee::cursor() as $employee) {
+    // xử lý
+ }
+
+ Nhìn từ code giống:
+
+ Employee 1
+  ↓
+ xử lý
+
+ Employee 2
+ ↓
+ xử lý
+
+ Employee 3
+ ↓
+ xử lý
+ ...
+
+ Nó không tạo Collection chứa 1.000 employees như:
+ chunk(1000)
+ mà trả về LazyCollection và cho bạn duyệt từng model.
+ Ví dụ:
+ foreach (
+    Employee::where('status', 'active')->cursor()
+    as $employee
+ ) {
+    echo $employee->name;
+ }
+ Ưu điểm
+
+ RAM thấp vì không cần giữ một batch lớn Eloquent models cùng lúc.
+
+ Ví dụ tư duy:
+ get()
+ 100.000 records
+ ████████████████████████████
+ RAM rất lớn
+
+ chunk(1000)
+ 1000 records
+ ████
+ xử lý
+   ↓
+ 1000 records
+ ████
+ xử lý
+
+ cursor()
+ 1 record
+ █
+  ↓
+ 1 record
+ █
+  ↓
+ 1 record
+ █
+
+ Nhưng cursor() có hạn chế quan trọng: không eager-load relationship theo kiểu thông thường.
+ Ví dụ nếu làm:
+ Employee::with('department')->cursor();
+ thì đây không phải lựa chọn phù hợp nếu mục tiêu của bạn là eager loading relationship.
+ Nếu cần xử lý lazy nhưng vẫn muốn eager load theo từng batch, lazy() / lazyById() thường phù hợp hơn.
+ 
+ 4. lazyById() — chunkById() + LazyCollection
+ Ví dụ:
+ Employee::where('status', 'active')
+    ->lazyById(1000)
+    ->each(function ($employee) {
+
+        // xử lý từng employee
+
+    });
+
+ Điểm rất hay là code bên ngoài nhìn giống xử lý từng record:
+
+ employee
+ employee
+ employee
+ employee
+ ...
+
+ nhưng phía database nó lấy theo batch dựa vào ID.
+
+ Có thể hình dung:
+
+ DATABASE
+
+ SELECT 1000 records
+ id > 0
+        │
+        ▼
+   LazyCollection
+        │
+        ├── Employee 1
+        ├── Employee 2
+        ├── Employee 3
+        ...
+        └── Employee 1000
+
+ SELECT 1000 tiếp
+ id > 1000
+        │
+        ▼
+   LazyCollection
+        │
+        ├── Employee 1001
+        ...
+
+ Ví dụ thực tế:
+
+ Employee::where('status', 'pending')
+    ->lazyById(1000)
+    ->each(function ($employee) {
+
+        $employee->update([
+            'status' => 'processed',
+        ]);
+
+    });
+
+ Nó có ưu điểm của:
+
+ chunkById()
+  +
+ LazyCollection
+ So sánh 4 cái
+ Method	       Cách lấy	                RAM	Theo   ID	Phù hợp update lúc duyệt
+ chunk()	  từng batch	            thấp	   ❌       ⚠️
+ chunkById()  từng batch	            thấp	   ✅	   ✅
+ cursor()	 stream/lazy từng model	   rất thấp	   ❌	tùy trường hợp
+ lazyById()	 batch theo ID + lazy     	thấp	   ✅	   ✅
+
+ Điểm khác biệt dễ nhớ nhất:
+
+ // Collection theo từng batch
+ Employee::chunk(1000, function ($employees) {
+    foreach ($employees as $employee) {
+    }
+ });
+ // Collection từng batch + đi theo ID
+ Employee::chunkById(1000, function ($employees) {
+    foreach ($employees as $employee) {
+    }
+ });
+ // LazyCollection, duyệt từng model
+ foreach (Employee::cursor() as $employee) {
+ }
+ // LazyCollection nhưng DB lấy batch theo ID
+ Employee::lazyById(1000)->each(function ($employee) { 
+ });
+*  Feature Test :      php artisan payroll:erp-browser-fixture  (payroll:erp-browser-fixture > được khai báo(command test) )      |    nó bắt buộc dùng database test.
+Nếu có transaction:
+final class CreateEmployeeTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    public function test_create_employee(): void
+    {
+        $response = $this->post('/admin/employees', [
+            // ...
+        ]);
+
+        $response->assertRedirect();
+    }
+}
+thì phần lớn thay đổi DB trong test sẽ rollback sau khi test kết thúc. Đây an toàn hơn nhiều nếu buộc phải test DB chính.
+*  Unit Test :       php artisan test --testsuite=Unit
+*  Browser Playwright : Cài đúng test framework:npm install -D @playwright/test | sau đó cài browser: npx playwright install chromium  | kiểm tra:  npx playwright test --headed
+Kiểm tra project có Playwright thật không:
+find . \
+  -not -path "./node_modules/*" \
+  \( -name "playwright.config.*" \
+  -o -name "*.spec.ts" \
+  -o -name "*.spec.js" \
+  -o -name "*.test.ts" \
+  -o -name "*.test.js" \) \
+  -print
+grep -i "playwright" package.json package-lock.json 2>/dev/null  
+*  Contract Test :
+*  Architecture Tes :
     Hai thứ bắt lỗi khác nhau:
     PHPUnit
 ├── Service
@@ -1746,7 +2375,7 @@ Playwright
  !  fault injection?
  !   Integration Hub
  !    CÀI PLAYWRIGHT PACKAGE ONLY
- 
+
  27  CloudFlare images : https://dash.cloudflare.com/profile/api-tokens?utm_source=chatgpt.com
  Bấm Create Token > Chọn Create Custom Token 
  > Token name đặt:laraveldji-cloudflare-images 
@@ -1763,8 +2392,414 @@ CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 2. Notification
 3. Mail                    composer require laravel/pail --dev      |    composer require symfony/mailer
 4. Queue Chain
-5. Redis                    composer require predis/predis     |    .env : CACHE_STORE=redis  REDIS_HOST=127.0.0.1   REDIS_PASSWORD=null   REDIS_PORT=6379 
+5. Redis                    composer require predis/predis     |    .env : CACHE_STORE=redis  REDIS_HOST=127.0.0.1   REDIS_PASSWORD=null   REDIS_PORT=6379    |  php artisan queue:work redis --queue=emails   (emails : là name của cái job)    |    php artisan queue:work redis --queue=imports,exports,default  | lệnh:Queue phía trước thường được ưu tiên hơn.
   Kiểm tra:redis-server --version    Nếu báo: command not found  | thì cài:  brew install redis  | Khởi động:  brew services start redis  |  Kiểm tra:  redis-cli ping   |  Nếu trả: PONG   là OK.
+5.1. Retry :
+final class GeneratePayrollExport implements ShouldQueue
+{
+    public int $tries = 3;  // Lần 1 ❌ > Lần 2 ❌ > Lần 3 ✅ Nếu vẫn lỗi:failed_jobs
+
+    public array $backoff = [10, 60, 300]; // Fail lần 1 (đợi 10 giây) > Fail lần 2 (đợi 30 giây) > Fail lần 3 (đợi 60 giây)  |  Đây gọi là retry backoff.
+
+public int $timeout = 120; // Timeout: Job tối đa 120 giây  |  Job chạy quá lâu thì worker có thể kill. |  Worker cũng có:  php artisan queue:work --timeout=120
+
+    public function handle(): void
+    {
+    }
+}
+5.2. Failed Jobs:  
+  Nếu retry hết vẫn lỗi:  failed_jobs
+  Kiểm tra:    php artisan queue:failed
+  Retry lại:   php artisan queue:retry all
+  Xóa:         php artisan queue:flush
+5.3. Idempotency:
+  Job phải có tính idempotent (Đây là phần rất quan trọng.  >  Queue/Job có thể retry. > handle() phải an toàn khi chạy nhiều lần. )
+Ví dụ 1 — Generate Payroll Delivery ( Phiếu lương )  |   ( gắn UNIQUE vào DB, updateOrCreate , ghi rõ luồng và trạng thái nối tới )               <
+  * Sai:
+  PayrollDelivery::create([
+     'payroll_run_id' => $this->payrollRunId,
+  ]);
+  Có thể tạo trùng.
+  * Tốt hơn:
+  PayrollDelivery::updateOrCreate(
+     ['payroll_run_id' => $this->payrollRunId],
+     ['status' => 'generating']
+  );
+  - Nhưng chỉ updateOrCreate() chưa phải hàng rào cuối cùng chống race condition.
+  - Hai process vẫn có thể cùng kiểm tra khi record chưa tồn tại.
+
+  * Và thêm unique index:   ( Database invariant + idempotent application logic )
+    -- UNIQUE(payroll_run_id)
+  * Migration:
+    Schema::table('payroll_deliveries', function (Blueprint $table) {
+      $table->unique(                                                         <
+         'payroll_run_id',
+         'payroll_deliveries_run_unique'
+     );
+    });
+  - Database đảm bảo: 1 payroll_run > tối đa 1 payroll_delivery
+  - Sau đó application có thể:
+     $delivery = PayrollDelivery::firstOrCreate(
+       ['payroll_run_id' => $this->payrollRunId,],
+       ['status' => 'generating',],
+    );
+>> Unique constraint mới là lớp bảo vệ cuối cùng.
+
+Ví dụ 2 — Payment: exists() vẫn chưa đủ Senior       |     exists() = kiểm tra rồi chạy                      <
+  if (
+    PayrollPayment::where('reference', $this->reference)
+        ->exists()                                                       <
+    ) {
+      return;
+    }
+   PayrollPayment::create([
+       'reference' => $this->reference,
+    ]);
+  Nhìn có vẻ đúng. Nhưng: 
+  Worker A                    Worker B
+   |                           |
+  exists? false              exists? false
+   |                           |
+   ↓                           ↓
+  CREATE                     CREATE 
+ => Race condition.
+  Đây gọi là:    check-then-act race (kiểm tra rồi chạy)          <
+Senior sẽ không coi:
+   if ($exists) {
+    return; 
+   }
+ là hàng rào concurrency duy nhất.                      <
+Ví dụ 3 — Payment kiểu production        |   firstOrCreate() = tìm trước, nếu chưa có thì tạo mới.              <
+      Giả sử nghiệp vụ:   PAYROLL-2026-08-EMP-100    chỉ được trả tiền một lần.
+  * Database:
+ 
+   Schema::table('payroll_payments', function (Blueprint $table) {
+       $table->unique('reference');
+   });
+
+  * Handler:
+
+   DB::transaction(function () {
+        $payment = PayrollPayment::firstOrCreate(      // firstOrCreate() = tìm trước, nếu chưa có thì tạo mới.          <
+              ['reference' => $this->reference,],
+           [
+                'employee_id' => $this->employeeId,
+                'amount_minor' => $this->amountMinor,
+                'status' => 'processing',
+           ],
+        );
+        if (! $payment->wasRecentlyCreated) {    // (được tạo ra gần đây)         <   
+            return;
+        }
+          // tiếp tục nghiệp vụ...
+        });
+   * Nếu 2 worker cùng chạy:
+   Worker A                        Worker B
+       ↓                                 ↓
+   INSERT reference ABC           INSERT reference ABC
+       ↓                                 ↓
+    SUCCESS                       DB unique constraint bảo vệ
+ >  Nhưng với nghiệp vụ tài chính phức tạp hơn, còn phải thiết kế cách bắt duplicate/deadlock và retry phù hợp
+Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = không cứu được trường hợp này.              <
+  Ban đầu:
+  Wallet::whereKey($this->walletId)
+       ->increment('balance_minor', 1_000_000);                  <
+  Vấn đề không chỉ là concurrency.
+  Giả sử:
+  Job attempt #1 > balance +1.000.000 > DB COMMIT > process chết trước khi Queue nhận ACK  >  Queue retry  >  balance +1.000.000 lần nữa ❌
+  Atomic update chống:    Lost Update / Race Condition                          <
+  nhưng không tự chống:    Job retry thực hiện business operation lần 2                  <
+Ví dụ 5 — Wallet kiểu Senior: Ledger + Unique Business Key          |   whereKey()  lockForUpdate()  firstOrFail()  increment()     | firstOrCreate() = payroll_run_id = 100 > Có rồi?  | Có  → trả record cũ | Không → INSERT record mới            <
+  Tạo bảng:  wallet_transactions
+  id   wallet_id  reference  amount_minor type created_at
+  Database:
+  $table->unique('reference');
+  Job:
+  DB::transaction(function () {
+      $wallet = Wallet::query()
+        ->whereKey($this->walletId)
+        ->lockForUpdate()
+        ->firstOrFail();
+      $transaction = WalletTransaction::firstOrCreate(
+          [
+               'reference' => $this->reference,
+          ],
+          [
+               'wallet_id' => $wallet->id,
+               'amount_minor' => $this->amountMinor,
+               'type' => 'payroll_credit',
+          ],
+       );
+      if (! $transaction->wasRecentlyCreated) {
+            return;
+      }
+       $wallet->increment(
+           'balance_minor',
+           $this->amountMinor
+        );
+   });
+   Bây giờ:                                           Job retry:
+   Attempt #1                                        Attempt #2
+      ↓                                                   ↓
+   lock wallet                                  reference PAY-001 đã tồn tại
+      ↓                                                   ↓
+   INSERT transaction reference=PAY-001                 return
+      ↓
+   balance +1M                                    balance KHÔNG + lần nữa
+      ↓
+   COMMIT
+  >>>Đây mới là idempotent operation có ý nghĩa nghiệp vụ.
+Ví dụ 6 — Payroll Run: Transaction + Lock + Idempotency + Unique +  dispatch() | ->afterCommit() Job không chạy trước khi transaction commit     |   lockForUpdate() =  tìm thấy record cũ >  UPDATE status = generating           <
+  Giả sử:
+  Một payroll period chỉ có một finalized run cho một calculation version.
+  Database:
+  $table->unique([                       <
+       'company_id',
+       'payroll_period_id',
+       'calculation_version',
+   ]);
+  Command Handler:
+ DB::transaction(function () use ($command) {              <
+      $period = PayrollPeriod::query()
+          ->whereKey($command->periodId)                   <
+          ->lockForUpdate()                                <
+          ->firstOrFail();                                 <
+      if ($period->status === 'closed') {
+           throw new DomainException(
+                'Payroll period is already closed.'
+           );
+      }
+       $run = PayrollRun::firstOrCreate(
+           [
+               'company_id' => $command->companyId,
+               'payroll_period_id' => $period->id,
+               'calculation_version' => $command->version,
+            ],
+            [
+               'status' => 'calculating',
+            ],
+        );
+       if (! $run->wasRecentlyCreated) {
+           return $run;
+       }
+       CalculatePayrollJob::dispatch($run->id)              < 
+            ->afterCommit();                            <
+       return $run;
+    });
+    Ở đây mỗi thứ có nhiệm vụ riêng:
+  Transaction
+    ↓
+  Các thay đổi cùng commit/rollback
+
+  lockForUpdate()
+    ↓
+   Không cho 2 process thay đổi period cùng lúc
+
+   firstOrCreate()
+    ↓
+   Application có hành vi idempotent
+
+   UNIQUE(...)
+     ↓
+   DB bảo vệ invariant khi concurrency xảy ra
+
+   afterCommit()
+      ↓
+   Job không chạy trước khi transaction commit
+Ví dụ 7 — API Idempotency Key kiểu Senior    |    trong db phải có cột : scope , key           <
+ Client gửi:
+  POST /api/payroll-runs/100/finalize
+  Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+ Không chỉ:
+  if (IdempotencyKey::where('key', $key)->exists()) {
+       return;
+  }
+ Mà bảng nên có:
+    idempotency_requests
+ scope   key   request_hash  status  response_code  response_body
+ Unique:
+ $table->unique([
+     'scope',
+     'key',
+ ]);
+ Ví dụ :
+ scope:
+   payroll.finalize:company:5
+ Server có thể lưu:
+ key:
+  ABC123
+ request_hash:
+  f92c...
+ status:
+  completed
+ response:
+ {
+     "payroll_run_id": 100,
+     "status": "finalized"
+ }
+ Client retry cùng key:
+  ABC123
+ Server không finalize lần nữa mà:
+ trả lại response cũ
+ Đó là idempotency đúng nghĩa ở tầng API.
+Ví dụ 8 - Một tính năng rất hữu ích:      |     if (! $payment->wasRecentlyCreated{return;}     |   true→ chính lần gọi này vừa INSERT  |  false→ record đã tồn tại từ trước           <
+ $payment = PayrollPayment::firstOrCreate(
+    ['reference' => $this->reference],
+    [
+        'employee_id' => $this->employeeId,
+        'amount_minor' => $this->amountMinor,
+    ],
+ );
+
+ if (! $payment->wasRecentlyCreated) {                   <
+    return;
+ }
+ 
+ Nếu Job retry:
+ Lần 1:                    Lần 2:
+ firstOrCreate()          firstOrCreate()
+ → tạo Payment            → tìm thấy Payment cũ
+ → processPayment()       → processPayment() vẫn chạy
+ → +1 triệu               → +1 triệu lần nữa ❌
+
+ Có wasRecentlyCreated:         = "Lần này có phải vừa tạo không?"              <
+ Lần 1 → vừa tạo → xử lý ✅                                                     <
+ Retry → đã tồn tại → return → không xử lý lại ✅                               <
+ ----------------------------------------------------------------------------
+ $payment = PayrollPayment::firstOrCreate(
+    ['reference' => 'PAY-001'],
+    [
+        'employee_id' => 10,
+        'amount_minor' => 5_000_000,
+    ],
+ );
+
+ if ($payment->wasRecentlyCreated) {                   <
+    echo 'Vừa tạo mới';
+ } else {
+    echo 'Đã tồn tại từ trước';
+ }
+ Lần 1 → vừa tạo → xử lý ✅
+
+ Retry → đã tồn tại → return → không xử lý lại ✅
+ShouldBeUnique   |   Nếu không muốn cùng một Job bị dispatch nhiều lần              <
+ final class GeneratePayrollJob implements ShouldQueue, ShouldBeUnique
+ {
+    public function uniqueId(): string
+    {
+        return $this->companyId.'-'.$this->month;
+    }
+ }  
+ Ví dụ:
+ company = 1
+ month = 2026-08
+ Hai Job giống nhau:
+ GeneratePayroll(1, 2026-08)
+ GeneratePayroll(1, 2026-08)
+ Laravel chỉ cho một Job unique tồn tại tại thời điểm đó.
+ Nhưng nhớ:
+ ShouldBeUnique không thay thế database unique constraint hoặc idempotency business logic.
+Job chaining và batching                      <
+ Chain :     Job sau chỉ chạy khi job trước thành công:
+ Bus::chain([
+    new ValidatePayrollRun($id),
+    new CalculatePayrollRun($id),
+    new GeneratePayrollExport($id),
+ ])->dispatch();
+
+ Batch :     Nhiều job có thể chạy song song và theo dõi tiến độ:
+ Bus::batch($jobs)
+    ->then(fn () => ...)
+    ->catch(fn (Batch $batch, Throwable $e) => ...)
+    ->dispatch();
+WithoutOverlapping    |     Dùng khi không muốn hai Job cùng xử lý một resource.              <
+ public function middleware(): array
+ {
+    return [
+        new WithoutOverlapping(
+            'payroll-'.$this->companyId
+        ),
+    ];
+ }
+ Luồng:
+ Payroll Job A        Payroll Job B
+   ↓                     ↓
+ lock company 1       phải chờ / release
+
+ Rất hữu ích cho:
+ Payroll
+ Import
+ Sync
+ Generate Report
+ Inventory sync
+Cách nhớ toàn bộ Queue :                       <
+ dispatch()
+ = bỏ Job vào hàng đợi
+
+ Worker
+ = lấy Job ra chạy
+
+ tries
+ = thử lại bao nhiêu lần
+
+ backoff
+ = đợi bao lâu trước khi retry
+
+ timeout
+ = Job được phép chạy tối đa bao lâu
+
+ failed_jobs
+ = Job lỗi cuối cùng
+
+ afterCommit()
+ = commit DB xong mới dispatch
+
+ chain()
+ = A → B → C
+
+ batch()
+ = nhiều Job cùng nhóm
+
+ ShouldBeUnique
+ = tránh Job trùng
+
+ WithoutOverlapping
+ = tránh 2 Job cùng xử lý 1 resource
+
+ Horizon
+ = quản lý/quan sát Redis Queue
+Cách nhớ toàn bộ Cache :                       <
+ Cache::get()
+ = đọc
+
+ Cache::put()
+ = ghi
+
+ Cache::remember()
+ = có thì lấy, không có thì tạo
+
+ Cache::forget()
+ = xóa key
+
+ TTL
+ = thời gian sống
+
+ Cache invalidation
+ = dữ liệu đổi thì làm cache hết hiệu lực
+
+ Cache lock
+ = chống nhiều request rebuild cùng lúc
+
+ Cache tags
+ = nhóm nhiều key để xóa chung
+
+ Version key
+ = đổi version để vô hiệu hóa cache cũ
+
+ Redis
+ = cache store phổ biến production
+5.4. Dispatch sau commit
+
 6. API Resource             php artisan module:make-resource AttendanceResource Attendance
 7. Policy                   php artisan make:policy AttendancePolicy --model=Modules\\Attendance\\App\\Models\\Attendance
 8. Feature Test             php artisan module:make-test AttendanceFeatureTest Attendance
@@ -2184,6 +3219,11 @@ Terminal 1 :      php artisan reverb:start
 Terminal 2 :      php artisan queue:work   |  or:  php artisan horizon
 Terminal 3 :      php artisan serve
 Terminal 4 :      npm run dev
+( chạy bị ảnh hưởng projec khác thì :
+php artisan permission:cache-reset
+php artisan optimize:clear
+php artisan cache:clear 
+) 
 resources/views/layouts/app.blade.php   :  thêm :  @vite(['resources/js/app.js'])
 hoặc:  resources>views>layouts>parts>footer.blade.php
 php artisan optimize:clear

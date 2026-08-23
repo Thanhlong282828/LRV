@@ -8,7 +8,7 @@ use Modules\Attendance\App\Models\Attendance;
 
 class AttendanceDashboardService
 {
-    public function stats()
+    public function stats() // view test
     {
         return Cache::remember( // → tạo key: attendance.dashboard
             'attendance.dashboard',
@@ -36,7 +36,7 @@ class AttendanceDashboardService
         );
     }
 
-    public function advancedStats()// cái này cho nối js để lấy dữ liệu gì để xuất ra view char | nếu lấy dữ liệu xuất ko cần thiết thì char bị lag ko hiện view
+    public function advancedStats()// view bự - cái này cho nối js để lấy dữ liệu gì để xuất ra view char | nếu lấy dữ liệu xuất ko cần thiết thì char bị lag ko hiện view
     {
         $days = now()->daysInMonth;
         // Attendance::selectRaw() nối với file models > CompanyScope::apply()

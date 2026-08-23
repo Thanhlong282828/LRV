@@ -8,9 +8,9 @@ use Modules\Attendance\App\Models\Attendance;
 class AttendanceCache
 {
     // AttendanceCache.php: Xóa Cache Attendance sau khi tạo dữ liệu | Dashboard không bị lấy dữ liệu cũ
-    public static function summary()
+    public static function summary()  // cái view thông số 4 cột trạng thái > nó lấy dữ liệu từ Model
     {
-        return Cache::remember(
+        return Cache::remember(       //  remember()  | Có : cache → lấy cache | Không có :→ chạy callback → lưu kết quả → trả kết quả
             'attendance_dashboard',
             300,
             fn () => [
@@ -19,6 +19,6 @@ class AttendanceCache
                 'absent' => Attendance::where('status', 'absent')->count(), // Attendance::where(...) > nối với file models > CompanyScope::apply() > Sau đó mới: ->leftJoin(...)
                 'leave' => Attendance::where('status', 'leave')->count(), // Attendance::where(...) > nối với file models > CompanyScope::apply() > Sau đó mới: ->leftJoin(...)
             ]
-        );
+        ); //AttendanceServiceProvider.php - Provider > AttendanceObserver.php > AttendanceDashboardCache.php | Cache::forget > Model
     }
 }
