@@ -2412,7 +2412,7 @@ public int $timeout = 120; // Timeout: Job tối đa 120 giây  |  Job chạy qu
   Kiểm tra:    php artisan queue:failed
   Retry lại:   php artisan queue:retry all
   Xóa:         php artisan queue:flush
-5.3. Idempotency:
+5.3. Idempotency:      |     Balance / stock / payment :
   Job phải có tính idempotent (Đây là phần rất quan trọng.  >  Queue/Job có thể retry. > handle() phải an toàn khi chạy nhiều lần. )
 Ví dụ 1 — Generate Payroll Delivery ( Phiếu lương )  |   ( gắn UNIQUE vào DB, updateOrCreate , ghi rõ luồng và trạng thái nối tới )               <
   * Sai:
@@ -2500,7 +2500,7 @@ Ví dụ 3 — Payment kiểu production        |   firstOrCreate() = tìm trư�
        ↓                                 ↓
     SUCCESS                       DB unique constraint bảo vệ
  >  Nhưng với nghiệp vụ tài chính phức tạp hơn, còn phải thiết kế cách bắt duplicate/deadlock và retry phù hợp
-Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = không cứu được trường hợp này.              <
+Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = + = không cứu được trường hợp này.     decrement() = -         <
   Ban đầu:
   Wallet::whereKey($this->walletId)
        ->increment('balance_minor', 1_000_000);                  <
@@ -2509,6 +2509,121 @@ Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = 
   Job attempt #1 > balance +1.000.000 > DB COMMIT > process chết trước khi Queue nhận ACK  >  Queue retry  >  balance +1.000.000 lần nữa ❌
   Atomic update chống:    Lost Update / Race Condition                          <
   nhưng không tự chống:    Job retry thực hiện business operation lần 2                  <
+  
+  Tại sao decrement() quan trọng?
+ Cách dễ bị Race Condition:
+
+ $product = Product::find(1);
+ $product->stock = $product->stock - 1;
+ $product->save();
+
+ Nó là:
+ SELECT stock > PHP tính stock - 1 > UPDATE
+ Hai request cùng lúc có thể:
+ DB stock = 10
+
+ A đọc 10
+ B đọc 10
+
+ A: 10 - 1 = 9
+ B: 10 - 1 = 9
+
+ A ghi 9
+ B ghi 9
+
+ Kết quả = 9 ❌
+ Đúng phải = 8
+
+ Dùng:
+
+ Product::whereKey(1)
+     ->decrement('stock');
+
+ Database thực hiện gần như:
+
+ UPDATE products
+ SET stock = stock - 1
+ WHERE id = 1;
+
+ Hai request:
+
+ stock = 10
+
+ A → DB: stock = stock - 1 → 9
+ B → DB: stock = stock - 1 → 8
+
+ Kết quả = 8 ✅
+
+ Đây chính là Atomic Update.
+
+ Nhưng còn một vấn đề: stock âm
+
+ Nếu:
+
+ stock = 0
+
+ mà chạy:
+
+ Product::whereKey(1)
+     ->decrement('stock');
+
+ có thể thành:
+
+ stock = -1 ❌
+
+ Vì vậy nghiệp vụ bán hàng nên thêm điều kiện:
+
+ $affected = Product::query()
+     ->whereKey($productId)
+     ->where('stock', '>=', $quantity)
+     ->decrement('stock', $quantity);
+
+ if ($affected === 0) {
+     throw new OutOfStockException();
+ }
+
+ Ví dụ:
+
+ stock = 1
+
+ A muốn mua 1
+ B muốn mua 1
+
+ A:
+
+ UPDATE products
+ SET stock = stock - 1
+ WHERE id = 1
+ AND stock >= 1;
+ 1 → 0 ✅
+
+ B:
+
+ WHERE stock >= 1
+
+ 0 >= 1 ❌
+
+ 0 rows affected
+
+ → B nhận OutOfStockException.
+ 
+ Ngược lại với decrement() là:
+
+ ->increment('stock', 5);
+
+ Cách nhớ:
+
+ increment()
+  = DB tự cộng
+
+ decrement()
+  = DB tự trừ
+
+ Cả hai
+ = Atomic Update
+ = tránh kiểu đọc → PHP tính → ghi lại
+
+ Nhưng decrement() không phải idempotency. Nếu một Queue Job retry và chạy decrement() hai lần thì nó vẫn trừ hai lần.
 Ví dụ 5 — Wallet kiểu Senior: Ledger + Unique Business Key          |   whereKey()  lockForUpdate()  firstOrFail()  increment()     | firstOrCreate() = payroll_run_id = 100 > Có rồi?  | Có  → trả record cũ | Không → INSERT record mới            <
   Tạo bảng:  wallet_transactions
   id   wallet_id  reference  amount_minor type created_at
@@ -2682,6 +2797,7 @@ Ví dụ 8 - Một tính năng rất hữu ích:      |     if (! $payment->wasR
  Lần 1 → vừa tạo → xử lý ✅
 
  Retry → đã tồn tại → return → không xử lý lại ✅
+Dispatch sau commit
 ShouldBeUnique   |   Nếu không muốn cùng một Job bị dispatch nhiều lần              <
  final class GeneratePayrollJob implements ShouldQueue, ShouldBeUnique
  {
@@ -2781,6 +2897,9 @@ Cách nhớ toàn bộ Cache :                       <
  Cache::forget()
  = xóa key
 
+ Cache::forever()
+ = Lưu không hết hạn - phải chủ động xoá key , nếu dữ liệu đổi 
+ 
  TTL
  = thời gian sống
 
@@ -2798,8 +2917,647 @@ Cách nhớ toàn bộ Cache :                       <
 
  Redis
  = cache store phổ biến production
-5.4. Dispatch sau commit
+Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version thay forget > Các key cũ tự hết TTL.                    <
+ Đây là phần khó nhất.
 
+ Ví dụ cache:
+
+ Cache::remember(
+     "company:{$companyId}:employee_count",
+     600,
+     fn () => Employee::query()
+         ->where('company_id', $companyId)
+         ->count()
+ );
+
+ Sau đó:
+
+  Employee::create(...);
+
+ Nếu không invalid cache:
+
+  DB: 101 employee
+  Cache: 100 employee
+
+ Sai.
+
+ Vì vậy sau khi tạo:
+
+  Cache::forget(
+      "company:{$companyId}:employee_count"
+  );
+ ============================================================
+ Cache-aside:
+  $employees = Cache::remember(
+      "company:{$companyId}:employees:v{$version}",
+      now()->addMinutes(10),
+      fn () => $repository->list($companyId)
+  );
+ Cache invalidation :
+  Khi employee thay đổi:
+ 
+    Cache::forget("company:{$companyId}:employees");
+
+  Nhưng danh sách có nhiều filter thì khó xóa hết key.
+  Dùng version:
+ 
+   company:1:employees:version = 5
+   company:1:employees:v5:status:active
+
+  Khi write:
+    Cache::increment("company:{$companyId}:employees:version");
+  Các key cũ tự hết TTL.
+Cache invalidation :   Dùng: Cache::increment(version) thay Cache::forget - thiết kế key đọc cache có chứa version ngay từ đầu                              <
+ về ý tưởng là thay cách Cache::forget() từng key bằng tăng version. Nhưng phải thiết kế key đọc cache có chứa version ngay từ đầu.                                   <
+
+ Ví dụ bạn có nhiều cache:
+
+ company:1:employees:v5:status:active
+ company:1:employees:v5:status:inactive
+ company:1:employees:v5:department:10
+ company:1:employees:v5:department:20
+
+ Nếu dùng forget():                          <
+
+   Cache::forget("company:{$companyId}:employees");
+
+ thì không xóa được các key phía trên, vì Redis/cache key là key chính xác, không phải thư mục.
+
+ Dùng Version Cache
+ Đầu tiên lấy version:                       <
+
+ $version = Cache::get(                                   <
+     "company:{$companyId}:employees:version",
+     1
+ );
+
+ Sau đó cache:
+
+  $key = "company:{$companyId}:employees:v{$version}:status:{$status}";                                   <
+  $employees = Cache::remember(
+      $key,                                   <
+      now()->addMinutes(10),
+      fn () => $repository->list(
+          $companyId,
+          $status
+      )
+  );
+
+ Hiện tại:
+
+  version = 5
+
+  Request active
+    ↓
+  company:1:employees:v5:status:active
+ 
+  Request inactive
+    ↓
+  company:1:employees:v5:status:inactive
+
+ Khi Employee thay đổi, thay vì phải:
+
+  Cache::forget(...active);
+  Cache::forget(...inactive);
+  Cache::forget(...department10);
+  Cache::forget(...department20);
+
+ chỉ cần:
+
+  Cache::increment(
+      "company:{$companyId}:employees:version"
+  );
+
+ Version:
+
+  5
+  ↓
+  6
+
+ Request tiếp theo sẽ đọc:
+
+  company:1:employees:v6:status:active
+  company:1:employees:v6:status:inactive
+
+ Các key:
+
+  v5
+
+ vẫn còn trong Redis nhưng không còn được ứng dụng sử dụng và sau 10 phút TTL sẽ tự mất.
+
+ Vậy hiểu ngắn gọn : 
+ Cache::forget(key)                                       <
+   = xóa trực tiếp một cache cụ thể.
+
+ Cache::increment(version)                                   <
+   = không cần xóa hàng loạt.
+     Đổi version → ứng dụng chuyển sang bộ cache mới.
+
+ Có một điểm cần sửa trong ví dụ của bạn: đừng dùng dấu \:
+
+ // Đúng
+ Cache::increment(
+     "company:{$companyId}:employees:version"
+ );
+
+ không phải:
+
+ // Sai / không cần thiết 
+ "company:{$companyId}\:employees\:version"
+
+ Versioning đặc biệt hữu ích khi một resource có rất nhiều cache key do filter, sort, pagination.                         <
+Cache invalidation bằng Event :                       <
+ Thay vì Controller tự xóa cache:
+
+ Employee::create(...);
+
+ Cache::forget(...);
+
+ có thể dùng Event:
+
+ EmployeeCreated
+ ↓
+ Listener
+ ↓
+ ClearEmployeeCache
+
+ Listener:
+
+ final class ClearEmployeeCache
+ {
+     public function handle(EmployeeCreated $event): void
+     {
+         Cache::forget(
+             "company:{$event->companyId}:employee_count"
+         );
+     }
+ }
+
+ Cách này sạch hơn.
+Cache trong CQRS :                            <
+ Query side rất hợp để cache.
+ Ví dụ:
+  GET Dashboard > Query > Query Handler > Cache > Read Model
+ Handler:
+  final class GetPayrollDashboardHandler
+  {
+      public function handle(
+          GetPayrollDashboardQuery $query
+      ): array {
+          return Cache::remember(
+              "company:{$query->companyId}:payroll-dashboard",
+              now()->addMinutes(5),
+              fn () => $this->buildDashboard($query)
+          );
+      } 
+  }
+ Command side:
+ ApprovePayrollRunCommand > Handler > Update DB > Event > Clear cache
+ Rất hợp với CQRS.
+Cache Aside Pattern :                        <
+ Đây là pattern phổ biến nhất.
+ Application hỏi cache trước
+    ↓
+ Cache hit?
+ ├─ Có → trả cache
+ └─ Không → query DB → lưu cache → trả dữ liệu
+ Laravel Cache::remember() chính là kiểu này.
+Cache-aside:
+Cache Stampede :              Giải pháp: Lock.  |  Stale-while-revalidate.  |  TTL có jitter. |  Background refresh.                <
+ Ví dụ cache hết hạn lúc 12:00.
+ Có 100 request cùng tới lúc 12:00:01.
+ Tất cả đều thấy:
+   cache miss
+ rồi cùng:
+   query DB nặng
+ Kết quả:
+   100 request
+     ↓
+   100 query nặng
+     ↓
+   DB bị spike
+ Đây gọi là:
+   Cache Stampede
+Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,10)->block(5,...   =  Request khác chờ lock   |   10: Lock có thời hạn tối đa 10 giây.  |  5: Request sẵn sàng chờ tối đa 5 giây để lấy lock.               <
+ Đúng nhưng chỉ đối với đoạn code/resource đang bị lock, không phải toàn bộ hệ thống xử lý từng request một.
+ Trong ví dụ:
+ Cache::lock(                                              <
+     "lock:dashboard:{$companyId}",
+     10
+ )->block(5, function () use ($companyId) {                                       <
+     return Cache::remember(
+         "dashboard:{$companyId}",
+         300,
+         fn () => $this->buildDashboard($companyId)
+     );
+ });
+ Giả sử cache đã hết hạn và cùng lúc có:
+ Request A
+ Request B
+ Request C
+ Thì:
+ Request A                        < 
+    ↓
+ lấy được lock 🔒
+    ↓
+ buildDashboard()
+    ↓
+ lưu cache
+    ↓
+ nhả lock 🔓
+ 
+ Request B + C                        < 
+    ↓
+ đang chờ lock
+ 
+ Sau khi A nhả lock:
+
+ Request B                        < 
+    ↓
+ lấy lock
+    ↓
+ Cache::remember()                        < 
+    ↓
+ cache ĐÃ CÓ do A vừa tạo
+    ↓
+ không buildDashboard()                        < 
+    ↓
+ trả cache
+    ↓
+ nhả lock
+
+ Request C                        < 
+    ↓
+ lấy lock
+    ↓
+ cache ĐÃ CÓ
+    ↓
+ trả cache
+ 
+ Cho nên đúng là:
+
+ Với cùng lock key, B phải chờ A nhả lock rồi mới vào đoạn được bảo vệ.
+
+ Nhưng có một điểm rất quan trọng: B không rebuild dashboard lần nữa vì khi B vào thì A đã tạo cache rồi.
+
+ Không phải tất cả request đều bị chặn
+
+ Ví dụ:
+
+ Request A → dashboard company 1
+ Request B → dashboard company 1
+ Request C → login
+ Request D → employees
+ Request E → dashboard company 2 
+
+ Lock:
+
+ lock:dashboard:1
+
+ chỉ ảnh hưởng những request tranh cùng lock đó.
+
+ A ────────┐
+           │ lock dashboard:1
+ B → chờ ──┘
+
+ C → vẫn chạy bình thường ✅
+ D → vẫn chạy bình thường ✅
+ E → lock dashboard:2 → vẫn chạy ✅
+ 10 và 5 nghĩa là gì?
+ Cache::lock(
+     "lock:dashboard:{$companyId}",
+     10
+ )
+
+ 10:
+
+ Lock có thời hạn tối đa 10 giây.
+
+ Còn:
+
+ ->block(5, ...)
+
+ 5:
+
+ Request sẵn sàng chờ tối đa 5 giây để lấy lock.
+
+ Nếu 5 giây vẫn không lấy được lock thì Laravel sẽ báo LockTimeoutException.
+
+ Cách nhớ ngắn:
+
+ Cache Lock
+  = cùng một tài nguyên → chỉ 1 request vào vùng critical section tại một thời điểm.
+
+ Không phải:
+  = toàn website chỉ chạy 1 request.
+
+ Và mục tiêu của nó trong trường hợp này là tránh:
+
+ 100 request cùng cache miss
+         ↓
+ 100 request cùng chạy query dashboard nặng ❌
+
+ thành:
+
+ Request A → build cache 1 lần
+ Request B → chờ → lấy cache
+ Request C → chờ → lấy cache
+ ...
+
+ Đó chính là chống Cache Stampede.
+ =====================================================================
+ dashboard ở ví dụ trên chỉ là trang tổng quan có nhiều số liệu phải query/tính toán, ví dụ Dashboard HRM:
+
+ DASHBOARD CÔNG TY
+
+ Tổng nhân viên:        10.250
+ Đang làm việc:          9.800
+ Nghỉ việc:                450
+
+ Tổng phòng ban:             25
+ Nhân viên đi trễ hôm nay:  120
+ Nhân viên nghỉ hôm nay:     35
+
+ Tổng lương tháng:       85 tỷ
+ Payroll đang chờ duyệt:      3
+
+ Để tạo ra dashboard đó, buildDashboard() có thể phải chạy nhiều query:
+
+ private function buildDashboard(int $companyId): array
+ {
+     return [
+         'employees' => Employee::query()
+             ->where('company_id', $companyId)
+             ->count(),
+ 
+         'active_employees' => Employee::query()
+             ->where('company_id', $companyId)
+              ->where('status', 'active')
+             ->count(),
+ 
+         'late_today' => Attendance::query()
+             ->where('company_id', $companyId)
+             ->whereDate('work_date', today())
+             ->where('status', 'late')
+             ->count(),
+ 
+         'payroll_total' => PayrollItem::query()
+              ->where('company_id', $companyId)
+             ->sum('net_minor'),
+     ];
+ }
+
+ Nếu có 100.000 người cùng mở dashboard:
+
+ Không cache:
+
+ 100.000 request
+      ↓
+ buildDashboard()
+      ↓
+ 4 query/request
+
+ = có thể 400.000 query ❌
+ -----------------------------
+ Có cache:
+
+ Request A
+ ↓
+ Cache chưa có
+ ↓
+ buildDashboard()
+ ↓
+ 4 query DB
+ ↓
+ Cache::put()
+
+ ----------------
+
+ Request B
+ Request C
+ Request D
+ ...
+ ↓
+ Cache đã có
+ ↓
+ lấy kết quả A đã build
+ ↓
+ không chạy 4 query nữa ✅
+
+ Và lock giải quyết tình huống cache vừa hết hạn mà rất nhiều request cùng tới:
+
+                  ┌→ B chờ
+ Cache hết hạn → A lấy lock → build → cache
+                  ├→ C chờ
+                  └→ D chờ
+
+ A build xong
+       ↓
+ B/C/D lấy cache A vừa tạo
+
+ Nên dashboard chỉ là ví dụ về dữ liệu đọc nhiều nhưng tính toán/query tương đối nặng. Cache cũng có thể áp dụng tương tự cho employee list, report, permission, thống kê payroll, cấu hình hệ thống...
+Stale-While-Revalidate (SWR) :Dashboard / report :        Cache::flexible()          = cache hết hạn mềm → request khác vẫn lấy CACHE CŨ trong lúc cache mới được build                       <
+ Stale-While-Revalidate (SWR) hiểu cực ngắn:
+ Cache cũ hết “thời gian tươi” vẫn tạm trả cho user, trong lúc hệ thống tạo cache mới ở phía sau.
+ Nó giúp user không phải đứng chờ việc rebuild cache.
+ Ví dụ Dashboard :
+ Giả sử quy định:
+
+ Fresh: 5 phút
+ Stale: thêm 10 phút
+
+ Luồng:
+
+ 0 → 5 phút
+ Cache còn FRESH
+   ↓
+ User lấy cache ngay
+
+ 5 → 15 phút
+ Cache đã STALE
+   ↓
+ User vẫn lấy cache cũ ngay
+   +
+ hệ thống rebuild cache mới phía sau
+ 
+ > 15 phút
+ Cache hết hoàn toàn
+   ↓
+ phải build lại / chờ kết quả
+
+ Ví dụ:
+ 10:00
+ Dashboard = 1.000 employees
+   ↓
+ cache được tạo
+
+ 10:04
+ Request A
+   ↓
+ cache fresh
+   ↓
+ trả 1.000
+
+ 10:06
+ Request B
+   ↓
+ cache stale
+   ↓
+ vẫn trả 1.000 ngay
+   ↓
+ background rebuild
+
+ DB hiện tại = 1.005
+   ↓
+ cache mới = 1.005
+
+ 10:07
+ Request C
+   ↓
+ trả 1.005
+ Điểm quan trọng là Request B không phải chờ query dashboard nặng.
+ Laravel
+ Laravel có Cache::flexible() cho mô hình stale-while-revalidate:
+
+ $dashboard = Cache::flexible(
+     "company:{$companyId}:dashboard",
+     [300, 900],
+     fn () => $this->buildDashboard($companyId)
+ );
+
+ Có thể hiểu:
+
+ [300, 900]
+    ↑    ↑
+    │    └─ stale window
+    │
+    └────── fresh window
+
+ Cụ thể:
+
+ 0 - 300 giây
+ → FRESH
+ → trả cache
+
+ 300 - 900 giây
+ → STALE
+ → trả cache cũ ngay
+ → đăng ký refresh sau response
+
+ > 900 giây
+ → EXPIRED
+ → phải tính lại
+
+ Ví dụ 100.000 request:
+
+ Cache vừa stale
+
+ Request A ─┐
+ Request B ─┤
+ Request C ─┤→ vẫn nhận cache cũ nhanh
+ ...        │
+ 100.000 ───┘
+
+         +
+         ↓
+ refresh cache
+         ↓
+  cache mới
+
+ Đây là điểm khác rất lớn với block():
+
+ Cách	                       Khi cache cần refresh
+ Cache::lock()->block()      	Request khác chờ lock
+ SWR	                        Request khác nhận cache cũ
+ Cache bình thường	            Nhiều request có thể cùng rebuild
+
+ Cách nhớ:
+ Cache::remember()
+  = hết cache → build → user chờ
+ Lock
+  = chỉ 1 thằng build → thằng khác chờ
+ SWR
+  = trả cache cũ trước → refresh cache mới sau
+
+ Với dashboard, report, thống kê mà chậm vài phút không nghiêm trọng, SWR rất hợp. Còn số dư tài khoản, tồn kho chính xác, trạng thái thanh toán... thì không nên tùy tiện trả dữ liệu stale.
+ Mấy dữ liệu như số dư tài khoản, tồn kho chính xác, trạng thái thanh toán thì thường không nên dùng stale-while-revalidate vì dữ liệu cũ có thể gây sai nghiệp vụ.
+ Ví dụ số dư:
+   Cache cũ: 10 triệu
+   DB thật:   2 triệu
+ Nếu vẫn trả cache cũ:
+   User thấy 10 triệu ❌
+ và có thể tiếp tục thực hiện giao dịch dựa trên số dư sai.
+
+ Với tồn kho:
+  Cache cũ: stock = 1
+  DB thật:  stock = 0
+
+ Nếu trả stale:
+   2 người vẫn thấy còn hàng
+   → đặt mua
+   → oversell
+
+ Với trạng thái thanh toán:
+ Cache cũ:
+   pending
+ DB thật:
+   paid
+ User có thể:
+   bấm thanh toán lại
+   nếu hệ thống thiết kế kém.
+ Những dữ liệu kiểu này nên coi:
+   Database
+   = source of truth
+ và khi ghi thường dùng:
+   Transaction
+       +
+   lockForUpdate()
+ hoặc:
+    Atomic Update
+ Ví dụ tồn kho:
+   $updated = Product::query()
+       ->whereKey($productId)
+       ->where('stock', '>=', $quantity)
+       ->decrement('stock', $quantity);
+
+   if ($updated === 0) {
+        throw new OutOfStockException();
+   }
+
+ Đây là atomic update.
+
+ Thanh toán thì có thể:
+   DB::transaction(function () use ($paymentId) {
+ 
+       $payment = Payment::query()
+           ->lockForUpdate()
+           ->findOrFail($paymentId);
+
+       if ($payment->status === 'paid') {
+           return;
+       }
+
+       // xử lý payment
+
+       $payment->update([
+           'status' => 'paid',
+       ]);
+   });
+
+ Và nên có thêm:
+   Idempotency Key
+        +
+   UNIQUE(reference)
+
+ để chống retry/double-click.
+Cách nhớ:
+ Dashboard / report :
+  → chậm vài phút vẫn chấp nhận được
+  → SWR được
+ Balance / stock / payment :
+  → phải đúng ngay
+  → ưu tiên DB + concurrency control
+ Cache vẫn có thể dùng cho balance/stock/payment ở một số hệ thống lớn, nhưng thường chỉ để tăng tốc đọc và phải có chiến lược consistency rất chặt; quyết định nghiệp vụ cuối cùng vẫn phải xác nhận ở nguồn dữ liệu đáng tin cậy.
 6. API Resource             php artisan module:make-resource AttendanceResource Attendance
 7. Policy                   php artisan make:policy AttendancePolicy --model=Modules\\Attendance\\App\\Models\\Attendance
 8. Feature Test             php artisan module:make-test AttendanceFeatureTest Attendance
