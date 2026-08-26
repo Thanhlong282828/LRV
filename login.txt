@@ -3559,6 +3559,769 @@ Cách nhớ:
   → ưu tiên DB + concurrency control
  Cache vẫn có thể dùng cho balance/stock/payment ở một số hệ thống lớn, nhưng thường chỉ để tăng tốc đọc và phải có chiến lược consistency rất chặt; quyết định nghiệp vụ cuối cùng vẫn phải xác nhận ở nguồn dữ liệu đáng tin cậy.
 6. API Resource             php artisan module:make-resource AttendanceResource Attendance
+API Design :                        <
+ Trong Laravel, API Design là cách thiết kế các endpoint để Frontend, React/React Native, mobile app hoặc hệ thống khác giao tiếp với Backend một cách dễ hiểu, nhất quán, bảo mật và dễ mở rộng.
+ Luồng cơ bản:
+ React / React Native
+        ↓ HTTP Request
+ Laravel API Route
+        ↓
+ Middleware / Auth
+        ↓
+ FormRequest
+        ↓
+ Controller
+        ↓
+       DTO
+        ↓
+ Command / Query
+        ↓
+ Handler / Use Case
+        ↓
+ Repository / Model
+        ↓
+ Database
+        ↓
+ API Resource
+        ↓
+ JSON Response
+        ↓
+ React / React Native
+6.1 REST API                        <
+ REST thường thiết kế endpoint dựa trên resource/danh từ, không dựa trên hành động.
+ Ví dụ resource:
+  employees
+  companies
+  payroll-runs
+  payslips
+ Thiết kế chuẩn:
+  HTTP	      Endpoint	         Ý nghĩa
+  GET	    /api/employees	    Danh sách
+  GET	    /api/employees/15	Chi tiết ID 15
+  POST	    /api/employees	    Tạo mới
+  PUT	    /api/employees/15	Thay thế/cập nhật toàn bộ
+  PATCH	    /api/employees/15	Cập nhật một phần
+  DELETE	/api/employees/15	Xóa
+ Nên tránh:
+  /api/getEmployees
+  /api/createEmployee
+  /api/deleteEmployee
+ Nên dùng:
+  GET    /api/employees
+  POST   /api/employees
+  DELETE /api/employees/15
+ Vì HTTP method đã thể hiện hành động.
+6.2 HTTP Methods                    <
+  GET — lấy dữ liệu
+  GET /api/employees/15
+ Laravel:
+
+ public function show(Employee $employee)
+ {
+     return new EmployeeResource($employee);
+ }
+
+ GET không nên thay đổi database.
+
+ POST — tạo resource
+ POST /api/employees
+
+ Body:
+ {
+     "name": "Nguyen Van A",
+     "email": "a@example.com"
+ }
+ Laravel:
+  public function store(StoreEmployeeRequest $request)
+  {
+      $employee = Employee::create(
+          $request->validated()
+      );
+
+      return new EmployeeResource($employee);
+  }
+ Thường trả:
+  201 Created
+  PATCH — sửa một phần
+
+ Ví dụ chỉ sửa email:
+  PATCH /api/employees/15
+   {
+       "email": "new@example.com"
+   }
+
+ Không cần gửi lại toàn bộ employee.
+  PUT — thay thế/cập nhật toàn bộ
+  PUT /api/employees/15
+ Thông thường client gửi representation đầy đủ hơn:
+   {
+       "name": "Nguyen Van A",
+       "email": "new@example.com",
+       "status": "active"
+   }
+  DELETE
+  DELETE /api/employees/15
+
+ Laravel:
+   public function destroy(Employee $employee)
+  {
+      $employee->delete();
+
+      return response()->noContent();
+  }
+
+ Thường trả:
+  204 No Content
+6.3 HTTP Status Code      |   Đây là phần rất hay gặp khi phỏng vấn.            <
+ Code	   Ý nghĩa	            Ví dụ
+ 200    	OK	             GET thành công
+ 201	   Created	         POST tạo thành công
+ 204	  No Content	     DELETE thành công
+ 400     Bad Request	      Request không hợp lệ về mặt giao thức/input chung
+ 401    Unauthenticated 	  Chưa đăng nhập/token không hợp lệ
+ 403	  Forbidden	          Đã xác thực nhưng không có quyền
+ 404	  Not Found       	   Không tìm thấy resource
+ 409	  Conflict	           Xung đột trạng thái/resource
+ 422  Unprocessable Content    Validation thất bại
+ 429	Too Many Requests	   Rate limit
+ 500	Internal Server Error	Backend lỗi
+ 503   Service Unavailable   	Service tạm thời không hoạt động
+ Đặc biệt phải phân biệt:
+  401
+   ↓
+  Tôi chưa biết bạn là ai / xác thực thất bại.
+
+  403
+   ↓
+  Tôi biết bạn là ai nhưng bạn không có quyền.
+
+ Ví dụ:
+  User chưa login
+  GET /api/payroll-runs  → 401
+ Còn:
+  User đã login
+  role = Employee
+
+  DELETE /api/payroll-runs/10
+
+  nhưng cần quyền payroll-run.delete  → 403
+6.4 API Routes trong Laravel                 <
+ Ví dụ:
+  Route::middleware('auth:sanctum')->group(function () {
+      Route::apiResource(
+          'employees',
+          EmployeeController::class
+      );
+  });
+
+ apiResource() tự tạo:
+
+  GET       /employees
+  POST      /employees
+  GET       /employees/{employee}
+  PUT/PATCH /employees/{employee}
+  DELETE    /employees/{employee}
+
+ Không tạo:
+  create
+  edit
+
+  vì API không cần trang HTML form như web Blade.
+6.5 Validation                      <
+ Không nên nhét validation lớn vào Controller:
+  $request->validate([
+      ...
+  ]);
+
+  Project lớn nên dùng FormRequest.
+  php artisan make:request StoreEmployeeRequest
+
+ Ví dụ:
+  final class StoreEmployeeRequest extends FormRequest
+  {
+      public function authorize(): bool
+      {
+          return true;
+      }
+
+      public function rules(): array
+      {
+          return [
+              'name' => ['required', 'string', 'max:255'],
+              'email' => [
+                  'required',
+                  'email',
+                  'unique:employees,email',
+              ],
+          ];
+      }
+  }
+
+ Controller:
+  public function store(StoreEmployeeRequest $request)
+  {
+      //
+  }
+
+ Luồng:
+  Request
+    ↓
+  FormRequest
+     ├── authorization
+     └── validation
+            ↓
+        Controller
+6.6 DTO                             <
+6.6 DTO                             <
+ Không nên truyền $request sâu xuống Application/Domain.
+ Thay vào đó:
+  Request
+   ↓
+  validated()
+   ↓
+  DTO
+   ↓
+  Command
+   ↓
+  Handler
+
+ Ví dụ:
+  final readonly class CreateEmployeeData
+  {
+      public function __construct(
+          public int $companyId,
+          public string $name,
+          public string $email,
+      ) {}
+  }
+
+ Controller:
+  $data = new CreateEmployeeData(
+      companyId: $request->user()->company_id,
+      name: $request->validated('name'),
+      email: $request->validated('email'),
+  );
+
+ Sau đó:
+  $command = new CreateEmployeeCommand($data);
+  $employee = $this->commandBus->dispatch($command);
+ Đây phù hợp với kiến trúc CQRS.
+6.7 API Resource                       <
+ API Resource quyết định dữ liệu nào được phép trả ra client.
+ Không nên:
+  return Employee::find($id);
+
+ vì có thể vô tình trả những field không muốn public.
+ Nên:
+  return new EmployeeResource($employee);
+
+ Tạo:
+  php artisan make:resource EmployeeResource
+
+ Ví dụ:
+  final class EmployeeResource extends JsonResource
+  {
+      public function toArray($request): array
+      {
+          return [
+              'id' => $this->id,
+              'name' => $this->name,
+              'email' => $this->email,
+              'status' => $this->status,
+          ];
+      }
+  }
+
+ Database có thể có:
+  id
+  name
+  email
+  password
+  remember_token
+  internal_note
+  salary_secret
+
+ nhưng API chỉ trả:
+  {
+      "id": 15,
+      "name": "Nguyen Van A",
+      "email": "a@example.com",
+      "status": "active"
+  }
+6.8 JSON Response thống nhất                      <
+ Project lớn nên có format tương đối nhất quán.
+ Thành công:
+  {
+         "data": {
+         "id": 15,
+         "name": "Nguyen Van A"
+      }
+  }
+
+ Danh sách:
+
+  {
+      "data": [
+          {
+              "id": 1,
+              "name": "Employee A"
+          },
+          {
+              "id": 2,
+              "name": "Employee B"
+          }
+      ]
+  }
+
+ Validation error:
+
+  {
+      "message": "The given data was invalid.",
+      "errors": {
+          "email": [
+              "The email has already been taken."
+          ]
+      }
+  }
+ Quan trọng nhất không phải mọi API trên thế giới phải giống format này, mà là:
+ API của project phải nhất quán.
+6.9 Pagination                      <
+ Không nên:
+  Employee::all();
+
+ nếu database có:
+  1,000,000 employees
+
+ Nên:
+  Employee::query()
+      ->paginate(20);
+
+ API:
+  GET /api/employees?page=3
+
+ Có thể hỗ trợ:
+  ?page=3
+  &per_page=20
+
+ Response thường gồm dữ liệu và metadata pagination.
+6.10 Filtering                      <
+ Ví dụ:
+  GET /api/employees?status=active
+
+ Laravel:
+  $query->when(
+      $request->status,
+      fn ($q, $status) =>
+          $q->where('status', $status)
+  );
+
+ Có thể nhiều filter:
+  GET /api/employees
+      ?status=active
+      &department_id=5
+      &position_id=10
+ 16.11 Searching
+
+ Ví dụ:
+
+ GET /api/employees?search=thanh
+
+ Query:
+
+ $query->when(
+     $request->search,
+     function ($query, $search) {
+
+         $query->where(function ($q) use ($search) {
+
+             $q->where('name', 'like', "%{$search}%")
+               ->orWhere('email', 'like', "%{$search}%");
+
+         });
+
+     }
+ );
+ 16.12 Sorting
+
+ Client:
+
+ GET /api/employees?sort=name
+
+ hoặc:
+
+ GET /api/employees?sort=-created_at
+
+ Quy ước:
+
+ name
+ ↓
+ ASC
+
+ -name
+ ↓
+ DESC
+
+ Nhưng không nên:
+
+ $query->orderBy($request->sort);
+
+ một cách tự do.
+
+ Nên whitelist:
+
+ $allowedSorts = [
+     'name',
+     'email',
+     'created_at',
+ ];
+
+ để tránh client điều khiển query ngoài ý muốn.
+6.13 Authentication với Sanctum                      <
+ React Native:
+  Login
+  ↓
+  POST /api/login
+  ↓
+  Laravel kiểm tra email/password
+  ↓
+  tạo token
+  ↓
+  trả token
+  ↓
+  React Native lưu token
+
+ Request tiếp theo:
+  Authorization: Bearer TOKEN
+
+ Laravel:
+
+  Route::middleware('auth:sanctum')
+      ->get('/user', function (Request $request) {
+
+            return $request->user();
+
+        });
+6.14 Authentication vs Authorization                  <
+ Hai khái niệm phải phân biệt.
+ Authentication
+  = Bạn là ai?
+
+ Authorization
+  = Bạn được phép làm gì?
+
+ Ví dụ:
+  Sanctum
+  ↓
+  Authentication
+
+  Policy / Gate / Permission
+  ↓
+  Authorization
+
+ Flow:
+
+  Bearer Token
+       ↓
+  Sanctum
+       ↓
+  User #15
+       ↓
+  Policy / Permission
+       ↓
+  payroll-run.approve ?
+       ↓
+  YES → chạy
+  NO  → 403
+6.15 Rate Limiting                      <
+  Ngăn một client spam API.
+
+ Ví dụ:
+  Route::middleware('throttle:60,1')
+      ->group(function () {
+            // API
+        });
+
+ Ý tưởng:
+  Client
+  ↓
+  60 request/phút
+  ↓
+  OK
+
+  request 61
+  ↓
+  429 Too Many Requests
+  
+ Đặc biệt quan trọng với:
+  /login
+  /password-reset
+  /send-otp
+  /search
+  /public API
+6.16 API Versioning                     <
+ Khi mobile app cũ vẫn đang được người dùng sử dụng, không thể tùy tiện phá API.
+ Ví dụ:
+  /api/v1/employees
+
+ Sau này thay đổi lớn:
+  /api/v2/employees
+
+ Ta có:
+  React Native cũ
+         ↓
+       API v1
+
+  React Native mới
+         ↓
+       API v2
+
+ Backend có thời gian duy trì cả hai.
+6.17 Idempotency                     <
+ Rất quan trọng với:
+  payment
+  payroll
+  order
+  refund
+  transfer
+
+ Ví dụ mobile gửi:
+  POST /api/payments
+
+ nhưng mạng lag.                    <
+
+ Client không biết server đã xử lý chưa nên gửi lại:
+    Request 1 ─────→ Server 
+                  payment +500k 
+          X response mất 
+
+    Request 2 ─────→ Server 
+
+    Nếu không chống duplicate: 
+
+    payment +500k 
+  payment +500k ❌ 
+
+ Có thể dùng:
+
+  Idempotency-Key: PAY-ABC-123
+
+  Server:
+
+  PAY-ABC-123
+    ↓
+  đã xử lý chưa?
+
+  NO
+   ↓
+  process payment
+   ↓
+  lưu PAY-ABC-123
+
+  Request retry
+   ↓
+  PAY-ABC-123 đã tồn tại
+   ↓
+  không process lần 2
+
+  Database vẫn nên có UNIQUE để bảo vệ ở tầng cuối.
+6.18 API + Transaction                     <
+ Một API có nhiều thao tác database liên quan nhau nên cân nhắc transaction.
+ Ví dụ:
+  POST /api/payroll-runs/10/finalize
+
+ Phải:
+  update payroll_run
+  +
+  create payroll_results
+  +
+  create journal
+  +
+  mark finalized
+
+  Nếu bước 3 lỗi mà bước 1–2 đã commit thì dữ liệu có thể lệch.
+
+ Dùng:
+  DB::transaction(function () {
+
+        // operations
+
+  });
+  
+ Nguyên tắc:
+  ALL SUCCESS
+  → COMMIT
+
+  1 bước FAIL
+  → ROLLBACK
+6.19 API + CQRS                      < 
+ Với kiến trúc bạn đang học, có thể chia:  
+  GET
+  ↓
+  Query
+  ↓
+  QueryHandler
+
+ và:
+  POST / PUT / PATCH / DELETE
+  ↓
+  Command
+  ↓
+  CommandHandler
+  
+ Ví dụ:
+  GET /api/payroll-runs/15
+  ↓
+  PayrollRunController::show()
+  ↓
+  GetPayrollRunQuery
+  ↓
+  GetPayrollRunQueryHandler
+  ↓
+  Repository
+  ↓
+  PayrollRunResource
+  ↓
+  JSON
+  
+ Command:
+  POST /api/payroll-runs/15/approve
+  ↓
+  ApprovePayrollRunRequest
+  ↓
+  Controller
+  ↓
+  ApprovePayrollRunCommand
+  ↓
+  CommandBus
+  ↓
+  ApprovePayrollRunHandler
+  ↓
+  Transaction
+  ↓
+  lockForUpdate()
+  ↓
+  Domain validation
+  ↓
+  Repository
+  ↓
+  Event
+  ↓
+  Resource/Response
+6.20 Custom Action API                     <
+ REST không có nghĩa mọi thứ đều phải ép thành CRUD.
+ Ví dụ payroll:
+  POST /api/payroll-runs/15/approve
+  POST /api/payroll-runs/15/reject
+  POST /api/payroll-runs/15/finalize
+
+ Hoàn toàn hợp lý vì đây là business action/state transition.
+
+ Ví dụ:
+  Route::post(
+      '/payroll-runs/{payrollRun}/approve',
+      ApprovePayrollRunController::class
+  );
+
+ Handler có thể kiểm tra:
+  calculated
+       ↓
+  submitted
+       ↓
+  approved
+       ↓
+  finalized
+
+  Không cho:
+
+  draft
+   ↓
+  finalized ❌
+6.21 Một API hoàn chỉnh trong project Senior                     <
+ Ví dụ:
+ POST /api/v1/payroll-runs/15/approve
+
+ Luồng:
+  React Native
+        │
+        │ Bearer Token
+        ▼
+  Route
+        │
+        ▼
+  auth:sanctum
+        │
+        ▼
+  Permission / Policy
+        │
+        ▼
+  ApprovePayrollRunRequest
+        │
+        │ validation
+        ▼
+  ApprovePayrollRunController
+        │
+        ▼
+  ApprovePayrollRunData DTO
+        │
+        ▼
+  ApprovePayrollRunCommand
+        │
+        ▼
+  CommandBus
+        │
+        ▼
+  ApprovePayrollRunHandler
+        │
+        ▼
+  DB::transaction()
+        │
+        ├── lockForUpdate()
+        ├── kiểm tra state
+        ├── kiểm tra idempotency
+        ├── update
+        ├── audit log
+        └── dispatch event
+        │
+        ▼
+  PayrollRunResource
+        │
+        ▼
+  JSON
+        │
+        ▼
+  200 OK
+
+   Đây mới là điểm quan trọng: API Design không chỉ là viết Route + Controller.
+
+ Nó liên quan đến:
+  Endpoint
+  HTTP Method
+  Status Code
+  Validation
+  Authentication
+  Authorization
+  DTO
+  CQRS / Use Case
+  Transaction
+  Concurrency
+  Idempotency
+  Resource
+  Pagination
+  Filtering
+  Sorting
+  Rate Limit
+  Versioning
+  Error Handling
+  Security
+  Testing
+  Câu phỏng vấn: “Bạn thiết kế REST API Laravel như thế nào?”
+
+ Có thể trả lời ngắn:
+  Em thiết kế endpoint theo resource và HTTP method chuẩn, dùng FormRequest cho validation, Sanctum cho authentication, Policy/Permission cho authorization.
+  Controller chỉ nhận request và điều phối sang DTO/Command/Query hoặc use case. Business logic nằm ở application/domain layer. 
+  Response đi qua API Resource và sử dụng HTTP status code nhất quán. 
+  Với API ghi dữ liệu quan trọng em xử lý transaction, idempotency và concurrency; API danh sách có pagination, filter, sort và rate limiting.
+  Khi cần backward compatibility em version API.   
 7. Policy                   php artisan make:policy AttendancePolicy --model=Modules\\Attendance\\App\\Models\\Attendance
 8. Feature Test             php artisan module:make-test AttendanceFeatureTest Attendance
 9. Unit Test
