@@ -3558,7 +3558,7 @@ Cách nhớ:
   → phải đúng ngay
   → ưu tiên DB + concurrency control
  Cache vẫn có thể dùng cho balance/stock/payment ở một số hệ thống lớn, nhưng thường chỉ để tăng tốc đọc và phải có chiến lược consistency rất chặt; quyết định nghiệp vụ cuối cùng vẫn phải xác nhận ở nguồn dữ liệu đáng tin cậy.
-6. API Resource             php artisan module:make-resource AttendanceResource Attendance
+6 - API Resource             php artisan module:make-resource AttendanceResource Attendance
 API Design :                        <
  Trong Laravel, API Design là cách thiết kế các endpoint để Frontend, React/React Native, mobile app hoặc hệ thống khác giao tiếp với Backend một cách dễ hiểu, nhất quán, bảo mật và dễ mở rộng.
  Luồng cơ bản:
@@ -4225,7 +4225,7 @@ Chỉ nên tăng major version khi breaking change đáng kể. Không cần t�
   Event
   ↓
   Resource/Response
-6.20 Custom Action API                     <
+6.20 Custom Action API     POST > Action trạng thái                <
  REST không có nghĩa mọi thứ đều phải ép thành CRUD.
  Ví dụ payroll:
   POST /api/payroll-runs/15/approve
@@ -4332,14 +4332,508 @@ Chỉ nên tăng major version khi breaking change đáng kể. Không cần t�
   Error Handling
   Security
   Testing
-  Câu phỏng vấn: “Bạn thiết kế REST API Laravel như thế nào?”
+Câu phỏng vấn: “Bạn thiết kế REST API Laravel như thế nào?”
 
- Có thể trả lời ngắn:
+Có thể trả lời ngắn:
   Em thiết kế endpoint theo resource và HTTP method chuẩn, dùng FormRequest cho validation, Sanctum cho authentication, Policy/Permission cho authorization.
   Controller chỉ nhận request và điều phối sang DTO/Command/Query hoặc use case. Business logic nằm ở application/domain layer. 
   Response đi qua API Resource và sử dụng HTTP status code nhất quán. 
   Với API ghi dữ liệu quan trọng em xử lý transaction, idempotency và concurrency; API danh sách có pagination, filter, sort và rate limiting.
-  Khi cần backward compatibility em version API.   
+  Khi cần backward compatibility em version API.
+7 — Security
+7.1 Authentication                      <
+ Session Authentication
+ Cookie
+ API Token
+ Laravel Sanctum
+ OAuth2 / Passport
+ MFA / 2FA
+ Password hashing: Hash::make(), Hash::check()
+ Password reset
+ Email verification
+ Login throttling
+7.2 Authorization                      <
+ Gate
+ Policy
+ Role
+ Permission
+ Spatie Laravel Permission
+ RBAC
+ ABAC
+ Ownership check
+ Tenant / Company isolation
+ Principle of Least Privilege
+7.3 Validation & Input Security                      <
+ FormRequest
+ $request->validated()
+ whitelist input
+ Mass Assignment
+ $fillable
+ $guarded
+ Enum validation
+ File upload validation
+ MIME/type/size validation
+7.4 SQL Injection                       <
+
+ Hiểu SQL Injection xảy ra thế nào và vì sao nên ưu tiên: 
+
+ User::where('email', $email)->first(); 
+
+ hoặc Query Builder với binding thay vì tự nối SQL: 
+
+ DB::select(
+     'SELECT * FROM users WHERE email = ?',
+     [$email]
+ );
+7.5 XSS                       <
+
+ Blade mặc định escape: 
+
+ {{ $user->name }} 
+
+ Cẩn thận với: 
+
+ {!! $html !!} 
+
+ Học: 
+
+ Stored XSS
+ Reflected XSS
+ DOM-based XSS
+ Output escaping
+ HTML sanitization
+7.6 CSRF                       <
+
+ Laravel: 
+
+ <form method="POST">
+     @csrf
+ </form> 
+
+ Hiểu: 
+
+ CSRF token
+ VerifyCsrfToken
+ SameSite Cookie
+ CSRF với SPA/API
+7.7 IDOR / Broken Access Control                       <
+
+ Ví dụ nguy hiểm: 
+
+ /payroll/100
+ /payroll/101
+ /payroll/102 
+
+ Không được chỉ kiểm tra user đã login. Phải kiểm tra user có quyền truy cập đúng resource đó không: 
+
+ $this->authorize('view', $payroll); 
+
+ Đây là phần cực kỳ quan trọng với HRM/ERP. 
+7.8 Mass Assignment                      <
+ protected $fillable = [
+     'name',
+     'email',
+ ]; 
+
+ Tránh cho client tự gửi các field nhạy cảm như: 
+
+ role
+ is_admin
+ company_id
+ salary
+ status 
+
+ rồi ghi thẳng: 
+
+ User::create($request->all());
+7.9 File Upload Security                       <
+
+ Học: 
+
+ validate extension
+ MIME type
+ file signature
+ giới hạn dung lượng
+ random filename
+ private storage
+ signed URL
+ chống path traversal
+ malware scanning
+ không cho execute file upload 
+
+ Ví dụ: 
+
+ $request->validate([
+     'document' => [
+         'required',
+         'file',
+         'mimes:pdf',
+         'max:10240',
+     ],
+ ]);
+7.10 API Security                      <
+ Sanctum token
+ Token abilities/scopes
+ Token expiration
+ Token rotation/revocation
+ Rate Limit
+ CORS
+ HTTPS
+ API authorization
+ API validation
+ chống replay attack
+ Idempotency Key
+ API versioning security
+7.11 Rate Limiting / Brute Force                              <
+ RateLimiter::for('login', function (Request $request) {
+     return Limit::perMinute(5)
+         ->by($request->ip());
+ }); 
+
+ Áp dụng cho: 
+
+ Login
+ Forgot password
+ OTP
+ API
+ Export
+ Import
+ Search nặng
+ gửi email/SMS
+7.12 Session & Cookie Security                       <
+
+ Hiểu các cấu hình: 
+
+ SESSION_SECURE_COOKIE=true
+ SESSION_HTTP_ONLY=true
+ SESSION_SAME_SITE=lax 
+
+ Và: 
+
+ Session fixation
+ Session hijacking
+ regenerate session sau login
+ logout/invalidate session
+ remember token
+7.13 Password Security                      <
+ bcrypt
+ Argon2
+ Laravel Hash
+ không lưu plaintext password
+ password policy
+ breached-password checking
+ reset-token expiration
+ MFA
+7.14 Encryption                      <
+ Crypt::encryptString($value); 
+
+ Crypt::decryptString($encrypted); 
+
+ Phân biệt rõ: 
+
+ Hash       → một chiều
+ Encryption → hai chiều
+ Encoding   → không phải bảo mật
+7.15 Secrets Management                       <
+
+ Không hard-code: 
+
+ $apiKey = 'abc123...'; 
+
+ Dùng: 
+
+ STRIPE_SECRET=... 
+
+ và: 
+
+ config('services.stripe.secret') 
+
+ Quan trọng: 
+
+ không commit .env
+ rotate secret nếu bị lộ
+ không log token/password/API key
+ production secrets manager khi hệ thống lớn
+7.16 HTTPS / TLS                       <
+
+ Học: 
+
+ HTTPS
+ TLS
+ SSL certificate
+ HSTS
+ Secure Cookie
+ HTTP → HTTPS redirect
+ reverse proxy / trusted proxy
+7.17 Security Headers                       <
+
+ Các header quan trọng: 
+
+ Content-Security-Policy
+ Strict-Transport-Security
+ X-Content-Type-Options
+ Referrer-Policy
+ Permissions-Policy
+7.18 CORS                       <
+
+ Hiểu: 
+
+ Access-Control-Allow-Origin
+ Access-Control-Allow-Methods
+ Access-Control-Allow-Headers
+ Access-Control-Allow-Credentials 
+
+ Đặc biệt khi kiến trúc: 
+
+ React / React Native
+         ↓
+ Laravel API
+7.19 Database Security                      <
+ DB user permissions
+ không dùng root cho application
+ encrypted connection
+ backup
+ encrypted backup
+ sensitive-column protection
+ audit
+ tenant isolation
+ transaction
+ unique constraint
+7.20 Multi-Tenant Security                       <
+
+ Với HRM/ERP đây là mục bắt buộc. 
+
+ Ví dụ: 
+
+ Company A
+  └── Employee A 
+
+ Company B
+  └── Employee B 
+
+ User Company A tuyệt đối không được đọc: 
+
+ Company B
+ Employee B
+ Payroll B
+ Document B 
+
+ Không chỉ ẩn trên UI mà phải chặn ở backend/database query. 
+7.21 Race Condition & Concurrency Security                      <
+ DB::transaction(function () use ($account) {
+     $account = Account::query()
+         ->lockForUpdate()
+         ->findOrFail($account->id); 
+
+     // xử lý
+ }); 
+
+ Học: 
+
+ lockForUpdate()
+ Atomic Update
+ Unique Constraint
+ Optimistic Lock
+ Idempotency Key
+ duplicate request
+ double payment
+ double approval
+7.22 Queue / Job Security                      <
+ Job authorization context
+ không serialize secret không cần thiết
+ encrypted jobs
+ retry safety
+ idempotent job
+ unique job
+ timeout
+ failed jobs
+ tránh duplicate payment/email/action
+7.23 Logging & Audit Trail                       <
+
+ Phân biệt: 
+
+ Application Log
+ Security Log
+ Audit Log 
+
+ Ví dụ HRM: 
+
+ Admin A
+ ↓
+ đổi salary Employee B 
+
+ 50,000,000
+ ↓
+ 70,000,000 
+
+ Audit nên lưu tối thiểu: 
+
+ actor
+ action
+ resource
+ old_value
+ new_value
+ timestamp
+ request/context
+7.24 Sensitive Data / PII                       <
+
+ HRM có rất nhiều dữ liệu nhạy cảm: 
+
+ CCCD
+ địa chỉ
+ số điện thoại
+ tài khoản ngân hàng
+ hợp đồng
+ lương
+ thuế
+ tài liệu nhân viên 
+
+ Học: 
+
+ encryption at rest
+ encryption in transit
+ masking
+ access control
+ audit
+ retention
+ secure deletion
+ không log dữ liệu nhạy cảm
+7.25 OWASP Top 10                       <
+
+ Đây là nhóm kiến thức Security rất nên thuộc khi phỏng vấn backend: 
+
+ Broken Access Control
+ Security Misconfiguration
+ Supply Chain Failures
+ Cryptographic Failures
+ Injection
+ Insecure Design
+ Authentication Failures
+ Software/Data Integrity Failures
+ Logging & Alerting Failures
+ Exceptional Condition Handling
+7.26 Dependency / Supply-Chain Security                       <
+
+ Laravel/PHP: 
+
+ composer audit
+ composer outdated 
+
+ Node: 
+
+ npm audit 
+
+ Học thêm: 
+
+ CVE
+ lock file
+ dependency pinning
+ malicious package
+ abandoned dependency
+ secret scanning
+7.27 Security Testing                       <
+
+ Nên biết: 
+
+ SAST
+ DAST
+ Dependency Scan
+ Secret Scan
+ Penetration Test
+ Fuzz Testing
+ Security Regression Test 
+
+ Test authorization chẳng hạn: 
+
+ public function test_employee_cannot_view_other_company_payroll(): void
+ {
+     // Arrange
+     // Act
+     // Assert 403
+ }
+7.28 Infrastructure / Production Security                      <
+ Firewall
+ SSH key
+ disable root SSH
+ least privilege
+ database không public
+ Redis không public
+ Queue/Horizon protection
+ debug mode OFF
+ production error handling
+ backup
+ restore test
+ patching
+ WAF
+ DDoS protection
+ monitoring 
+
+ Production Laravel: 
+
+ APP_ENV=production
+ APP_DEBUG=false
+7.29 Security Incident Response                       <
+
+ Phải biết xử lý khi: 
+
+ API key bị leak
+ ↓
+ revoke
+ ↓
+ rotate
+ ↓
+ kiểm tra log
+ ↓
+ xác định phạm vi ảnh hưởng
+ ↓
+ contain
+ ↓
+ fix
+ ↓
+ audit
+ ↓
+ monitor
+7.30 Security Architecture cho Laravel Senior                       <
+
+ Luồng nên hình dung: 
+
+ Internet
+    ↓
+ HTTPS / WAF / Rate Limit
+    ↓
+ Laravel Middleware
+    ↓
+ Authentication
+    ↓
+ Authorization
+    ↓
+ Validation
+    ↓
+ Controller
+    ↓
+ DTO
+    ↓
+ Command / Query
+    ↓
+ Handler / Use Case
+    ↓
+ Domain Rules
+    ↓
+ Repository
+    ↓
+ Tenant Scope
+    ↓
+ Database 
+
+ Và xuyên suốt: 
+
+ Logging
+ Audit
+ Encryption
+ Secrets
+ Monitoring
+ Idempotency
+ Concurrency protection     
 7. Policy                   php artisan make:policy AttendancePolicy --model=Modules\\Attendance\\App\\Models\\Attendance
 8. Feature Test             php artisan module:make-test AttendanceFeatureTest Attendance
 9. Unit Test
