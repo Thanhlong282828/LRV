@@ -3612,25 +3612,31 @@ API Design :                        <
   DELETE /api/employees/15
  Vì HTTP method đã thể hiện hành động.
 6.2 HTTP Methods                    <
-  GET — lấy dữ liệu
+    GET: đọc.
+    POST: tạo hoặc action không idempotent.
+    PUT: thay toàn bộ representation.
+    PATCH: cập nhật một phần.
+    DELETE: xóa.
+    
+  GET — lấy dữ liệu                         <
   GET /api/employees/15
  Laravel:
 
- public function show(Employee $employee)
- {
-     return new EmployeeResource($employee);
- }
+  public function show(Employee $employee)
+  {
+      return new EmployeeResource($employee);
+  }
 
- GET không nên thay đổi database.
+ GET không nên thay đổi database. 
 
- POST — tạo resource
- POST /api/employees
+  POST — tạo resource
+  POST /api/employees
 
  Body:
- {
-     "name": "Nguyen Van A",
-     "email": "a@example.com"
- }
+  {
+      "name": "Nguyen Van A",
+      "email": "a@example.com"
+  }
  Laravel:
   public function store(StoreEmployeeRequest $request)
   {
@@ -3642,16 +3648,18 @@ API Design :                        <
   }
  Thường trả:
   201 Created
-  PATCH — sửa một phần
 
- Ví dụ chỉ sửa email:
-  PATCH /api/employees/15
-   {
-       "email": "new@example.com"
-   }
+ PATCH — sửa một phần                        <
 
- Không cần gửi lại toàn bộ employee.
-  PUT — thay thế/cập nhật toàn bộ
+  Ví dụ chỉ sửa email:
+   PATCH /api/employees/15
+    {
+        "email": "new@example.com"
+    }
+
+  Không cần gửi lại toàn bộ employee.
+
+ PUT — thay thế/cập nhật toàn bộ                        <
   PUT /api/employees/15
  Thông thường client gửi representation đầy đủ hơn:
    {
@@ -3659,7 +3667,8 @@ API Design :                        <
        "email": "new@example.com",
        "status": "active"
    }
-  DELETE
+
+ DELETE - xoá                            <
   DELETE /api/employees/15
 
  Laravel:
@@ -3676,12 +3685,12 @@ API Design :                        <
  Code	   Ý nghĩa	            Ví dụ
  200    	OK	             GET thành công
  201	   Created	         POST tạo thành công
- 204	  No Content	     DELETE thành công
+ 204	  No Content	     thành công không có body. | DELETE thành công 
  400     Bad Request	      Request không hợp lệ về mặt giao thức/input chung
- 401    Unauthenticated 	  Chưa đăng nhập/token không hợp lệ
+ 401    Unauthenticated 	  chưa authentication hợp lệ. | Chưa đăng nhập/token không hợp lệ
  403	  Forbidden	          Đã xác thực nhưng không có quyền
  404	  Not Found       	   Không tìm thấy resource
- 409	  Conflict	           Xung đột trạng thái/resource
+ 409	  Conflict	           xung đột state. | Xung đột trạng thái/resource
  422  Unprocessable Content    Validation thất bại
  429	Too Many Requests	   Rate limit
  500	Internal Server Error	Backend lỗi
@@ -3705,7 +3714,7 @@ API Design :                        <
   DELETE /api/payroll-runs/10
 
   nhưng cần quyền payroll-run.delete  → 403
-6.4 API Routes trong Laravel                 <
+6.4 API Routes trong Laravel     |  apiResource(            <
  Ví dụ:
   Route::middleware('auth:sanctum')->group(function () {
       Route::apiResource(
@@ -3727,7 +3736,7 @@ API Design :                        <
   edit
 
   vì API không cần trang HTML form như web Blade.
-6.5 Validation                      <
+6.5 Validation    from Request validate đặt bên ngoại -> Controller gọi vào                  <
  Không nên nhét validation lớn vào Controller:
   $request->validate([
       ...
@@ -3771,8 +3780,7 @@ API Design :                        <
      └── validation
             ↓
         Controller
-6.6 DTO                             <
-6.6 DTO                             <
+6.6 DTO          Controller > DTO > function tổng -> function nối > Command > Hanler > khai báo File DTO PHPstan > Responsitory | Service gọi file DTO                    <
  Không nên truyền $request sâu xuống Application/Domain.
  Thay vào đó:
   Request
@@ -3806,7 +3814,7 @@ API Design :                        <
   $command = new CreateEmployeeCommand($data);
   $employee = $this->commandBus->dispatch($command);
  Đây phù hợp với kiến trúc CQRS.
-6.7 API Resource                       <
+6.7 API Resource     cho cái gì xuất ra view                    <
  API Resource quyết định dữ liệu nào được phép trả ra client.
  Không nên:
   return Employee::find($id);
@@ -3848,7 +3856,17 @@ API Design :                        <
       "email": "a@example.com",
       "status": "active"
   }
-6.8 JSON Response thống nhất                      <
+Không trả trực tiếp toàn bộ model vì có thể lộ:
+Internal fields.  |  Các trường nội tại                                <
+Password/token.   |  token pass                                        <
+Tenant identifiers.   |  Mã định danh khách thuê                       <
+Fields chưa ổn định.  | Các lĩnh vực chưa ổn định                      <
+Relationship không mong muốn.  |  Mối quan hệ không mong muốn          <
+API versioning    |  Quản lý phiên bản API                             <
+ Ví dụ:
+/api/v1/employees
+Chỉ nên tăng major version khi breaking change đáng kể. Không cần tạo v2 cho mỗi thay đổi nhỏ.             <
+6.8 JSON Response thống nhất       cùng kiểu               <
  Project lớn nên có format tương đối nhất quán.
  Thành công:
   {
@@ -3885,7 +3903,7 @@ API Design :                        <
   }
  Quan trọng nhất không phải mọi API trên thế giới phải giống format này, mà là:
  API của project phải nhất quán.
-6.9 Pagination                      <
+6.9 Pagination      ghi rõ số ra                <
  Không nên:
   Employee::all();
 
@@ -3904,7 +3922,7 @@ API Design :                        <
   &per_page=20
 
  Response thường gồm dữ liệu và metadata pagination.
-6.10 Filtering                      <
+6.10 Filtering      search trạng thái               <
  Ví dụ:
   GET /api/employees?status=active
 
@@ -3920,7 +3938,7 @@ API Design :                        <
       ?status=active
       &department_id=5
       &position_id=10
- 16.11 Searching
+6.11 Searching      search dữ liệu               <
 
  Ví dụ:
 
@@ -3941,7 +3959,7 @@ API Design :                        <
 
      }
  );
- 16.12 Sorting
+6.12 Sorting      có quy ước ASC - DESC , không để code thả  orderBy(                 <
 
  Client:
 
@@ -3976,7 +3994,7 @@ API Design :                        <
  ];
 
  để tránh client điều khiển query ngoài ý muốn.
-6.13 Authentication với Sanctum                      <
+6.13 Authentication với Sanctum    kiểm-tạo token-trả token-React Native lưu token                  <
  React Native:
   Login
   ↓
@@ -4001,7 +4019,7 @@ API Design :                        <
             return $request->user();
 
         });
-6.14 Authentication vs Authorization                  <
+6.14 Authentication vs Authorization    Bạn là ai?   |  Bạn được phép làm gì?              <
  Hai khái niệm phải phân biệt.
  Authentication
   = Bạn là ai?
@@ -4032,7 +4050,7 @@ API Design :                        <
        ↓
   YES → chạy
   NO  → 403
-6.15 Rate Limiting                      <
+6.15 Rate Limiting       giới hạn time Ngăn một client spam API               <
   Ngăn một client spam API.
 
  Ví dụ:
@@ -4058,7 +4076,7 @@ API Design :                        <
   /send-otp
   /search
   /public API
-6.16 API Versioning                     <
+6.16 API Versioning       Khi mobile app cũ vẫn đang được người dùng sử dụng, không thể tùy tiện phá API.                 <
  Khi mobile app cũ vẫn đang được người dùng sử dụng, không thể tùy tiện phá API.
  Ví dụ:
   /api/v1/employees
@@ -4076,7 +4094,7 @@ API Design :                        <
        API v2
 
  Backend có thời gian duy trì cả hai.
-6.17 Idempotency                     <
+6.17 Idempotency     chống duplicate  |  UNIQUE ở DB                 <
  Rất quan trọng với:
   payment
   payroll
@@ -4124,7 +4142,7 @@ API Design :                        <
   không process lần 2
 
   Database vẫn nên có UNIQUE để bảo vệ ở tầng cuối.
-6.18 API + Transaction                     <
+6.18 API + Transaction      all - 1 lệnh fail call back               <
  Một API có nhiều thao tác database liên quan nhau nên cân nhắc transaction.
  Ví dụ:
   POST /api/payroll-runs/10/finalize
@@ -4153,7 +4171,7 @@ API Design :                        <
 
   1 bước FAIL
   → ROLLBACK
-6.19 API + CQRS                      < 
+6.19 API + CQRS         GET > Query    |   POST / PUT / PATCH / DELETE > Command            <
  Với kiến trúc bạn đang học, có thể chia:  
   GET
   ↓
