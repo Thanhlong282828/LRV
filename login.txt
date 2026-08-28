@@ -1715,6 +1715,7 @@ Model
  ↓
 DB
  
+ operating-company dataset
 findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
   public function show(int $id)
  {
@@ -4353,16 +4354,37 @@ Có thể trả lời ngắn:
  Email verification
  Login throttling
 7.2 Authorization                      <
- Gate
- Policy
- Role
- Permission
- Spatie Laravel Permission
- RBAC
- ABAC
- Ownership check
- Tenant / Company isolation
- Principle of Least Privilege
+ Gate          |  → quyền/hành động đơn lẻ  | function tổng chứa phân quyền của company > nối > function chủ chứa function chứa quyền
+ Policy          |   → quyền xoay quanh một Resource/Model   | tập hợp khai báo tất cả các function phân quyền 
+ Role          |   = vai trò của user.     |  bảng DB:  roles 
+ Permission      | = quyền cụ thể được phép thực hiện.    |  bảng DB:  permissions
+ Spatie Laravel Permission     |  → quyền truy cập không gian  | User  Role  Permission | VD: $user->assignRole('HR Manager'); | Gán permission cho role: $role->givePermissionTo('employee.update'); |  Kiểm tra:  $user->can('employee.update');  |  Hoặc middleware:  Route::middleware('permission:employee.update')->put('/employees/{employee}', ...);  |   Request > permission:employee.update > Spatie kiểm tra > User → Role → Permission > Có → Controller | Không → 403 
+ RBAC          | = Role-Based Access Control  | Phân quyền dựa trên Role. | VD: Thanh > Role: HR Manager > Permissions ──employee.view ──employee.create ──employee.update ──employee.delete   |  Bạn không cần gán từng permission trực tiếp cho từng user. -  Thay vào đó:  Permission → Role → User
+ ABAC          | = Attribute-Based Access Control | Quyết định quyền dựa vào thuộc tính/điều kiện, chứ không chỉ Role.  |   Ví dụ user có:  Role = HR Manager Company = 1 Department = IT     Employee: Company = 2     Mặc dù user có: employee.update    vẫn không được sửa vì: user.company_id != employee.company_id
+  Ví dụ Policy:                                                                   Đây là:
+   public function update(User $user, Employee $employee): bool                      RBAC employee.update + ABAC  same company  > ALLOW
+   {                                                                                 
+       return $user->can('employee.update')                                            
+           && $user->company_id === $employee->company_id;                           
+   }                                                                                 
+ Ownership check     |  = kiểm tra resource có thuộc về user đó không.  | VD: Employee A > Payslip #100 > employee_id = A  | A được xem: /payslips/100  | Payslip 101 của Employee B → phải chặn.
+   public function view(User $user, Payslip $payslip): bool
+   {
+      return $payslip->employee_id === $user->employee->id;
+   }               
+   >>>  Không kiểm tra ownership rất dễ dẫn tới IDOR/Broken Access Control.
+ Tenant / Company isolation         |  = Cách ly người thuê nhà / công ty    
+   Ví dụ database:              HR Company A có:
+     Company A                    payroll.view
+      ├── Employee 1     Không có nghĩa là được xem Payroll của tất cả công ty.
+      ├── Employee 2              Phải có thêm:
+      └── Payroll A        User.company_id == Payroll.company_id
+                                      Luồng:  
+      Company B          User > Role > Permission: payroll.view > Company access > Resource thuộc Company nào? > cùng Company → ALLOW | khác Company → DENY
+      ├── Employee 3                  Ví dụ:
+      ├── Employee 4     return $user->can('payroll.view')
+      └── Payroll B            && $user->company_id === $payroll->company_id;
+ Principle of Least Privilege        | 
 7.3 Validation & Input Security                      <
  FormRequest
  $request->validated()
