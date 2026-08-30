@@ -1715,7 +1715,8 @@ Model
  ↓
 DB
  
- operating-company dataset
+ cổng thanh toán/vận chuyển bên ngoài.
+ operating-company dataset  
 findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
   public function show(int $id)
  {
@@ -4341,7 +4342,7 @@ Có thể trả lời ngắn:
   Response đi qua API Resource và sử dụng HTTP status code nhất quán. 
   Với API ghi dữ liệu quan trọng em xử lý transaction, idempotency và concurrency; API danh sách có pagination, filter, sort và rate limiting.
   Khi cần backward compatibility em version API.
-7 — Security
+7 — Security   30
 7.1 Authentication                      <
  Session Authentication
  Cookie
@@ -4384,29 +4385,795 @@ Có thể trả lời ngắn:
       ├── Employee 3                  Ví dụ:
       ├── Employee 4     return $user->can('payroll.view')
       └── Payroll B            && $user->company_id === $payroll->company_id;
- Principle of Least Privilege        | 
-7.3 Validation & Input Security                      <
- FormRequest
- $request->validated()
- whitelist input
- Mass Assignment
- $fillable
- $guarded
- Enum validation
- File upload validation
- MIME/type/size validation
-7.4 SQL Injection                       <
+ Principle of Least Privilege        |  = chỉ cấp quyền tối thiểu cần thiết để làm công việc.
+   Ví dụ nhân viên HR chỉ cần:         thì không cấp thêm:           Tức là:
+    employee.view                        payroll.finalize              ❌ "Cấp Admin cho nhanh."
+    employee.create                      company.delete                ✅ "Công việc cần quyền nào → chỉ cấp đúng quyền đó."
+    employee.update                      user.change-role
+                                         permission.manage
+ Một hệ thống Laravel HRM thực tế có thể chạy như sau:                       Ví dụ:                 
+   REQUEST                                                               Thanh
+      ↓                                                               Role = HR Manager
+   Authentication                                                      Company = A
+   "Bạn là ai?"                                                             ↓
+      ↓                                                               Permission
+   User                                                               employee.update = YES
+      ↓                                                                     ↓
+   RBAC                                                               Muốn sửa Employee #50
+   Role → Permission                                                        ↓               
+      ↓                                                               Employee #50
+   Có employee.update?                                                Company = A                
+      ↓                                                                     ↓
+   ABAC                                                                 Policy
+   Đúng company?                                                        Permission ✓        
+      ↓                                                                 Company ✓
+   Ownership / Resource Check                                               ↓                      
+   Có được sửa Employee này?                                           200 → Được sửa                    
+      ↓                                                               
+   Policy                                                               Nhưng:
+   Tổng hợp các luật                                                   Employee #99           
+      ↓                                                                Company = B
+   ALLOW / DENY                                                               
+      ↓                                                               Permission ✓
+   Controller                                                           Company ✗
+                                                                           ↓
+                                                                       403 Forbidden    
+7.3 Validation & Input Security           8             <
+ FormRequest              |  Gom Validation + Authorization  | Là class chuyên chứa: Authorization , Validation Rules , Message , Prepare dữ liệu trước validate                             <
+    Thay vì:                                                  <
+    public function store(Request $request)
+    {
+          $request->validate([
+          'name'=>'required'
+       ]);
+    }  
+    Dùng:                                                      <
+      php artisan make:request StoreEmployeeRequest
+    Cấu trúc:                                                      <  
+     app/
+     └── Http/
+          └── Requests/
+                   └── StoreEmployeeRequest.php
+    Ví dụ:                                                     <
+      class StoreEmployeeRequest extends FormRequest
+      {
+            public function authorize(): bool
+         {
+            return $this->user()->can('employee.create');
+         }  
+  
+            public function rules(): array
+         {
+                return [  
+                  'name' => ['required','string','max:100'],  
+                  'email' => ['required','email'],
+                ];
+         }
+      }
+    Controller:                                                  <
+    public function store(StoreEmployeeRequest $request)
+    {
+         $data = $request->validated();
+    }
+    Luồng hoạt động:                                               <
+       POST /employees
+         ↓
+       StoreEmployeeRequest
+         ↓  
+       authorize()
+         ↓  
+       false
+         ↓  
+       403  
+     
+       true
+         ↓  
+       rules()
+         ↓  
+       Validation
+         ↓  
+       Pass
+         ↓  
+       Controller  
 
- Hiểu SQL Injection xảy ra thế nào và vì sao nên ưu tiên: 
+    Phỏng vấn:                                                 <
+      Tại sao dùng FormRequest?
+    Trả lời:                                                   <
+      Controller sạch.
+      Tách validation.
+      Tái sử dụng.
+      Có authorize().
+      Dễ test. 
+ $request->validated()    |   Chỉ lấy dữ liệu đã hợp lệ     |    Tôi chuẩn bị đưa dữ liệu vào   |   DTO / Use Case / Create / Update?  |  → validated()  ← ưu tiên                            <
+  Đây là cách lấy chỉ dữ liệu đã vượt qua validation.     
+   Ví dụ Request gửi:                            <
+     {
+         "name":"Thanh",
+         "email":"a@gmail.com",
+         "role":"admin",
+         "is_admin":true
+     }
+   Rule:                                           <
+     'name'=>'required',
+     'email'=>'required|email'
+   Kết quả:                                        <
+     $data = $request->validated();
+   Trả về:                                        <
+     [
+           'name'=>'Thanh',
+           'email'=>'a@gmail.com'
+     ]
+   Hai field này tự biến mất:                                   <
+     role
+     is_admin
+   So sánh:                                                             <
+       Cách                                         Kết quả
+    $request->all()                             Lấy tất cả       |   Tôi cần TẤT CẢ input?        |    → all()
+    $request->input()                           Lấy theo key     |   Tôi chỉ cần MỘT/VÀI field?   |    → input('field')
+    $request->validated()                       Chỉ lấy dữ liệu hợp lệ   |    Tôi chuẩn bị đưa dữ liệu vào   |   DTO / Use Case / Create / Update?  |  → validated()  ← ưu tiên             <  
+   Phỏng vấn:                                                            <
+      Khi nào dùng validated()?                              <
+  code đặt Sau FormRequest, trước DTO.                              <
+  với CQRS:
+  $data = $request->validated();
+  $dto = CreateEmployeeDTO::fromArray($data);
+  $commandBus->dispatch(
+      new CreateEmployeeCommand($dto)
+  );
+  whitelist input          |   Chỉ cho phép field cần thiết                            <
+ * Mass Assignment          |   Chặn ghi field nhạy cảm    |  Gán dữ liệu hàng loạt  | cách chặn hack gắn vào MassAssignment : FromRequest : chặn kiểm tra dữ liệu được phép nhập + validate() : chỉ lấy dữ liệu hợp lệ   Model: $fillable : chỉ cho phép gán và xuất cái gì   ( chọn $fillable thay $guarded )                          <
+  Mass Assignment = lấy một mảng dữ liệu và gán nhiều field vào Model cùng một lúc.                                       <    
+  Ví dụ thay vì:                                       <    
+    $user->name = $request->name;
+    $user->email = $request->email;
+    $user->phone = $request->phone;
+    $user->save(); 
+  Laravel cho phép:                                       < 
+    User::create([
+        'name' => 'Thanh',
+        'email' => 'thanh@gmail.com',
+        'phone' => '0123456789',
+    ]);
+  Đây chính là Mass Assignment.
+  Tại sao Mass Assignment có thể nguy hiểm?
+  Giả sử form chỉ có:                                       <
+    name
+    email
+  Nhưng hacker tự sửa request thành:   
+     {
+         "name": "Thanh",
+         "email": "thanh@gmail.com",
+         "is_admin": true
+     }   
+  Nếu code:                                          <
+     User::create($request->all());   
+  thì luồng có thể thành:                                          <
+     Request
+     ├── name = Thanh
+     ├── email = thanh@gmail.com
+     └── is_admin = true   ← hacker tự thêm
+         ↓
+     $request->all()
+         ↓
+     User::create(...)
+         ↓
+     Database   
 
- User::where('email', $email)->first(); 
+     Nếu Model cho phép is_admin được mass assign thì hacker có thể tự biến mình thành admin.   
+     Đó là Mass Assignment Vulnerability.   
 
- hoặc Query Builder với binding thay vì tự nối SQL: 
+  $fillable dùng để bảo vệ:                                         <
+  Model:                                          <
+     class User extends Model
+     {
+         protected $fillable = [
+             'name',
+             'email',
+             'phone',
+         ];
+     }   
+  Laravel hiểu:                                       <
+  Khi Mass Assignment, chỉ những field này được phép gán.
+  Request:                                          <
+     {
+         "name": "Thanh",
+         "email": "thanh@gmail.com",
+         "is_admin": true
+     }
+  Nếu thực hiện mass assignment thì:                                          <
+     name       ✅
+     email      ✅
+     is_admin   ❌ không nằm trong $fillable
+     $guarded thì ngược lại
+     protected $guarded = [
+         'is_admin',
+         'role',
+         'company_id',
+     ];   
+  Nghĩa là:                                          <
+     is_admin    ❌
+     role        ❌
+     company_id  ❌   
+   các field khác → được mass assign
+  Có thể nhớ:                                       <
+      $fillable = danh sách ĐƯỢC VÀO
+      $guarded  = danh sách CẤM VÀO
+    Cẩn thận với $guarded = []
+  Bạn sẽ gặp code:                                       <
+      protected $guarded = [];
+  Nó có nghĩa:                                         <
+    Không guard field nào
+            ↓
+    Tất cả field đều có thể Mass Assignment  
+  Nếu phía trên lại viết:                                       <
+      User::create($request->all());
+    thì rất nguy hiểm.
 
- DB::select(
-     'SELECT * FROM users WHERE email = ?',
-     [$email]
- );
+  validated() + $fillable  :                                       <
+  Cách tốt hơn:                                         <
+    $data = $request->validated();
+    User::create($data);  
+  FormRequest:                                          <
+     public function rules(): array
+     {
+         return [
+             'name' => ['required', 'string'],
+             'email' => ['required', 'email'],
+         ];
+     }   
+  Model:                                          <
+     protected $fillable = [
+         'name',
+         'email',
+     ];   
+  Bây giờ có 2 lớp bảo vệ:                                       <
+     Request
+     {
+        name
+        email
+        is_admin ← hacker thêm
+     }
+          ↓
+     FormRequest
+          ↓
+     validated()
+          ↓
+     {
+        name
+        email
+     }
+          ↓
+     $fillable
+          ↓
+      Database
+  Một điểm rất quan trọng :                                       <
+  Mass Assignment không có nghĩa là:                                       <
+     $request->all()
+  Mass Assignment xảy ra khi bạn đưa mảng dữ liệu vào các API gán hàng loạt của Eloquent, ví dụ:                                       <
+     User::create($data);
+     $user->update($data);
+     $user->fill($data);
+  Ví dụ:                                          <
+      $data = [
+          'name' => 'Thanh',
+          'email' => 'a@gmail.com',
+       ];
+       User::create($data);   
+   Vẫn là Mass Assignment dù hoàn toàn không có $request.
+  Còn gán từng field?                                       <
+      $user->name = 'Thanh';
+      $user->email = 'a@gmail.com';
+      $user->save();
+  > Đây không phải mass assignment.                                       <
+  Có thể nhớ:                                           <
+      Gán từng field :                                       <
+        $user->name = ...
+        → không phải Mass Assignment    
+      Gán cả mảng :                                       <
+        User::create($data)
+        $user->update($data)
+        $user->fill($data)
+        → Mass Assignment
+  Câu phỏng vấn:                                       <
+    Mass Assignment là gì?
+  Bạn có thể trả lời:                                       <
+    > Mass Assignment là việc gán nhiều attribute cho Eloquent Model cùng lúc bằng một array, ví dụ create(), update() hoặc fill(). Rủi ro xảy ra khi dữ liệu từ request chứa field nhạy cảm như is_admin, role, company_id. Trong Laravel, tôi dùng FormRequest + validated() để whitelist input và $fillable để kiểm soát những attribute được phép mass assign.                                       <
+ $fillable        |   Danh sách được phép ghi                            <
+  Cách bảo vệ phổ biến nhất.
+    class User extends Model
+    {
+        protected $fillable = [
+            'name',
+            'email',
+            'phone',
+        ];
+    }
+  Request:
+    {
+       "name":"Thanh",
+       "is_admin":true
+    }
+  DB chỉ lưu:
+    name
+    is_admin bị bỏ qua.
+  HRM ví dụ:
+  Employee.
+  Cho phép:  
+    protected $fillable = [
+    'name',
+    'email',
+    'phone',
+    'birthday'
+    ];
+  Không đưa vào:
+     salary
+     company_id
+     status
+ $guarded         |   Danh sách bị chặn                            <
+  Ngược lại với $fillable.
+  Ví dụ:
+    protected $guarded = [
+    'id',
+    'is_admin',
+    'role',
+    ];
+  Mọi field khác đều được phép.
+  So sánh:
+   $fillable                         $guarded
+  Cho phép danh sách              Chặn danh sách
+    An toàn hơn                       Dễ sót
+   Khuyến nghị                   Chỉ dùng khi hiểu rõ
+
+  Phỏng vấn:
+   Nên dùng cái nào?
+   Laravel thực tế thường dùng:
+      $fillable
+   vì theo nguyên tắc Whitelist.
+ Enum validation     |   Chỉ nhận giá trị hợp lệ  | kiểm tra chính tả dữ liệu                          <
+   Không cho user gửi giá trị ngoài danh sách.
+   Ví dụ trạng thái:
+      draft
+      review
+      approved
+      rejected
+   PHP Enum:
+     enum PayrollStatus:string
+     {
+         case Draft='draft';
+         case Review='review';
+         case Approved='approved';
+         case Rejected='rejected';
+     }
+   Validation:
+      use Illuminate\Validation\Rules\Enum;
+
+      'status'=>[
+          'required',
+          new Enum(PayrollStatus::class)
+      ]
+   Nếu user gửi:
+      approved
+    ✔ OK
+   Gửi:
+      hack_status
+    ❌ Validation Fail
+   Phỏng vấn:
+   Vì sao dùng Enum?
+     tránh typo
+     thống nhất dữ liệu
+     IDE hỗ trợ
+     Business Rule rõ hơn
+ File upload validation     |   Kiểm tra file trước khi lưu  + đổi tên file thành mã hoá                          <
+  Đây là phần Security rất quan trọng.
+   Ví dụ upload hợp đồng.                          <
+     'document'=>[
+     'required',
+     'file',
+     'mimes:pdf',
+     'max:10240'
+     ]   
+   Ý nghĩa:                                    <
+   Rule                     Ý nghĩa
+   file                    Phải là file
+   mimes:pdf               Chỉ PDF
+   max:10240               10MB   
+   Luồng upload an toàn:                                    <
+      User Upload
+            ↓
+      Validation
+            ↓
+      Random filename
+            ↓
+      Private Storage
+            ↓
+      Database lưu path   
+   Không nên:                                    <
+      public/uploads/
+      contract.pdf
+    vì dễ đoán tên.   
+   Đặt tên ngẫu nhiên:                                    <
+     $path=$request
+         ->file('document')
+         ->store('employee-documents');
+   Laravel sẽ sinh tên như:                                    <
+     employee-documents/
+     3f92ab7c8d.pdf
+ MIME/type/size validation     |   Chặn file giả mạo/quá lớn                            <
+   Ba thứ này khác nhau.
+   - Extension                               <
+       resume.pdf
+     Chỉ nhìn tên.
+     Dễ giả mạo.
+   - Type     loại file                               <
+      Ví dụ chỉ cho phép ảnh:      
+        'avatar' => [
+            'required',
+            'image',
+        ],      
+      Rule image yêu cầu file phải được nhận diện là ảnh hợp lệ thuộc các định dạng Laravel hỗ trợ cho rule này.      
+      Hoặc chỉ muốn file upload nói chung:      
+         'document' => [
+             'required',
+             'file',
+         ],      
+      Hiểu nhanh:      
+         file  → phải là file upload
+         image → phải là ảnh
+         
+   - MIME Type   |  loại nội dung của file          MINE: png  jpeg  png         minetypes: là 2 cái : application/pdf                                    <
+      application/pdf
+      image/jpeg
+      image/png
+
+    Laravel kiểm tra bằng:
+      mimes:pdf
+     Hoặc:
+      mimetypes:application/pdf
+   - Size                               <
+     Ví dụ:
+       'max:10240'
+     Đơn vị:
+       KB
+     Giá trị:              Kích thước:
+     1024                    1MB
+     5120                    5MB
+     10240                   10MB
+     Ví dụ đầy đủ:
+         'avatar'=>[
+             'required',
+             'image',
+             'mimes:jpg,jpeg,png',
+             'max:2048'
+         ]
+     Chỉ cho:
+        JPG
+        JPEG
+        PNG
+        dưới 2MB
+ 
+    Ví dụ thực tế: Avatar                                   Ví dụ HRM: hợp đồng PDF                                    < 
+    Chỉ nhận JPG/PNG và tối đa 2 MB: 
+       'avatar' => [                                      'contract' => [
+            'required',                                          'required',
+            'image',                                             'file',
+            'mimes:jpg,jpeg,png',                               'mimes:pdf',   
+            'max:2048',                                         'mimetypes:application/pdf',
+       ],                                                       'max:10240',
+                                                           ],
+    Có thể hiểu:                                                 Cách nhớ:                                                        < 
+       avatar                                             Validation	                    Câu hỏi
+          ↓                                           file                        Có phải file upload không?
+       Có file không?              → required         image                       Có phải ảnh không?
+          ↓                                           mimes:pdf                   Có đúng loại/định dạng PDF được phép không?
+       Có phải ảnh không?          → image            mimetypes:application/pdf   MIME có phải application/pdf không?
+          ↓                                           max:10240                   Có ≤ khoảng 10 MB không?
+       Có đúng JPG/JPEG/PNG không? → mimes
+          ↓ 
+       ≤ 2 MB không?               → max
+          ↓ 
+       Lưu file
+Trong Security, nên nghĩ theo chuỗi:                        <
+   Không tin filename/extension
+           ↓
+   kiểm tra loại file
+           +
+   kiểm tra MIME
+           +
+   giới hạn size
+           ↓
+   random filename
+           ↓
+   private storage nếu là tài liệu nhạy cảm
+7.4 SQL Injection          13             <
+ Hiểu SQL Injection xảy ra thế nào và vì sao nên ưu tiên:                       <
+   User::where('email', $email)->first(); 
+   hoặc Query Builder với binding thay vì tự nối SQL: 
+     DB::select(
+         'SELECT * FROM users WHERE email = ?',
+         [$email]
+     );
+ SQL Injection = kẻ tấn công đưa SQL độc hại vào input, làm thay đổi câu SQL mà backend định chạy.
+   Ví dụ bình thường:
+     User nhập email
+             ↓
+     Backend tạo SQL
+             ↓
+     Database tìm User
+   Nguy hiểm xảy ra khi backend nối trực tiếp input của user vào SQL.
+ 1. Ví dụ SQL Injection                                                 <
+   Giả sử code PHP:
+     $email = $request->input('email');
+     $sql = "SELECT * FROM users WHERE email = '$email'";
+   User bình thường nhập:
+     abc@gmail.com
+   SQL:
+      SELECT * FROM users
+      WHERE email = 'abc@gmail.com';
+    Không có vấn đề.
+    Nhưng attacker có thể gửi chuỗi SQL được chế tạo để thay đổi logic của truy vấn.
+   Khi đó:
+      Input
+         ↓
+      nối trực tiếp vào SQL
+         ↓
+      Input trở thành một phần cú pháp SQL
+         ↓
+      Database chạy câu SQL khác ý định ban đầu
+   Đó chính là SQL Injection.
+ 2. Nguyên nhân                                                       <
+    Gốc vấn đề là:                                                 <
+       DATA của user   
+        +
+       SQL CODE
+             ↓
+       bị trộn chung        
+   Ví dụ nguy hiểm:                                                 <
+       $id = $request->input('id');
+       $sql = "SELECT * FROM employees WHERE id = $id";
+   Hoặc:                                                 <
+       DB::select(
+           "SELECT * FROM employees WHERE email = '$email'"
+       );
+   ❌ Không nên nối input trực tiếp như vậy.
+ 3. Hậu quả                                                 <
+   SQL Injection có thể dẫn đến:                                                 <
+       SQL Injection
+            ↓
+       ├── đọc dữ liệu trái phép
+       ├── bypass một số kiểm tra
+       ├── sửa dữ liệu
+       ├── xóa dữ liệu
+       ├── lấy dữ liệu nhạy cảm
+       └── phá vỡ tenant/company isolation
+   Đối với HRM đặc biệt nguy hiểm vì database có thể chứa:                                                 <
+      Employees
+      Payroll
+      Salary
+      Contracts
+      Bank Accounts
+      Attendance
+      Users
+      Permissions
+ 4. Laravel Eloquent chống SQL Injection như thế nào?                                                 <
+   Trong Laravel, bạn thường viết:                                                 <
+      $email = $request->input('email');
+      $user = User::where('email', $email)->first();
+   Đây là cách an toàn cho giá trị input trong trường hợp thông thường.
+   Laravel/DB driver sử dụng parameter binding.
+   Bạn có thể hình dung:                                                 <
+      SELECT * FROM users
+      WHERE email = ?
+   và giá trị được truyền riêng:
+      ? = user input
+   Điểm quan trọng:
+      SQL CODE
+          ≠
+      USER DATA
+   Input được coi là giá trị, không phải SQL code.
+ 5. Query Builder                                                 <
+   Cũng thường an toàn khi truyền giá trị qua API của Query Builder:                                                 <
+      Employee::where('company_id', $companyId)
+          ->where('status', 'active')
+          ->get();
+   Hoặc:                                                 <
+      DB::table('employees')
+          ->where('email', $email)
+          ->first();
+   Luồng:                                                 <
+      Request
+         ↓
+      $email
+         ↓
+      where('email', $email)
+         ↓
+      Parameter Binding
+         ↓
+      Database
+ 6. Raw SQL thì phải Binding                                                 <
+   Nếu bắt buộc viết SQL raw, dùng binding:                                                 <
+      $email = $request->input('email');
+
+      $users = DB::select(
+          'SELECT * FROM users WHERE email = ?',
+          [$email]
+      );
+   Ở đây:                                                 <
+      SQL   
+       ↓
+      email = ?
+
+      Data   
+        ↓
+      [$email]
+    Hai phần được tách riêng.
+   Có thể dùng named binding:                                                 <
+      $users = DB::select(
+          'SELECT * FROM users WHERE email = :email',
+          [
+              'email' => $email,
+          ]
+      );
+ 7. Sai vs đúng                                                 <
+        ❌ Sai                                                 <
+      DB::select(
+          "SELECT * FROM users WHERE email = '$email'"
+      );
+
+   User input bị nối trực tiếp vào SQL.
+         ✅ Đúng                                                 <
+      DB::select(
+          'SELECT * FROM users WHERE email = ?',
+          [$email]
+      );
+   Hoặc tốt hơn khi phù hợp:                                                 <
+      User::where('email', $email)->first();
+   Nhớ:                                                 <
+      ❌ SQL + User Input
+      ✅ SQL + Binding
+      ✅ Eloquent / Query Builder
+ 8. Cẩn thận với DB::raw()                                                 <
+   Laravel có:                                                 <
+       DB::raw(...)
+    Không có nghĩa cứ dùng DB::raw() là bị SQL Injection.
+    Nguy hiểm khi đưa dữ liệu không tin cậy vào raw expression bằng cách nối chuỗi.
+   Ví dụ không nên:                                                 <
+       DB::table('employees')
+           ->whereRaw("email = '$email'")
+           ->get();
+   Thay bằng binding:                                                 <
+       DB::table('employees')
+           ->whereRaw(
+               'email = ?',
+               [$email]
+           )
+           ->get();
+   Hoặc đơn giản:                                                 <
+       DB::table('employees')
+           ->where('email', $email)
+           ->get();
+ 9. whereRaw() vẫn dùng được                                                 <
+   Có những trường hợp raw query hữu ích.                                                 <
+   Ví dụ:
+       Employee::whereRaw(
+           'salary > ?',
+           [$minimumSalary]
+       )->get();
+   Đây có binding:                                                 <
+       salary > ?
+                ↑
+              binding
+   Không nên:                                                 <
+       Employee::whereRaw(                                                 
+           "salary > $minimumSalary"
+       )->get();
+ 10. Validation có chống SQL Injection không?                                                 <
+   Ví dụ:
+       'id' => [
+           'required',
+           'integer',
+       ],
+   Validation giúp giới hạn input:                                                 <
+       123      ✅
+       abc      ❌
+     Nhưng Validation không phải lớp bảo vệ SQL Injection chính.
+   Bảo vệ chính là:                                                 <
+     Parameterized Query / Parameter Binding
+   Tức là nên có cả:                                                 <
+     Validation
+          +
+     Parameter Binding
+ 11. Một chỗ rất dễ bị bỏ sót: dynamic column                                                 <
+   Giả sử API cho sort:                                                 <
+      GET /employees?sort=salary
+    Không nên lấy tùy ý                                                 <
+      $sort = $request->input('sort');
+      $query->orderBy($sort);
+    Đối với tên cột/table/direction động, đừng dựa vào binding như đối với value. Hãy whitelist.                                                 <
+   Ví dụ:                                                 <
+      $allowedSorts = [
+          'name',
+          'email',
+          'created_at',
+      ];
+      $sort = $request->input('sort', 'created_at');
+      if (!in_array($sort, $allowedSorts, true)) {
+           $sort = 'created_at';   
+      }
+      $query->orderBy($sort);
+   Direction cũng whitelist:                                                 <
+      $direction = $request->input('direction');
+      $direction = in_array(
+          $direction,
+          ['asc', 'desc'],
+          true
+      ) ? $direction : 'asc';
+   Đây là điểm Middle/Senior nên biết:                                                 <
+      VALUE
+      → parameter binding
+
+      COLUMN / TABLE / ORDER DIRECTION
+      → whitelist
+ 12. Trong CQRS của Laravel                                                 <
+   Luồng của bạn có thể là:                                                 <
+       HTTP Request
+             ↓
+       FormRequest
+             ↓
+       Validation
+             ↓
+       validated()
+             ↓
+       DTO
+             ↓
+       Query / Command
+             ↓
+       Handler
+             ↓
+       Repository
+             ↓
+       Eloquent / Query Builder
+             ↓
+       Parameter Binding
+             ↓
+       MySQL
+   Ví dụ Repository:                                                  <
+       public function findByEmail(string $email): ?User   
+       {
+             return User::query()
+                 ->where('email', $email)
+                 ->first();   
+       }
+   Không cần tự viết:                                                 <
+   $sql = "SELECT ... $email ...";
+ 13. Cách nhớ nhanh                                                 <
+       SQL Injection   
+       =
+       User Input
+       được biến thành
+       SQL Code
+   Phòng chống:                                                 <
+       User Input
+          ↓
+       Validation
+          ↓
+       Eloquent / Query Builder
+          ↓
+       Parameter Binding
+          ↓
+       Database
+   Nếu Raw SQL:                                                 <
+       Raw SQL
+          ↓
+       ? / :parameter
+          ↓
+       Binding
+   Và:                                                 <
+       Dynamic column/table/sort
+          ↓
+       Whitelist
+Câu trả lời phỏng vấn:                                                 <
+   SQL Injection là gì và Laravel chống thế nào?
+   SQL Injection là lỗ hổng xảy ra khi input không tin cậy được ghép trực tiếp vào câu SQL, khiến attacker có thể thay đổi ý nghĩa truy vấn. Trong Laravel, tôi ưu tiên Eloquent hoặc Query Builder vì chúng sử dụng parameter binding cho các giá trị. Nếu phải dùng raw SQL, tôi dùng positional/named bindings, không nối trực tiếp user input. Với dynamic column, table hoặc sort direction, tôi sử dụng whitelist.
 7.5 XSS                       <
 
  Blade mặc định escape: 
