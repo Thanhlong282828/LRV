@@ -1717,6 +1717,7 @@ DB
  
  cổng thanh toán/vận chuyển bên ngoài.
  operating-company dataset  
+9 - Eloquent và Database 
 findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
   public function show(int $id)
  {
@@ -4902,15 +4903,16 @@ Trong Security, nên nghĩ theo chuỗi:                        <
    Nguy hiểm xảy ra khi backend nối trực tiếp input của user vào SQL.
  1. Ví dụ SQL Injection                                                 <
    Giả sử code PHP:
-     $email = $request->input('email');
-     $sql = "SELECT * FROM users WHERE email = '$email'";
+       $email = $request->input('email');
+       $sql = "SELECT * FROM users WHERE email = '$email'";
    User bình thường nhập:
-     abc@gmail.com
+       abc@gmail.com
    SQL:
-      SELECT * FROM users
-      WHERE email = 'abc@gmail.com';
+       SELECT * FROM users
+       WHERE email = 'abc@gmail.com';
     Không có vấn đề.
-    Nhưng attacker có thể gửi chuỗi SQL được chế tạo để thay đổi logic của truy vấn.
+
+    Nhưng attacker có thể gửi chuỗi SQL được chế tạo để thay đổi logic của truy vấn.                    <
    Khi đó:
       Input
          ↓
@@ -4920,13 +4922,13 @@ Trong Security, nên nghĩ theo chuỗi:                        <
          ↓
       Database chạy câu SQL khác ý định ban đầu
    Đó chính là SQL Injection.
- 2. Nguyên nhân                                                       <
+ 2. Nguyên nhân           DATA của user + SQL CODE  > bị trộn chung                                            <
     Gốc vấn đề là:                                                 <
        DATA của user   
         +
        SQL CODE
              ↓
-       bị trộn chung        
+       bị trộn chung                                                 <                
    Ví dụ nguy hiểm:                                                 <
        $id = $request->input('id');
        $sql = "SELECT * FROM employees WHERE id = $id";
@@ -4935,7 +4937,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
            "SELECT * FROM employees WHERE email = '$email'"
        );
    ❌ Không nên nối input trực tiếp như vậy.
- 3. Hậu quả                                                 <
+ 3. Hậu quả         trái phép : đọc sửa xoá lấy pháCompany                                        <
    SQL Injection có thể dẫn đến:                                                 <
        SQL Injection
             ↓
@@ -4954,7 +4956,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
       Attendance
       Users
       Permissions
- 4. Laravel Eloquent chống SQL Injection như thế nào?                                                 <
+ 4. Laravel Eloquent chống SQL Injection như thế nào?      cho code là input giá trị , ko code kiểu SQL thuần                                              <
    Trong Laravel, bạn thường viết:                                                 <
       $email = $request->input('email');
       $user = User::where('email', $email)->first();
@@ -4970,7 +4972,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
           ≠
       USER DATA
    Input được coi là giá trị, không phải SQL code.
- 5. Query Builder                                                 <
+ 5. Query Builder    |   an toàn khi truyền giá trị qua API    | ghi rõ code , code: get  first ... xem ở bài trên     9 - Eloquent và Database                                     <
    Cũng thường an toàn khi truyền giá trị qua API của Query Builder:                                                 <
       Employee::where('company_id', $companyId)
           ->where('status', 'active')
@@ -4989,7 +4991,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
       Parameter Binding
          ↓
       Database
- 6. Raw SQL thì phải Binding                                                 <
+ 6. Raw SQL thì phải Binding        |    dùng binding: 'SELECT * FROM users WHERE email = ?',[$email]    >    dùng named binding: 'SELECT * FROM users WHERE email = :email',['email' => $email,]                             <
    Nếu bắt buộc viết SQL raw, dùng binding:                                                 <
       $email = $request->input('email');
 
@@ -5013,7 +5015,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
               'email' => $email,
           ]
       );
- 7. Sai vs đúng                                                 <
+ 7. Sai vs đúng    |   ❌SQL + User Input: DB::select("SELECT * FROM users WHERE email = '$email'");  |   ✅SQL + Binding: DB::select('SELECT * FROM users WHERE email = ?',[$email]);  |  ✅Eloquent/Query Builder:  User::where('email', $email)->first();                            <
         ❌ Sai                                                 <
       DB::select(
           "SELECT * FROM users WHERE email = '$email'"
@@ -5031,7 +5033,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
       ❌ SQL + User Input
       ✅ SQL + Binding
       ✅ Eloquent / Query Builder
- 8. Cẩn thận với DB::raw()                                                 <
+ 8. Cẩn thận với DB::raw()    |    ❌ DB::table('employees')->whereRaw("email = '$email'")->get();    |  ✅Binding: DB::table('employees')->whereRaw('email = ?',[$email])->get();  |   ✅đơn giản: DB::table('employees')->where('email', $email)->get();                                      <
    Laravel có:                                                 <
        DB::raw(...)
     Không có nghĩa cứ dùng DB::raw() là bị SQL Injection.
@@ -5051,7 +5053,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
        DB::table('employees')
            ->where('email', $email)
            ->get();
- 9. whereRaw() vẫn dùng được                                                 <
+ 9. whereRaw() vẫn dùng được    |   trường hợp raw query hữu ích:  Employee::whereRaw('salary > ?',[$minimumSalary])->get();   >đây là có bingding:     'salary > ?'<binding   |  ko nên: Employee::whereRaw("salary > $minimumSalary")->get();                                  <
    Có những trường hợp raw query hữu ích.                                                 <
    Ví dụ:
        Employee::whereRaw(
@@ -5066,7 +5068,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
        Employee::whereRaw(                                                 
            "salary > $minimumSalary"
        )->get();
- 10. Validation có chống SQL Injection không?                                                 <
+ 10. Validation có chống SQL Injection không?   |   Validation chỉ giới hạn input: 123✅  abc❌>nên: Validation + Parameter Binding                            <
    Ví dụ:
        'id' => [
            'required',
@@ -5082,7 +5084,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
      Validation
           +
      Parameter Binding
- 11. Một chỗ rất dễ bị bỏ sót: dynamic column                                                 <
+ 11. Một chỗ rất dễ bị bỏ sót: dynamic column                                             <
    Giả sử API cho sort:                                                 <
       GET /employees?sort=salary
     Không nên lấy tùy ý                                                 <
@@ -5090,7 +5092,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
       $query->orderBy($sort);
     Đối với tên cột/table/direction động, đừng dựa vào binding như đối với value. Hãy whitelist.                                                 <
    Ví dụ:                                                 <
-      $allowedSorts = [
+      $allowedSorts = [              < Whitelist = danh sách những giá trị mà bạn CHO PHÉP user chọn.
           'name',
           'email',
           'created_at',
@@ -5113,6 +5115,362 @@ Trong Security, nên nghĩ theo chuỗi:                        <
 
       COLUMN / TABLE / ORDER DIRECTION
       → whitelist
+
+  >   Mình bỏ CQRS sang một bên trước. Chỉ cần hiểu whitelist trước, sau đó gắn lại CQRS sẽ rất dễ.                         <
+        1. Whitelist là gì?                              <
+               Whitelist = danh sách những giá trị mà bạn CHO PHÉP user chọn.                         <
+           Ví dụ API:                                <
+             /employees?sort=name  
+  
+           Bạn quyết định hệ thống chỉ cho sort theo 3 cột:                         <
+             $allowedSorts = [
+                 'name',
+                 'email',
+                 'created_at',
+             ];  
+           Đây chính là whitelist.                         <<
+           Có nghĩa:                              <
+           User gửi name
+             → nằm trong danh sách
+             → ✅ cho phép  
+  
+           User gửi email
+             → nằm trong danh sách
+             → ✅ cho phép  
+  
+           User gửi created_at
+             → nằm trong danh sách
+             → ✅ cho phép  
+  
+           User gửi salary
+             → không nằm trong danh sách
+             → ❌ không cho  
+  
+           User gửi abcxyz
+             → không nằm trong danh sách
+             → ❌ không cho
+        2. Ví dụ cực đơn giản   |  sort=name có name trong whitelist thì cho xuất ra vd:$query->orderBy($sort); mà $sort = $request->input('sort');   $sort === 'name';   thành:  ORDER BY name  |   Ở đây name không phải dữ liệu để tìm. Nó là: Tên cột SQL.                       <
+             User gửi:                              <
+               GET /employees?sort=name  
+             Laravel lấy:                              <
+               $sort = $request->input('sort');  
+             Bây giờ:                              <
+               $sort === 'name';  
+             Bạn có danh sách cho phép:                              <
+               $allowedSorts = [
+                   'name',
+                   'email',
+                   'created_at',
+               ];  
+             Kiểm tra:                              <
+                  if (!in_array($sort, $allowedSorts, true)) {
+                      $sort = 'created_at';    
+                }  
+             Nếu $sort = 'name':                              <
+                 name
+                  ↓ tìm trong
+                [
+                    name,        ← CÓ
+                    email,
+                    created_at     
+                ]
+                  ↓
+                Cho qua  
+             Sau đó:                              <
+               $query->orderBy($sort);
+  
+             thành:                              <
+               ORDER BY name
+        3. Nếu user gửi thứ không được phép                                <
+           User cố gửi:                                <
+              GET /employees?sort=salary  
+           Backend:                                <
+              $sort = 'salary';  
+           Kiểm tra:                                <
+              if (!in_array($sort, $allowedSorts, true)) {
+                  $sort = 'created_at';      
+              }  
+           So sánh:                                <
+              salary  
+              ↓ tìm trong  
+              [
+                  name,
+                  email,
+                  created_at      
+              ]  
+               ↓
+              KHÔNG CÓ ❌  
+           Backend đổi về:                                <
+              $sort = 'created_at';  
+           Cuối cùng:                                <
+              $query->orderBy($sort);  
+           thành:                                <
+              ORDER BY created_at  
+           User gửi gì linh tinh cũng không được đưa thẳng vào orderBy().                                <
+           Đó là whitelist.                                 <<
+        4. Tại sao VALUE không cần whitelist kiểu này?  |  name=Thanh   $name = $request->input('name');Employee::where('name', $name)->get();   |  name  ← Laravel developer quyết định | Thanh ← user đưa VALUE > "Thanh" chỉ là dữ liệu để tìm.                               <
+           Ví dụ tìm employee có tên:                                <
+              /employees?name=Thanh  
+           Code:                                <
+              $name = $request->input('name');  
+              Employee::where('name', $name)->get();  
+           Ở đây:                                <
+              $name = 'Thanh';  
+              Thanh là VALUE.  
+           Laravel có thể parameter binding:                                <
+              WHERE name = ?                                
+           và:                                <
+             ? = Thanh  
+           Tức:                                <
+              name  ← Laravel developer quyết định
+              Thanh ← user đưa VALUE  
+           Database hiểu:                                <
+              "Thanh" chỉ là dữ liệu để tìm.  
+        5. Nhưng sort khác    |     WHERE name = 'Thanh'( COLUMN , VALUE )   |   ORDER BY name DESC ( COLUMN , DIRECTION ) | Cho nên: Thanh → VALUE → Binding   | name → COLUMN → Whitelist | DESC → SQL DI4,RECTION → Whitelist                   <
+            User:                                <
+               /employees?sort=name                 
+            Code:                                <
+               $sort = 'name';  
+               $query->orderBy($sort);  
+            Nó tạo:                                <
+               ORDER BY name  
+               Ở đây name không phải dữ liệu để tìm.  
+            Nó là:                                <
+               Tên cột SQL.  
+            So sánh:                                <
+               WHERE name = 'Thanh'
+                     ↑        ↑
+                   COLUMN    VALUE  
+
+               ORDER BY name DESC
+                        ↑     ↑
+                      COLUMN DIRECTION       
+            Cho nên:                                <
+               Thanh
+               → VALUE
+               → Binding  
+        
+               name
+               → COLUMN
+               → Whitelist  
+        
+               DESC
+               → SQL DI4,RECTION
+               → Whitelist
+        6. Ví dụ đời thường   |   Menu chính là whitelist.  | MENU SORT                             <
+                Hãy tưởng tượng nhà hàng có menu:                                <
+             MENU  
+                1. Cơm
+                2. Phở
+                3. Bún  
+             Khách nói:                                <
+                "Tôi chọn Phở"  
+             Nhà hàng kiểm tra:                                <
+                Phở có trong menu?
+                → Có
+                → phục vụ  
+             Khách nói:                                <
+                "Tôi chọn súng AK"  
+             Kiểm tra:                                <
+                Có trong menu?  
+                [
+                 Cơm
+                 Phở
+                 Bún      
+                ]  
+                → Không
+                → từ chối  
+               Menu chính là whitelist.  
+             Trong Laravel:                                <
+                $allowedSorts = [
+                    'name',
+                    'email',
+                    'created_at',
+                ];  
+             chính là:                                <
+               MENU SORT  
+                name
+                email
+                created_at  
+             User chỉ được chọn trong đó.  
+            API:                                <
+               /employees?sort=name&direction=desc  
+            Bạn chỉ cho:                                <
+               $allowedDirections = [
+                   'asc',
+                   'desc',
+               ];  
+            User gửi:                                <
+               asc  
+               → ✅  
+  
+            User gửi:                                <
+               desc 
+               → ✅  
+  
+            User gửi:                                <
+               hello  
+               → ❌  
+  
+            Code:                               <
+               $direction = $request->input('direction');  
+               if (!in_array($direction, ['asc', 'desc'], true)) {
+                   $direction = 'asc';      
+               }
+        8. Bây giờ mới đưa CQRS vào  |  in_array() = Rule::in()"Giá trị phải nằm trong danh sách cho phép"  |                                <
+              CQRS không thay đổi nguyên lý trên.  
+              Chỉ khác là code được chia thành nhiều tầng.  
+             Request:                                <
+              GET /employees
+              ?sort=name
+              &direction=desc
+           Bước 1 — FormRequest kiểm tra whitelist                              <
+              public function rules(): array      
+               {
+                  return [
+                      'sort' => [
+                          'nullable',
+                          Rule::in([
+                              'name',
+                              'email',
+                              'created_at',
+                          ]),
+                      ],  
+                      'direction' => [
+                          'nullable',
+                          Rule::in([
+                              'asc',
+                              'desc',
+                          ]),
+                      ],
+                  ];      
+               }  
+              Rule::in() chính là cách bạn tạo whitelist validation."Giá trị phải nằm trong danh sách cho phép"  
+           Bước 2 — User gửi                              <
+                   sort = name
+                   direction = desc  
+               Laravel kiểm tra:                                <
+                   sort  
+               name có trong:                              <
+                   [name, email, created_at] ?  
+                   → YES ✅  
+                   direction  
+  
+               desc có trong:                              <
+                   [asc, desc] ?  
+                   → YES ✅  
+                   Cho qua.  
+           Bước 3 — Controller                              <
+                  $data = $request->validated();  
+               Nhận:                                <
+                  [
+                       'sort' => 'name',
+                       'direction' => 'desc',      
+                  ]  
+               Đưa vào Query:                                <
+                  new ListEmployeesQuery(
+                     sort: $data['sort'],
+                        direction: $data['direction'],
+                  );
+           Bước 4 — Query đi Handler                              <
+               ListEmployeesQuery  
+                  sort      = name
+                  direction = desc  
+                          ↓  
+                  Handler
+           Bước 5 — Repository                              <
+                  Employee::query()
+                      ->orderBy(
+                          $query->sort,
+                          $query->direction
+                      )
+                      ->get();  
+               Cuối cùng:                                <
+                  ORDER BY name DESC  
+               An toàn vì trước đó:                                <
+                  User
+                   ↓
+                  FormRequest
+                   ↓
+                  WHITELIST
+                   ↓
+                  chỉ name/email/created_at
+                   ↓
+                  Query DTO
+                   ↓
+                  Handler
+                   ↓
+                  Repository
+        9. Nếu user gửi bậy thì sao?                              <
+                  GET /employees
+                  ?sort=abcxyz
+                  &direction=hello  
+        
+              Ngay FormRequest:                                <
+        
+                  abcxyz  
+            
+              có trong:                                    <
+                  [
+                   name,
+                   email,
+                   created_at
+                  ] ?  
+        
+                  → KHÔNG ❌  
+        
+                  Request bị chặn.  
+        
+              Nó không đi tiếp:                                <
+        
+                  Request
+                     ↓
+                  FormRequest
+                     ↓      
+                  ❌ Validation failed  
+            
+                  Query DTO     ← không tới
+                  Handler       ← không tới
+                  Repository    ← không tới
+                  Database      ← không tới
+       10. Chốt lại bằng 2 ví dụ                              <
+          Trường hợp A — VALUE                                <
+              User tìm:                                <
+                /employees?name=Thanh  
+              Code:                                <
+                $query->where('name', $name);  
+              SQL hình dung:                                <
+                  WHERE name = ?
+                  ? = Thanh  
+                → Parameter Binding  
+          Trường hợp B — COLUMN                                <
+              User muốn sort:                                <
+                /employees?sort=name  
+              Code:                                <
+                $query->orderBy($sort);  
+              SQL:                                <
+                  ORDER BY name  
+                  name trở thành tên column.  
+                → Whitelist  
+              Bạn chỉ cần thuộc công thức này:                                <
+                VALUE của điều kiện
+                        ↓
+                PARAMETER BINDING  
+              Ví dụ:                              <
+                WHERE email = ?
+                WHERE company_id = ?
+                WHERE status = ?  
+
+                Tên COLUMN/TABLE/DIRECTION do user chọn
+                        ↓
+                WHITELIST          
+              Ví dụ:                              <
+                ORDER BY name
+                ORDER BY created_at DESC  
+        
+              Và whitelist không phải thứ gì đặc biệt của Laravel. Nó đơn giản chỉ là:  
+        
+                "Tôi lập sẵn danh sách cái nào được phép. User gửi cái gì không nằm trong danh sách thì không cho qua." 
  12. Trong CQRS của Laravel                                                 <
    Luồng của bạn có thể là:                                                 <
        HTTP Request
@@ -5625,7 +5983,7 @@ Câu trả lời phỏng vấn:                                                 
  Concurrency protection     
 7. Policy                   php artisan make:policy AttendancePolicy --model=Modules\\Attendance\\App\\Models\\Attendance
 8. Feature Test             php artisan module:make-test AttendanceFeatureTest Attendance
-9. Unit Test
+9. Unit Test    
 10. CI/CD
 11. Docker    https://www.docker.com/products/docker-desktop/?utm_source=chatgpt.com   kiểm tra terminal: uname -m  nếu ra: arm64 > tải bản: Mac Apple Silicon   
 docker --version    docker compose version    docker compose up -d   docker ps   
