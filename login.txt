@@ -5084,7 +5084,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
      Validation
           +
      Parameter Binding
- 11. Một chỗ rất dễ bị bỏ sót: dynamic column                                             <
+ 11. Một chỗ rất dễ bị bỏ sót: dynamic column > nút chọn menu có sẵn( cho whitelist để xuất cái gì ra ) cột/table/direction động  |  name=Thanh( COLUMN , VALUE ) $name = $request->input('name');Employee::where('name', $name)->get();  | động: ORDER BY name DESC ( COLUMN , DIRECTION ) sort=name có name trong whitelist thì cho xuất ra vd:$query->orderBy($sort); mà $sort = $request->input('sort');   $sort === 'name';   thành:  ORDER BY name  |   Ở đây name không phải dữ liệu để tìm. Nó là: Tên cột SQL.                                                                  <
    Giả sử API cho sort:                                                 <
       GET /employees?sort=salary
     Không nên lấy tùy ý                                                 <
@@ -5405,30 +5405,22 @@ Trong Security, nên nghĩ theo chuỗi:                        <
                   GET /employees
                   ?sort=abcxyz
                   &direction=hello  
-        
-              Ngay FormRequest:                                <
-        
-                  abcxyz  
-            
+              Ngay FormRequest:                                < 
+                  abcxyz              
               có trong:                                    <
                   [
                    name,
                    email,
                    created_at
                   ] ?  
-        
                   → KHÔNG ❌  
-        
                   Request bị chặn.  
-        
               Nó không đi tiếp:                                <
-        
                   Request
                      ↓
                   FormRequest
                      ↓      
                   ❌ Validation failed  
-            
                   Query DTO     ← không tới
                   Handler       ← không tới
                   Repository    ← không tới
@@ -5471,7 +5463,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
               Và whitelist không phải thứ gì đặc biệt của Laravel. Nó đơn giản chỉ là:  
         
                 "Tôi lập sẵn danh sách cái nào được phép. User gửi cái gì không nằm trong danh sách thì không cho qua." 
- 12. Trong CQRS của Laravel                                                 <
+ 12. Trong CQRS của Laravel        Eloquent                                         <
    Luồng của bạn có thể là:                                                 <
        HTTP Request
              ↓
@@ -5503,7 +5495,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
        }
    Không cần tự viết:                                                 <
    $sql = "SELECT ... $email ...";
- 13. Cách nhớ nhanh                                                 <
+ 13. Cách nhớ nhanh    | SQL Injection = User Input được biến thành SQL Code  | chống : User Input > Validation > Eloquent / Query Builder > Parameter Binding > Database  |  Nếu Raw SQL: Raw SQL > ? / :parameter > Binding và Dynamic column/table/sort > Whitelist                                     <
        SQL Injection   
        =
        User Input
@@ -5532,7 +5524,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
 Câu trả lời phỏng vấn:                                                 <
    SQL Injection là gì và Laravel chống thế nào?
    SQL Injection là lỗ hổng xảy ra khi input không tin cậy được ghép trực tiếp vào câu SQL, khiến attacker có thể thay đổi ý nghĩa truy vấn. Trong Laravel, tôi ưu tiên Eloquent hoặc Query Builder vì chúng sử dụng parameter binding cho các giá trị. Nếu phải dùng raw SQL, tôi dùng positional/named bindings, không nối trực tiếp user input. Với dynamic column, table hoặc sort direction, tôi sử dụng whitelist.
-7.5 XSS                       <
+7.5 XSS          5              <
 
  Blade mặc định escape: 
 
@@ -5549,6 +5541,339 @@ Câu trả lời phỏng vấn:                                                 
  DOM-based XSS
  Output escaping
  HTML sanitization
+
+ Cross-Site Scripting
+   XSS = kẻ tấn công đưa JavaScript/HTML độc hại vào dữ liệu, rồi trình duyệt của người khác chạy nó.
+ Ví dụ user nhập tên:
+   <script>alert('hack')</script>
+   Nếu website xuất thẳng nội dung đó ra HTML mà không escape, trình duyệt có thể chạy script.
+  
+ Blade mặc định escape   |  {{ $user->name }} {{ $value }}→ an toàn hơn→ escape✅   {!! $html !!} {!! $value !!}→ raw HTML→ phải cực kỳ cẩn thận❌             XSS:  <script>alert('hack')</script>                             <
+      Trong Laravel Blade:                                                <
+          {{ $user->name }}
+      Blade sẽ escape HTML special characters.
+      Ví dụ DB chứa:                                                <
+         <script>alert('hack')</script>
+      Khi dùng:                                                <
+          {{ $user->name }}
+      trình duyệt sẽ hiển thị như chữ:                                                <
+          <script>alert('hack')</script>
+        chứ không chạy JavaScript.
+      Có thể hiểu:                                                <
+         Dữ liệu user
+            ↓
+         {{ ... }}
+            ↓
+         Escape
+            ↓
+         Hiển thị như TEXT
+     Cẩn thận với {!! !!}
+         {!! $html !!}
+      Cái này nói với Blade:                                                <
+         "Đừng escape. Tôi muốn render HTML thật."
+      Nếu $html là:                                                <
+         <b>Xin chào</b>
+       thì nó render chữ đậm.
+      Nhưng nếu $html chứa:                                                <
+         <script>alert('hack')</script>
+      thì có nguy cơ XSS.
+      Vì vậy:                                                <
+      {{ $value }}
+      → an toàn hơn
+      → escape
+
+      {!! $value !!}
+      → raw HTML
+      → phải cực kỳ cẩn thận
+ 1. Stored XSS  | payload độc vào DB  |  admin mở trang có: {!! $comment->body !!}       XSS: <script>alert('XSS')</script>    XSS nguy hiểm nhất vì payload tồn tại lâu trong hệ thống                                            <
+      Stored XSS = payload độc hại được lưu vào database rồi hiển thị cho người khác.
+      Ví dụ attacker nhập comment:                                                <
+          <script>alert('XSS')</script>
+      Backend lưu vào DB:                                                <
+          comments
+          └── body = <script>...</script>
+      Sau đó admin mở trang:                                                <
+          {!! $comment->body !!}
+      Script chạy trên máy admin.
+
+      Luồng:                                                <
+          Attacker nhập payload
+                  ↓
+          Database lưu
+                  ↓
+          Người khác mở trang
+                  ↓
+          Website render raw
+                  ↓
+          JavaScript chạy
+
+      Đây thường là loại XSS nguy hiểm nhất vì payload tồn tại lâu trong hệ thống.
+ 2. Reflected XSS  |  payload nằm trong request/URL server trả trong response  |  Nếu code unsafe và render trực tiếp input: {!! request('q') !!}  |  attacker có thể tạo URL chứa payload rồi gửi cho nạn nhân.                                         <
+      Reflected XSS = payload nằm trong request/URL và được server trả lại ngay trong response.
+      Ví dụ:                                                <
+          /search?q=hello
+      Trang hiển thị:                                                <
+      Kết quả tìm kiếm cho: hello
+      Nếu code unsafe và render trực tiếp input:
+           {!! request('q') !!}
+      attacker có thể tạo URL chứa payload rồi gửi cho nạn nhân.
+      Luồng:                                                <
+            URL chứa payload
+            ↓
+            Server nhận
+            ↓
+            Response đưa payload trở lại HTML
+            ↓
+            Browser chạy
+      Khác Stored XSS:                                                <
+         Stored
+            → payload nằm trong DB
+
+         Reflected
+            → payload nằm trong request/URL
+ 3. DOM-based XSS  |  lỗi xảy ra chủ yếu ở JavaScript phía frontend  | Nếu URL chứa dữ liệu độc hại, JavaScript lấy nó rồi đưa thẳng vào:  innerHTML  |   Nên ưu tiên:   element.textContent = value;  khi chỉ cần hiển thị text.                                              <
+      DOM XSS = lỗi xảy ra chủ yếu ở JavaScript phía frontend.       
+      Ví dụ:                                                       <
+            const value = location.hash.substring(1);       
+            document.getElementById('result').innerHTML = value;       
+      Nếu URL chứa dữ liệu độc hại, JavaScript lấy nó rồi đưa thẳng vào:       
+            innerHTML     
+      Browser có thể diễn giải nó như HTML.       
+      Vấn đề ở đây không nhất thiết phải đi qua Laravel backend.       
+      Luồng:                                                     <
+            URL / browser data
+                    ↓
+            JavaScript frontend
+                  ↓
+            innerHTML
+                  ↓
+            DOM
+                  ↓
+            XSS     
+      Nên ưu tiên:                                                 <                                                      <
+            element.textContent = value;       
+      khi chỉ cần hiển thị text.
+ 4. Output Escaping  | cái này VD: {{ $value }} là đặt vào html trong view để trích xuất DB | trước khi đưa dữ liệu ra HTML, biến các ký tự đặc biệt thành dạng an toàn VD: <script> > được hiển thị dưới dạng text thay vì hiểu là thẻ HTML  | Trong Blade: {{ $value }}   đã làm việc này cho HTML context.  | INPUT VALIDATION  ≠ OUTPUT ESCAPING                        <
+      Output escaping = trước khi đưa dữ liệu ra HTML, biến các ký tự đặc biệt thành dạng an toàn.                                                < 
+      Ví dụ:                                                <
+             <script>
+      được hiển thị dưới dạng text thay vì hiểu là thẻ HTML.
+      Trong Blade:                                                <
+             {{ $value }}
+      đã làm việc này cho HTML context.
+      Nhớ:                                                <
+             INPUT VALIDATION
+             ≠
+             OUTPUT ESCAPING
+      Bạn có thể validate input nhưng khi render vẫn phải escape đúng cách.
+      Có những trường hợp bạn thật sự muốn cho user nhập HTML.
+      Ví dụ rich text editor:                                                 <  
+             <p>Xin chào</p>
+             <strong>Nội dung quan trọng</strong>
+       Bạn không thể escape toàn bộ vì sẽ mất formatting.
+       Khi đó cần sanitize HTML.
+      Sanitize nghĩa là:                                                <       
+            Cho phép HTML an toàn, loại bỏ tag/attribute nguy hiểm.       
+      Ví dụ user gửi:                                                <       
+             <p>Hello</p>
+             <script>alert('hack')</script>       
+      Sau sanitize:                                             <       
+             <p>Hello</p>    
+      Hoặc:                                                 <      
+             <img src="x" onerror="alert(1)">       
+         Sanitizer phải loại bỏ attribute nguy hiểm như onerror.       
+         Validation và Sanitization khác nhau       
+      Ví dụ:                                                 <      
+            'content' => [
+                'required',
+                'string',
+                   'max:5000',
+            ],       
+      Validation chỉ nói:                                                  <     
+              content
+             → phải là string
+              → ≤ 5000 ký tự       
+         Nó không tự loại JavaScript độc hại.       
+      Ví dụ:                                                       <
+             <script>alert(1)</script>       
+         vẫn là một string hợp lệ.       
+      Cho nên:                                                 <      
+              Validation
+                 → dữ liệu có đúng format không?
+       
+              Escaping
+                 → dữ liệu khi hiển thị có bị hiểu thành code không?
+       
+             Sanitization
+                 → nếu cho phép HTML, phần nào được giữ/phần nào phải loại?
+      Trong Laravel CQRS
+      Ví dụ user cập nhật ghi chú Employee:       
+              POST /employees/10/note       
+      Luồng:                                                <      
+              Request
+                 ↓
+              FormRequest
+                 ↓
+              Validation
+                ↓
+             validated()
+                ↓
+             DTO / Command
+                ↓
+             Handler
+                ↓
+            Repository
+                 ↓
+              Database       
+      Giả sử note chứa:                                                 <      
+            <script>...</script>       
+      Validation:                                                 <      
+            'note' => [
+                 'nullable',
+                'string',
+                'max:2000',
+            ],       
+        vẫn có thể pass vì nó là string.       
+      Khi hiển thị:                                                <       
+            {{ $employee->note }}       
+              → Blade escape → an toàn hơn.       
+      Nhưng:                                                <       
+            {!! $employee->note !!}       
+              → render raw → nguy cơ XSS.       
+        Cho nên CQRS không tự chống XSS.       
+      CQRS chỉ tổ chức code:                                                <       
+            Request
+            → Command/Query
+            → Handler       
+      XSS được phòng ở       
+             Input policy
+             +
+             Sanitization nếu cần HTML
+             +
+             Output escaping
+             +
+             CSP
+      Ví dụ HRM       
+      Employee nhập ghi chú:                                                 <      
+            Tôi nghỉ phép ngày mai.       
+      Render:                                                 <      
+            {{ $employee->note }}
+             ✅.
+      Nếu attacker lưu:                                                  <     
+            <script>...</script>       
+      vẫn render:                                                <       
+            {{ $employee->note }}       
+            → được hiển thị như text.       
+      Nhưng nếu admin page:                                                <       
+            {!! $employee->note !!}
+            → nguy hiểm.
+       
+ Cách nhớ 3 loại XSS
+ Loại	Payload nằm ở đâu?
+ Stored XSS	Lưu trong DB
+ Reflected XSS	Request / URL rồi phản chiếu lại
+ DOM XSS	Frontend JavaScript/DOM
+    Và cách phòng:   
+    User Input
+       ↓
+    Validate
+       ↓
+    Sanitize nếu cho phép HTML
+       ↓
+    Lưu DB
+       ↓
+    Khi render
+       ↓
+    Escape output   
+
+  Trong Blade, quy tắc thực tế rất đơn giản:   
+    {{ $value }}   
+    → mặc định nên dùng.   
+
+  Chỉ dùng:   
+    {!! $html !!}   
+    khi $html đã được kiểm soát/sanitize và bạn thực sự muốn render HTML.
+ 5. HTML sanitization  | {{ }} = không cho HTML hoạt động   | {!! HTML đã sanitize !!} Sanitize = vẫn muốn thẻ HTML hoạt động mà bỏ  > <script>...</script> cách sử dụng:   Sau validation: $data = $request->validated(); $cleanHtml = $sanitizer->sanitize( $data['content']);           <
+   {{ }} = không cho HTML hoạt động                   <
+      DB:                        <
+         <b>Hello</b>
+      Blade:                     <
+         {{ $value }}
+      Màn hình sẽ thấy:                   <
+         <b>Hello</b>
+      Chữ không đậm.                      <
+      Vì Blade coi nó là text.                   <  
+
+   Sanitize = vẫn muốn HTML hoạt động                  <
+      User nhập:                   <
+         <b>Hello</b>
+         <script>alert('hack')</script>
+      Sanitize thành:                   <
+         <b>Hello</b>
+      Sau đó:                      <
+         {!! $sanitizedHtml !!}
+      Màn hình:                    <
+         Hello
+         <b> hoạt động, còn <script> đã bị sanitizer loại bỏ.                   <
+   Cách sử dụng Sanitize trong Laravel                   <
+      Laravel/Blade cung cấp escaping qua {{ }}, nhưng nếu bạn cần cho phép HTML do user cung cấp, nên dùng một HTML sanitizer chuyên dụng     thay vì tự xóa <script> bằng regex.    
+      Luồng nên là:                                      <    
+             User nhập Rich HTML
+                    ↓
+             FormRequest Validation
+                    ↓
+             HTML Sanitizer
+                    ↓
+             HTML sạch
+                    ↓
+             DTO / Command
+                    ↓
+             Handler
+                    ↓
+             DB
+                    ↓
+             {!! HTML đã sanitize !!}    
+      Ví dụ về mặt ý tưởng, user gửi:                    <   
+              <p>
+                  Payroll tháng 9
+                  <strong>đã hoàn tất</strong>
+              </p>      
+
+              <script>
+                  alert('hack')
+              </script>    
+      FormRequest vẫn validate:                          <            
+              public function rules(): array
+              {
+                  return [
+                      'content' => [
+                          'required',
+                          'string',
+                          'max:10000',
+                      ],
+                  ];
+              }    
+      Nhưng nhớ:                                  <
+              'string'    
+              không sanitize HTML.    
+      Sau validation:                               <    
+              $data = $request->validated();      
+
+              $cleanHtml = $sanitizer->sanitize(
+                  $data['content']
+              );    
+      Sanitizer trả về:                            <
+              <p>
+                  Payroll tháng 9
+                  <strong>đã hoàn tất</strong>
+              </p>    
+      Phần:                                       <
+              <script>...</script>    
+              đã bị loại.    
+              Sau đó bạn lưu $cleanHtml.    
+      Khi hiển thị:                               <
+               {!! $content !!}    
+               thì <p> và <strong> được render.  
 7.6 CSRF                       <
 
  Laravel: 
