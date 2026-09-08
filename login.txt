@@ -5874,7 +5874,7 @@ Câu trả lời phỏng vấn:                                                 
       Khi hiển thị:                               <
                {!! $content !!}    
                thì <p> và <strong> được render.  
-7.6 CSRF                       <
+7.6 CSRF                         <
 
  Laravel: 
 
@@ -5888,6 +5888,567 @@ Câu trả lời phỏng vấn:                                                 
  VerifyCsrfToken
  SameSite Cookie
  CSRF với SPA/API
+ 
+  CSRF — Cross-Site Request Forgery                                         <
+   CSRF hiểu đơn giản là:                                         <
+       Kẻ xấu lợi dụng việc bạn đang đăng nhập website A để dụ trình duyệt của bạn gửi một request thay đổi dữ liệu đến website A mà bạn    không chủ động thực hiện.
+   Ví dụ bạn đang đăng nhập hệ thống Payroll:                                         <
+       payroll.com
+   Trình duyệt đang giữ session đăng nhập của bạn.   
+
+   Bạn mở một website độc hại khác. Website đó cố gửi:                                         <
+       POST payroll.com/admin/payroll/adjustments/10/apply   
+
+   Trình duyệt có thể tự gửi cookie đăng nhập của payroll.com theo quy tắc cookie.
+   Nếu server chỉ thấy:                                            <
+       Cookie
+       ↓
+       User đang đăng nhập
+       ↓
+       Cho Apply   
+
+     thì rất nguy hiểm.
+     CSRF token được dùng để ngăn trường hợp này.
+  1. CSRF Token là gì?   |   Vì vậy request giả mạo thiếu token hợp lệ:  Cookie đăng nhập  → có thể được gửi | CSRF token  → ❌ không có token hợp lệ  |  Có thể coi CSRF token là một mã bí mật gắn với phiên làm việc mà request thay đổi trạng thái phải chứng minh nó có.   |  @csrf = tạo input:  <input type="hidden" name="_token" value="một-token..." > bảo mật CSRF                                        <
+    Có thể coi CSRF token là một mã bí mật gắn với phiên làm việc mà request thay đổi trạng thái phải chứng minh nó có.
+    Laravel Blade:                                         <
+        <form method="POST">
+            @csrf
+
+            <button type="submit">
+                Apply
+            </button>
+        </form>
+    @csrf sẽ tạo hidden input tương tự:                                         <
+        <input
+            type="hidden"
+            name="_token"
+            value="một-token..."
+        >
+    Luồng:                                         <
+         Laravel tạo form
+             ↓
+         gắn CSRF token
+             ↓
+         User submit form
+             ↓
+         POST gửi:
+         _token=...
+             ↓
+         Laravel kiểm tra token
+             ↓
+         Đúng?
+         ┌────┴────┐
+         ↓         ↓
+         Có        Không
+         ↓         ↓
+         ✅        ❌ 419   
+  2. Tại sao hacker không lấy luôn token?    |          Nhưng attacker thông thường không thể đọc CSRF token từ trang HRM của bạn do cơ chế bảo mật same-origin của trình duyệt. |  Vì vậy request giả mạo thiếu token hợp lệ:  Cookie đăng nhập  → có thể được gửi | CSRF token  → ❌ không có token hợp lệ  >  Laravel từ chối request.                                 <
+      Giả sử bạn đang đăng nhập:                                         <
+         hrm.example.com
+
+      Website độc hại:
+         evil.example
+
+      có thể cố làm một form gửi request tới HRM:                                         <
+         <form
+             method="POST"
+             action="https://hrm.example.com/payroll/apply"
+         >
+             ...
+         </form>
+
+        Nhưng attacker thông thường không thể đọc CSRF token từ trang HRM của bạn do cơ chế bảo mật same-origin của trình duyệt.
+
+      Vì vậy request giả mạo thiếu token hợp lệ:                                         <
+         Cookie đăng nhập  → có thể được gửi
+         CSRF token        → ❌ không có token hợp lệ
+
+      Laravel từ chối request.
+      Đây là ý chính của CSRF.
+  3. Trong Blade Payroll của bạn   |  cách hoạt động                                            <
+      Ở đoạn code trước bạn có:                                                 < 
+         <form
+             method="POST"
+             action="{{ route('admin.payroll.adjustments.mutate', [
+                 'adjustment' => $a['id'],
+                 'action' => 'reject',
+             ]) }}"
+         >
+             @csrf         
+
+             <input
+                 type="hidden" // hidden nghĩa là input bị ẩn trên giao diện, nhưng giá trị vẫn được gửi lên server khi submit form.  | hidden = không cho người dùng thấy ô nhập, chứ không phải người dùng không thể sửa dữ liệu.
+                 name="company_id"
+                 value="{{ $c }}"
+             >         
+
+             <input
+                 name="reason"
+                 required
+             >         
+
+             <button type="submit">
+                 Reject
+             </button>
+         </form>      
+
+      Chính:                                               <
+          @csrf      
+        đang bảo vệ form.      
+        Khi render HTML, Laravel tạo hidden CSRF token.      
+
+      Khi user nhấn:                                               <
+            Reject      
+      request:                                               <
+            POST
+            ↓
+            Cookie / session
+            +
+            CSRF token
+            ↓
+            Laravel kiểm tra
+            ↓
+            Handler/Controller      
+
+           Nếu token không hợp lệ, request bị chặn trước khi logic Reject chạy. 
+  4. Authentication và CSRF khác nhau  | Authentication Bạn là ai?→ xác định user | CSRF→ chống request giả mạo lợi dụng session/cookie | VD: Session > User ID = 1 > Thanh đang đăng nhập CSRF                                             <
+               Đây là chỗ rất dễ nhầm.       
+                     Authentication       
+
+               Kiểm tra:                                                <
+                    Bạn là ai?       
+
+               Ví dụ:                                                <
+                    Session
+                    ↓
+                    User ID = 1
+                    ↓
+                    Thanh đang đăng nhập
+                    CSRF       
+
+               Kiểm tra:                                                <
+                    Request thay đổi trạng thái này có bằng chứng CSRF hợp lệ không?       
+                    Vì attacker đang lợi dụng chính session đăng nhập thật của nạn nhân.       
+
+               Cho nên:                                                <
+                   Authentication
+                   → xác định user       
+
+                    CSRF
+                    → chống request giả mạo lợi dụng session/cookie
+  5. Authorization cũng không thay CSRF  |   Nếu không có CSRF protection thì authorization vẫn có thể pass, vì request đang chạy dưới danh tính của Admin.                                             <
+             Trong code bạn có:       
+                  @can('payroll.adjustment.approve')       
+
+                  Đây là Authorization.       
+
+             Giả sử Admin thật sự có:                                                <
+                  payroll.adjustment.approve       
+
+                 Attacker CSRF chính Admin đó.       
+
+             Server nhìn:                                                <
+                 User = Admin                    ✅
+                 Permission adjustment.approve  ✅       
+
+                 Nếu không có CSRF protection thì authorization vẫn có thể pass, vì request đang chạy dưới danh tính của Admin.       
+
+             Do đó:                                                <
+                 Authentication
+                 +
+                 Authorization
+                 +
+                 CSRF       
+
+             giải quyết ba vấn đề khác nhau.       
+
+ 6. VerifyCsrfToken là gì?  | tầng Laravel chịu trách nhiệm: Request > CSRF protection middleware > Kiểm tra token > Controller  | CSRF middleware kiểm tra CSRF token trước khi request thay đổi trạng thái đi sâu vào ứng dụng. | @csrf chủ yếu đưa token vào form. - Middleware phía server mới kiểm tra token. | @csrf > TẠO/GẮN token vào request | CSRF middleware > KIỂM TRA token (CSRF Middleware không phải do @csrf sinh ra. Nó đã nằm sẵn trong hệ thống middleware của Laravel.) | framework có middleware xử lý CSRF. Class cốt lõi: Illuminate\Foundation\Http\Middleware\ValidateCsrfToken  | Nếu bạn quên gắn @csrf thì CSRF Middleware vẫn chạy | Nếu form POST thuộc web routes được Laravel bảo vệ CSRF mà không có @csrf, khi submit thường sẽ bị Laravel chặn. {{-- Không có @csrf --}}  POST /payroll/approve > CSRF Middleware > Tìm CSRF token > Không có ❌ > Request bị chặn > thường thấy 419 Page Expired > Controler ko được chạy |  GET thông thường:<form method="GET"> @csrf - Form POST/PUT/PATCH/DELETE thuộc CSRF-protected web routes → cần CSRF token. Thiếu hoặc token sai → middleware chặn request. |  Nếu ứng dụng dùng đăng nhập bằng session/cookie, có hành động nhạy cảm, và không có CSRF protection, thì ứng dụng có thể bị CSRF attack. | Không có @csrf + Không có cơ chế CSRF khác + Endpoint dùng cookie/session và dễ nhận cross-site request + Có NGUY CƠ bị CSRF  |  Luồng dễ hiểu: Browser vào website Laravel > Laravel tạo/khởi tạo Session > Laravel có CSRF token cho Session đó Ví dụ: ABC123 > User CHƯA cần đăng nhập > Blade gặp @csrf > @csrf lấy token của Session hiện tại > <input name="_token" value="ABC123">                                      <
+            Bạn có thể hiểu đây là tầng Laravel chịu trách nhiệm:                                           <    
+                Request
+                   ↓
+                CSRF protection middleware
+                   ↓
+                Kiểm tra token
+                   ↓
+                Controller       
+
+            Trong Laravel hiện đại, chi tiết class/cấu hình middleware có thay đổi so với các phiên bản Laravel cũ, nên khi học khái niệm, hãy        nhớ vai trò:                                           <     
+                CSRF middleware kiểm tra CSRF token trước khi request thay đổi trạng thái đi sâu vào ứng dụng.       
+
+            Không cần nghĩ:                                                <
+                @csrf tự kiểm tra token       
+                 Không phải.       
+                 @csrf chủ yếu đưa token vào form.       
+                Middleware phía server mới kiểm tra token.       
+
+                 @csrf
+                 ↓
+                TẠO/GẮN token vào request  >  _token = abc123      
+                   ↓
+                 Laravel
+                   ↓
+                CSRF middleware
+                ↓
+                KIỂM TRA token > Tìm CSRF token trong request > Có _token = abc123... > So với token trong session > Khớp > ✅ Cho request đi tiếp
+                  │
+                  ├── Request token = abc123
+                  │
+                  └── Session token = abc123
+                             ↓
+                          so sánh
+                             ↓
+                            ✅
+            
+            Laravel Framework
+                      │
+                      ├── CSRF Middleware
+                      │      → người kiểm tra
+                      │
+                      └── CSRF token/session
+                             → token gốc
+
+                Blade @csrf
+                      ↓
+                lấy token
+                      ↓
+                <input name="_token">
+                      ↓
+                Browser submit
+                      ↓
+                CSRF Middleware kiểm tra
+
+           Nếu form POST thuộc web routes được Laravel bảo vệ CSRF mà không có @csrf, khi submit thường sẽ bị Laravel chặn.                                            <    
+           Ví dụ:                                            <    
+
+                <form method="POST" action="/payroll/approve">
+
+                    {{-- Không có @csrf --}}
+
+                    <button type="submit">
+                        Approve
+                    </button>
+                </form>
+
+           Khi bấm Approve:                                            <    
+
+                POST /payroll/approve
+                        ↓
+                CSRF Middleware
+                        ↓
+                Tìm CSRF token
+                        ↓
+                Không có ❌
+                        ↓
+                Request bị chặn
+                        ↓
+                thường thấy 419 Page Expired
+
+           Controller/CQRS phía sau không được chạy:                                            <    
+
+                POST
+                 ↓
+                CSRF Middleware
+                 ↓
+                ❌ thiếu/sai token
+                 ↓
+                419
+
+                Controller       ← chưa tới
+                Command          ← chưa tới
+                Handler          ← chưa tới
+                Database         ← chưa tới
+
+            Còn có:                                            <    
+
+                <form method="POST">
+                    @csrf
+
+                    ...
+                </form>
+
+                thì @csrf tạo:
+
+                <input
+                    type="hidden"
+                    name="_token"
+                    value="abc123..."
+                >
+
+            Luồng:                                            <    
+
+                POST
+                 ↓
+                CSRF Middleware
+                 ↓
+                Request token ←→ Session token
+                 ↓
+                khớp ✅
+                 ↓
+                Controller
+                 ↓
+                CQRS
+                 ↓
+                Handler
+                Nhưng lưu ý
+
+                Không phải mọi request không có @csrf đều 419.
+
+            Ví dụ GET thông thường:                                            <    
+
+                <form method="GET">
+
+            không cần:                                            <    
+
+                @csrf
+
+            CSRF protection chủ yếu áp dụng cho các request thay đổi state như:
+
+                POST
+                PUT
+                PATCH
+                DELETE
+
+                Vì vậy trong Blade Laravel của bạn, cách nhớ đơn giản:                                            <    
+
+                Form POST/PUT/PATCH/DELETE thuộc CSRF-protected web routes → cần CSRF token. Thiếu hoặc token sai → middleware chặn request.                                                 <    
+
+            Luồng dễ hiểu:
+
+               1. Browser vào website Laravel
+                       ↓
+               2. Laravel tạo/khởi tạo Session
+                       ↓
+               3. Laravel có CSRF token cho Session đó
+                  Ví dụ: ABC123
+                       ↓
+               4. User CHƯA cần đăng nhập
+                       ↓
+               5. Blade gặp @csrf
+                       ↓
+               6. @csrf lấy token của Session hiện tại
+                       ↓
+               <input name="_token" value="ABC123">
+
+               Vì vậy ngay form Login cũng có thể có:
+
+               <form method="POST" action="/login">
+                   @csrf
+
+                   <input name="email">
+                   <input name="password">
+
+                   <button>Login</button>
+               </form>
+
+               Lúc này:
+
+               User chưa đăng nhập ❌
+
+               Nhưng:
+               Session     ✅
+               CSRF token  ✅
+               @csrf       → lấy token đó
+
+               Khi user bấm Login:
+
+               POST /login
+               │
+               ├── email
+               ├── password
+               └── _token = ABC123
+                       ↓
+               CSRF Middleware
+                       ↓
+               Request token ABC123
+                       =
+               Session token ABC123
+                       ↓
+                      ✅
+                       ↓
+               mới tiếp tục xử lý Login
+
+               Nên câu của bạn có thể sửa thành:
+
+               Khi browser truy cập website, Laravel tạo/khởi tạo session và CSRF token. @csrf lấy token của session đó để bỏ vào form, kể cả khi user chưa đăng nhập tài khoản.
+
+               Và sau login Laravel có thể regenerate session ID để chống session fixation; đừng đồng nhất session ID với CSRF token.
+ 7. SameSite Cookie là gì?  | là một thuộc tính bảo mật của cookie | Nó giúp trình duyệt kiểm soát việc cookie có được gửi trong các tình huống cross-site hay không. | Cross-site: Bạn đang ở website A, nhưng có một hành động/request liên quan đến website B. | xem trong: config/session.php | Tìm: 'same_site' => env('SESSION_SAME_SITE', 'lax'),                                              <
+                  SameSite là một thuộc tính bảo mật của cookie.       
+                  Nó giúp trình duyệt kiểm soát việc cookie có được gửi trong các tình huống cross-site hay không.       
+
+            Ví dụ:                                                <
+                 Bạn đang login:
+                 payroll.com       
+     
+            Bạn mở:                                         <
+                 evil.com       
+
+                 evil.com
+                    ↓
+                cố tạo cross-site request
+                    ↓
+                     
+                 SameSite giúp hạn chế cookie bị gửi trong một số request cross-site.       
+
+            Ba giá trị thường gặp:                                           <    
+                  Strict
+                  Lax
+                  None       
+
+            Hiểu đơn giản:                                             <  
+                 Strict
+                → nghiêm nhất về cross-site       
+
+                Lax
+                → cân bằng bảo mật và khả năng sử dụng
+                 → thường phù hợp nhiều ứng dụng       
+
+                None
+                → cho phép cookie trong cross-site context
+                → cần Secure       
+
+                Nhưng không nên coi SameSite là lý do để bỏ toàn bộ CSRF protection trong ứng dụng session/cookie. 
+                             CSRF Protection
+                           ┌──────────┴──────────┐
+                           ↓                     ↓
+                    CSRF Token                SameSite
+                    @csrf                     Cookie
+                           ↓                     ↓
+                    Server kiểm tra       Browser hạn chế
+                    token                  gửi cookie      
+
+ 8. CSRF với SPA  | CSRF với App |frontend:React backend:Laravel Nếu SPA authentication sử dụng cookie/session, CSRF vẫn quan trọng | React SPA > Laravel > Session Cookie | Thường có cơ chế lấy CSRF cookie/token trước, sau đó client gửi request đăng nhập/thay đổi dữ liệu với thông tin CSRF phù hợp | SPA > lấy CSRF token/cookie > POST / PUT / PATCH / DELETE > gửi CSRF information > Laravel kiểm tra                                         <
+             Giả sử frontend của bạn sau này là:                                             <   
+                 React       
+
+             và backend:                                                <
+                 Laravel       
+
+                 Nếu SPA authentication sử dụng cookie/session, CSRF vẫn quan trọng.       
+
+             Ví dụ mô hình Laravel Sanctum SPA:                                              <  
+                    React SPA
+                        ↓
+                    Laravel
+                        ↓
+                    Session Cookie       
+
+                Thường có cơ chế lấy CSRF cookie/token trước, sau đó client gửi request đăng nhập/thay đổi dữ liệu với thông tin CSRF phù hợp.       
+
+             Khái niệm:                                                <
+                    SPA
+                    ↓
+                    lấy CSRF token/cookie
+                    ↓
+                    POST / PUT / PATCH / DELETE
+                    ↓
+                    gửi CSRF information
+                    ↓
+                    Laravel kiểm tra
+ 9. CSRF với API                                                <
+            Không phải cứ thấy /api/... là kết luận:                                                <
+                   API không cần CSRF.       
+
+            Phải hỏi:                                                <
+                API đang authenticate bằng cách nào?       
+
+            API dùng cookie/session
+                   Browser
+                   ↓
+                Cookie tự động được gửi
+                ↓
+                Laravel API       
+
+                → CSRF có liên quan.       
+
+                API dùng Bearer token       
+
+            Ví dụ client chủ động gửi:                                               < 
+                Authorization: Bearer <token>       
+                   Token không phải cookie mà browser tự động đính kèm theo kiểu session cookie.       
+              Trong mô hình Bearer-token API điển hình, CSRF thường không phải cơ chế bảo vệ chính.       
+
+            Nhưng API vẫn phải bảo vệ:       
+                Authentication
+                Authorization
+                Validation
+                Rate limiting
+                Token security
+                   CORS
+                ...
+ 10. CSRF và CORS không giống nhau                                                <
+            Đừng nhầm:                                                <
+                 CSRF
+                 ≠
+                 CORS       
+            CSRF:                                                <
+                 Chống website khác lợi dụng credential/cookie của user để thực hiện request giả mạo.       
+            CORS:                                                <
+                 Quy định origin nào được JavaScript trên browser phép đọc/gửi cross-origin request theo cơ chế CORS.       
+                 Chúng liên quan đến browser security nhưng không phải một thứ.       
+
+ 11. Áp dụng vào CQRS của bạn                                                <
+           Ví dụ:                                                <
+                POST
+                /payroll/adjustments/15/approve       
+
+           Luồng có thể là:                                                <
+               Browser
+                  ↓
+               POST + Cookie + CSRF token
+                  ↓
+               Laravel Middleware
+                  ↓
+               Authentication
+                  ↓
+               CSRF validation
+                     ↓
+                  FormRequest
+                     ↓
+                  Authorization / Policy
+                     ↓
+                  validated()
+                     ↓
+               ApproveAdjustmentCommand
+                  ↓
+               Command Bus
+                  ↓
+               Handler
+                  ↓
+               Domain
+                     ↓
+               Repository
+                   ↓
+                Database       
+
+                CQRS không thay CSRF.       
+
+               CSRF nằm ở tầng HTTP/security trước khi Command Handler của bạn thực thi nghiệp vụ.       
+
+           Cách nhớ
+                @csrf
+                  ↓
+                Form có token       
+
+                CSRF middleware
+                   ↓
+                Server kiểm tra token       
+
+                SameSite
+                   ↓
+                Browser hạn chế cookie cross-site       
+
+           Và quan trọng nhất:                                                <
+                Session/Cookie authentication
+                        ↓
+                    quan tâm
+                      CSRF       
+
+           Còn với:                                                <
+               Authorization: Bearer ...       
+
+               thì CSRF thường không phải mối đe dọa chính theo cùng cơ chế, vì browser không tự động gửi Bearer token như session        cookie.                   
 7.7 IDOR / Broken Access Control                       <
 
  Ví dụ nguy hiểm: 
