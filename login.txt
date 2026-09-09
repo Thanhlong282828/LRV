@@ -1715,6 +1715,40 @@ Model
  ↓
 DB
  
+Khi bạn có VPS/staging riêng, phase tiếp theo sẽ là:    
+
+    STAGING DEPLOYMENT
+            ↓
+    Infrastructure preflight
+            ↓
+    TLS / Domain
+            ↓
+    MySQL
+            ↓
+    Redis
+            ↓
+    Storage
+            ↓
+    Deploy immutable build
+            ↓
+    Migrate
+            ↓
+    Queue + Scheduler
+            ↓
+    Health
+            ↓
+    Smoke
+            ↓
+    Backup
+            ↓
+    Restore drill
+            ↓
+    Observation period
+            ↓
+    GO / NO-GO    
+
+    Lúc đó mới nên viết prompt deployment thật, vì prompt phải dựa vào hạ tầng cụ thể của bạn: VPS nào, Ubuntu/Docker hay hosting panel, domain nào, MySQL/Redis nằm cùng máy hay managed service, và cách bạn muốn deploy. Hiện tại Codex dừng ở     READY_FOR_STAGING là đúng vị trí.
+
  cổng thanh toán/vận chuyển bên ngoài.
  operating-company dataset  
 9 - Eloquent và Database 
@@ -5874,7 +5908,7 @@ Câu trả lời phỏng vấn:                                                 
       Khi hiển thị:                               <
                {!! $content !!}    
                thì <p> và <strong> được render.  
-7.6 CSRF                         <
+7.6 CSRF        10                 <
 
  Laravel: 
 
@@ -6063,7 +6097,7 @@ Câu trả lời phỏng vấn:                                                 
 
              giải quyết ba vấn đề khác nhau.       
 
- 6. VerifyCsrfToken là gì?  | tầng Laravel chịu trách nhiệm: Request > CSRF protection middleware > Kiểm tra token > Controller  | CSRF middleware kiểm tra CSRF token trước khi request thay đổi trạng thái đi sâu vào ứng dụng. | @csrf chủ yếu đưa token vào form. - Middleware phía server mới kiểm tra token. | @csrf > TẠO/GẮN token vào request | CSRF middleware > KIỂM TRA token (CSRF Middleware không phải do @csrf sinh ra. Nó đã nằm sẵn trong hệ thống middleware của Laravel.) | framework có middleware xử lý CSRF. Class cốt lõi: Illuminate\Foundation\Http\Middleware\ValidateCsrfToken  | Nếu bạn quên gắn @csrf thì CSRF Middleware vẫn chạy | Nếu form POST thuộc web routes được Laravel bảo vệ CSRF mà không có @csrf, khi submit thường sẽ bị Laravel chặn. {{-- Không có @csrf --}}  POST /payroll/approve > CSRF Middleware > Tìm CSRF token > Không có ❌ > Request bị chặn > thường thấy 419 Page Expired > Controler ko được chạy |  GET thông thường:<form method="GET"> @csrf - Form POST/PUT/PATCH/DELETE thuộc CSRF-protected web routes → cần CSRF token. Thiếu hoặc token sai → middleware chặn request. |  Nếu ứng dụng dùng đăng nhập bằng session/cookie, có hành động nhạy cảm, và không có CSRF protection, thì ứng dụng có thể bị CSRF attack. | Không có @csrf + Không có cơ chế CSRF khác + Endpoint dùng cookie/session và dễ nhận cross-site request + Có NGUY CƠ bị CSRF  |  Luồng dễ hiểu: Browser vào website Laravel > Laravel tạo/khởi tạo Session > Laravel có CSRF token cho Session đó Ví dụ: ABC123 > User CHƯA cần đăng nhập > Blade gặp @csrf > @csrf lấy token của Session hiện tại > <input name="_token" value="ABC123">                                      <
+ 6. VerifyCsrfToken là gì?  | tầng Laravel chịu trách nhiệm: Request > CSRF protection middleware > Kiểm tra token > Controller  | CSRF middleware kiểm tra CSRF token trước khi request thay đổi trạng thái đi sâu vào ứng dụng. | @csrf chủ yếu đưa token vào form. - Middleware phía server mới kiểm tra token. | @csrf > TẠO/GẮN token vào request (Chống giả mạo request.) | CSRF middleware > KIỂM TRA token (CSRF Middleware không phải do @csrf sinh ra. Nó đã nằm sẵn trong hệ thống middleware của Laravel.) | framework có middleware xử lý CSRF. Class cốt lõi: Illuminate\Foundation\Http\Middleware\ValidateCsrfToken  | Nếu bạn quên gắn @csrf thì CSRF Middleware vẫn chạy | Nếu form POST thuộc web routes được Laravel bảo vệ CSRF mà không có @csrf, khi submit thường sẽ bị Laravel chặn. {{-- Không có @csrf --}}  POST /payroll/approve > CSRF Middleware > Tìm CSRF token > Không có ❌ > Request bị chặn > thường thấy 419 Page Expired > Controler ko được chạy |  GET thông thường:<form method="GET"> @csrf - Form POST/PUT/PATCH/DELETE thuộc CSRF-protected web routes → cần CSRF token. Thiếu hoặc token sai → middleware chặn request. |  Nếu ứng dụng dùng đăng nhập bằng session/cookie, có hành động nhạy cảm, và không có CSRF protection, thì ứng dụng có thể bị CSRF attack. | Không có @csrf + Không có cơ chế CSRF khác + Endpoint dùng cookie/session và dễ nhận cross-site request + Có NGUY CƠ bị CSRF  |  Luồng dễ hiểu: Browser vào website Laravel > Laravel tạo/khởi tạo Session > Laravel tạo/có CSRF token cho Session đó Ví dụ: ABC123 > User CHƯA cần đăng nhập > Blade gặp @csrf > @csrf lấy token của Session hiện tại > <input name="_token" value="ABC123">                                      <
             Bạn có thể hiểu đây là tầng Laravel chịu trách nhiệm:                                           <    
                 Request
                    ↓
@@ -6273,6 +6307,29 @@ Câu trả lời phỏng vấn:                                                 
                Khi browser truy cập website, Laravel tạo/khởi tạo session và CSRF token. @csrf lấy token của session đó để bỏ vào form, kể cả khi user chưa đăng nhập tài khoản.
 
                Và sau login Laravel có thể regenerate session ID để chống session fixation; đừng đồng nhất session ID với CSRF token.
+
+                  User vào website
+                        ↓
+                  Laravel khởi tạo / load Session
+                        ↓
+                  Nếu Session chưa có CSRF token
+                        ↓
+                  Laravel tạo CSRF token
+                        ↓
+                  lưu token vào Session                  
+
+                  Session:
+                  ┌─────────────────────────┐
+                  │ CSRF token = ABC123     │
+                  └─────────────────────────┘
+                        ↓
+                  Blade gặp @csrf
+                        ↓
+                  @csrf lấy token ABC123
+                  từ Session
+                        ↓
+                  tạo hidden input
+ 
  7. SameSite Cookie là gì?  | là một thuộc tính bảo mật của cookie | Nó giúp trình duyệt kiểm soát việc cookie có được gửi trong các tình huống cross-site hay không. | Cross-site: Bạn đang ở website A, nhưng có một hành động/request liên quan đến website B. | xem trong: config/session.php | Tìm: 'same_site' => env('SESSION_SAME_SITE', 'lax'),                                              <
                   SameSite là một thuộc tính bảo mật của cookie.       
                   Nó giúp trình duyệt kiểm soát việc cookie có được gửi trong các tình huống cross-site hay không.       
@@ -6314,11 +6371,12 @@ Câu trả lời phỏng vấn:                                                 
                            ↓                     ↓
                     CSRF Token                SameSite
                     @csrf                     Cookie
+        Chống giả mạo request.
                            ↓                     ↓
                     Server kiểm tra       Browser hạn chế
                     token                  gửi cookie      
 
- 8. CSRF với SPA  | CSRF với App |frontend:React backend:Laravel Nếu SPA authentication sử dụng cookie/session, CSRF vẫn quan trọng | React SPA > Laravel > Session Cookie | Thường có cơ chế lấy CSRF cookie/token trước, sau đó client gửi request đăng nhập/thay đổi dữ liệu với thông tin CSRF phù hợp | SPA > lấy CSRF token/cookie > POST / PUT / PATCH / DELETE > gửi CSRF information > Laravel kiểm tra                                         <
+ 8. CSRF với SPA |  là SPA CSRF token ko có @csrf nên session token của csrf token sẽ được chuyển vào XSRF-TOKEN trong cookie ròi axios lấy ra đọc ròi > tạo header > gửi giá trị trong header X-XSRF-TOKEN. > token nằm trong HEADER request > POST > CSRF Middleware > so sánh với token trong Session >  đúng → ✅      -|- CSRF với App |frontend:React backend:Laravel Nếu SPA authentication sử dụng cookie/session, CSRF vẫn quan trọng | React SPA > Laravel > Session Cookie | Thường có cơ chế lấy CSRF cookie/token trước, sau đó client gửi request đăng nhập/thay đổi dữ liệu với thông tin CSRF phù hợp | SPA > lấy CSRF token/cookie > POST / PUT / PATCH / DELETE > gửi CSRF information > Laravel kiểm tra    |                                        <
              Giả sử frontend của bạn sau này là:                                             <   
                  React       
 
@@ -6346,14 +6404,113 @@ Câu trả lời phỏng vấn:                                                 
                     gửi CSRF information
                     ↓
                     Laravel kiểm tra
- 9. CSRF với API                                                <
+
+                    SPA không dùng Blade @csrf, nên Laravel cung cấp CSRF token qua cookie XSRF-TOKEN. Axios đọc cookie đó và gửi giá trị lại trong header X-XSRF-TOKEN.
+
+             Luồng:                                                     <        
+                    Laravel Session
+                    │
+                    └── CSRF token = ABC123
+                            ↓
+                    GET /sanctum/csrf-cookie
+                            ↓
+                    Laravel gửi cookie
+                    XSRF-TOKEN = ABC123
+                            ↓
+                    Browser lưu cookie
+                            ↓
+                    Axios đọc XSRF-TOKEN
+                            ↓
+                    Axios tạo header
+                    X-XSRF-TOKEN: ABC123 > token nằm trong HEADER request
+                            ↓
+                    POST /login
+                    hoặc POST /payroll/...
+                            ↓
+                    CSRF Middleware
+                            ↓
+                    so sánh với token Session
+                            ↓
+                          ABC123
+                             =
+                          ABC123
+                            ↓
+                           ✅             
+
+             So sánh với Blade:                                                    <         
+                     BLADE
+                     ─────
+                     Session CSRF token
+                            ↓
+                          @csrf
+                            ↓
+                     <input name="_token">
+                            ↓
+                     Request Body
+                     _token=ABC123             
+                     
+
+                     SPA
+                     ───
+                     Session CSRF token
+                            ↓
+                     XSRF-TOKEN cookie
+                            ↓
+                          Axios
+                            ↓
+                     X-XSRF-TOKEN header
+                            ↓
+                     Request Header             
+
+             Vậy có thể nhớ:             
+             Blade: @csrf lấy CSRF token → _token hidden input.
+             SPA: /sanctum/csrf-cookie giúp đưa CSRF token qua XSRF-TOKEN cookie → Axios lấy → gửi X-XSRF-TOKEN header.
+
+             Có thể hiểu đơn giản:                                                    <                
+                    BLADE
+                        CSRF token
+                           ↓
+                        <input type="hidden" name="_token">
+                           ↓
+                        nằm trong BODY request                    
+                    
+
+                    SPA
+                       CSRF token
+                          ↓
+                       XSRF-TOKEN cookie
+                          ↓
+                       Axios lấy
+                          ↓
+                       X-XSRF-TOKEN
+                          ↓
+                       nằm trong HEADER request                    
+
+                    Ví dụ:                                                               <     
+                    Blade POST:                                                    <                
+                        _token=ABC123
+                        company_id=1                    
+
+                    Còn SPA:                                                      <              
+                        POST /payroll/approve                    
+
+                        X-XSRF-TOKEN: ABC123                    
+
+                    Body:                    
+                         {
+                             "company_id": 1
+                         }                    
+
+                    Cách nhớ: Blade gửi CSRF token bằng hidden field trong body; SPA thường gửi CSRF token bằng header X-XSRF-TOKEN, sau khi lấy nó từ cookie XSRF-TOKEN.                                                <
+
+ 9. CSRF với API |  API dùng cookie/session > Browser tự gửi credential > cần CSRF |  API dùng Bearer token > Client chủ động gửi token > ko cần CSRF  | API wed thường session > tokenCSRF > @CSRF > CSRFMiddleware header > đăng nhập |tiếp tục của WED sang APP:sau khi login wed✅ > Santum tạo APItoken > App lưu > Request sau gửi: Authorization: Bearer 1|XYZ123... > auth:sanctum xác thực User >✅   |(Request sau gửi:) là Sau khi login thành công và app đã nhận được Sanctum Token, những lần app gọi API tiếp theo sẽ gửi token đó lên Laravel.                                          <
             Không phải cứ thấy /api/... là kết luận:                                                <
                    API không cần CSRF.       
 
             Phải hỏi:                                                <
                 API đang authenticate bằng cách nào?       
 
-            API dùng cookie/session
+         API dùng cookie/session                                                <
                    Browser
                    ↓
                 Cookie tự động được gửi
@@ -6362,14 +6519,13 @@ Câu trả lời phỏng vấn:                                                 
 
                 → CSRF có liên quan.       
 
-                API dùng Bearer token       
-
+         API dùng Bearer token                                                <     
             Ví dụ client chủ động gửi:                                               < 
                 Authorization: Bearer <token>       
                    Token không phải cookie mà browser tự động đính kèm theo kiểu session cookie.       
               Trong mô hình Bearer-token API điển hình, CSRF thường không phải cơ chế bảo vệ chính.       
 
-            Nhưng API vẫn phải bảo vệ:       
+            Nhưng API vẫn phải bảo vệ:                                                  <     
                 Authentication
                 Authorization
                 Validation
@@ -6377,7 +6533,162 @@ Câu trả lời phỏng vấn:                                                 
                 Token security
                    CORS
                 ...
- 10. CSRF và CORS không giống nhau                                                <
+
+                Đây chính là phần liên quan tới CSRF bạn đang học:                                                <
+
+             SESSION / COOKIE                                                             <
+                  Login
+                   ↓
+                  Laravel tạo Session
+                   ↓
+                  Browser giữ Cookie
+                   ↓
+                  Browser tự động gửi Cookie
+                   ↓
+                  Laravel biết User
+                   ↓
+                  ⚠️ có vấn đề CSRF             
+
+                           User vào website                                                <
+                                 ↓
+                           Laravel khởi tạo / load Session
+                                 ↓
+                           Nếu Session chưa có CSRF token
+                                 ↓
+                           Laravel tạo CSRF token
+                                 ↓
+                           lưu token vào Session
+
+                           Session:
+                           ┌─────────────────────────┐
+                           │ CSRF token = ABC123     │
+                           └─────────────────────────┘
+                                 ↓
+                           Blade gặp @csrf
+                                 ↓
+                           @csrf lấy token ABC123
+                           từ Session
+                                 ↓
+                           tạo hidden input
+                               Mục đích của CSRF token:                               
+
+                               Chống giả mạo request.
+                 Còn:                                                     <             
+    giải thích 1 : BEARER TOKEN                                                   <               
+
+                  Login
+                   ↓
+                  Laravel cấp Token
+                   ↓
+                  App giữ Token
+                   ↓
+                  App chủ động tạo Header
+                   ↓
+                  Authorization: Bearer TOKEN
+                   ↓
+                  Laravel biết User
+
+           giải thích 2 : LARAVEL PROJECT                                                <
+                                 │
+                                 ├── CSRF TOKEN
+                                 │     ↓
+                                 │   nằm trong Session
+                                 │     ↓
+                                 │   @csrf lấy ra
+                                 │     ↓
+                                 │   _token
+                                 │     ↓
+                                 │   chống CSRF
+                                 │   ❌ không xác thực User
+                                 │
+                                 └── SANCTUM API TOKEN 
+                                       ↓
+                                     tạo API TOKEN sau khi User đăng nhập/xác thực
+                                       ↓
+                                     App lưu token
+                                       ↓
+                                     Authorization: Bearer TOKEN
+                                       ↓
+                                     auth:sanctum
+                                       ↓
+                                     xác thực User
+
+                           giải thích 3:  Còn Mobile App + Sanctum Token                                                  <                                                
+                                                  Ví dụ React Native:                                                           <                                       
+                                                       React Native
+                                                           ↓
+                                                       POST /api/login
+                                                       email + password
+                                                           ↓
+                                                       Laravel kiểm tra User
+                                                           ↓
+                                                       Sanctum tạo API Token
+                                                           ↓
+                                                       1|XYZ123...
+                                                           ↓
+                                                       App lưu
+                                                           ↓
+                                                       Request sau gửi:          >   Sau khi login thành công và app đã nhận được Sanctum Token, những lần app gọi API tiếp theo sẽ gửi token đó lên Laravel.    Ví dụ sau khi login, user bấm Danh sách nhân viên.
+                                                                                                       React Native phải gọi: GET /api/employees   Authorization: Bearer 1|XYZ123   |Request sau nữa:User bấm xem payroll:GET /api/payroll   Authorization: Bearer 1|XYZ123                                     
+                                                       Authorization: Bearer 1|XYZ123...
+                                                           ↓
+                                                       auth:sanctum
+                                                           ↓
+                                                       xác thực User                                                  
+
+                                                 Ở kiểu này:                                                    <                                              
+                                                       Mobile App
+                                                           ↓
+                                                       Sanctum Bearer Token
+                                                           ↓
+                                                       XÁC THỰC USER
+
+                     Vậy project của bạn có thể hình dung:                                                  <
+                                    LARAVEL
+                                       │
+                             ┌─────────┴──────────┐
+                             │                    │
+                        WEBSITE BLADE        MOBILE APP
+                             │                    │
+                             ↓                    ↓
+                      Session/Cookie        Sanctum API Token
+                             │                    │
+                      xác thực User          xác thực User
+                             │                    │
+                             ↓                    ↓
+                      CSRF token             Bearer Token
+                         + @csrf             trong Header
+                             │                    │
+                        chống CSRF          Authorization
+
+                   Ví dụ:                                                  <
+
+                   Website:                                                  <
+
+                   <form method="POST" action="/payroll/approve">
+                       @csrf
+
+                       <button>Approve</button>
+                   </form>
+
+                   Browser đồng thời có session cookie để Laravel biết user đang đăng nhập.
+
+                   Mobile app:                                                  <
+
+                   axios.post(
+                       '/api/payroll/approve',
+                       {},
+                       {
+                           headers: {
+                               Authorization: `Bearer ${token}`
+                           }
+                       }
+                    );
+                      Câu của bạn nên sửa thành:                                                  <
+                   Website Laravel Blade: Session/Cookie dùng để xác thực user, còn @csrf lấy CSRF token trong Session để chống CSRF.                                                  <
+                   Mobile App/API: có thể dùng Sanctum tạo API token, app gửi nó bằng Authorization: Bearer TOKEN để xác thực user.                                                  <
+ 10. CSRF và CORS không giống nhau   | CSRF : chống wed đưa request giả  | CORS : quyết định website/frontend ở địa chỉ nào được Browser cho phép gọi đến backend của bạn và đọc response. | .env :→ "Backend của tôi nằm ở đâu?"→ VITE_API_URL |  config/cors.php :→ "Frontend nào được browser cho phép gọi tôi?"→ allowed_origins
+                                           <
             Đừng nhầm:                                                <
                  CSRF
                  ≠
@@ -6388,6 +6699,105 @@ Câu trả lời phỏng vấn:                                                 
                  Quy định origin nào được JavaScript trên browser phép đọc/gửi cross-origin request theo cơ chế CORS.       
                  Chúng liên quan đến browser security nhưng không phải một thứ.       
 
+  React xem Backend URL ở :                                                  <
+       .env:
+         VITE_API_URL=https://api.example.com
+       Code:
+           const api = axios.create({
+               baseURL: import.meta.env.VITE_API_URL,
+           });
+       Sau đó:
+           api.get('/api/employees');
+
+       thực tế sẽ gọi:
+           https://api.example.com/api/employees
+
+       Nếu React Native có thể dùng tên biến khác, ví dụ:
+           API_URL=https://api.example.com    
+
+  Còn https://app.example.com lấy ở đâu?                                                    <
+          Đó là domain mà bạn deploy frontend lên.    
+
+       Ví dụ:    
+           DNS / Hosting
+                 ↓
+           app.example.com
+                 ↓
+           React build    
+
+       Khi người dùng mở:    
+          https://app.example.com    
+             browser đang chạy React tại origin đó.    
+
+       Laravel CORS sau đó có thể cho phép origin này:    
+           'allowed_origins' => [
+               'https://app.example.com',
+           ],    
+
+       Tức là:    
+                      CORS
+                        ↓
+       ┌──────────────────────────────────────┐
+       │                                      │
+       │ React                                │
+       │ https://app.example.com              │
+       │                                      │
+       │       Axios                          │
+       │         ↓                            │
+       │ GET https://api.example.com/api/...  │
+       │         ↓                            │
+       │ Laravel                              │
+       │ https://api.example.com              │
+       │                                      │
+       └──────────────────────────────────────┘
+       Khi chạy local thì dễ thấy hơn
+
+  Ví dụ:                                                <
+       React:
+       http://localhost:5173
+               ↓
+             Axios
+               ↓
+       Laravel:
+       http://127.0.0.1:8000
+
+   React .env:                                                <
+          VITE_API_URL=http://127.0.0.1:8000
+
+      Laravel config/cors.php:
+          'allowed_origins' => [
+              'http://localhost:5173',
+          ],
+
+  Cách nhớ:                                                <
+
+       React .env
+       → "Backend của tôi nằm ở đâu?"
+       → VITE_API_URL
+
+
+       Laravel config/cors.php
+       → "Frontend nào được browser cho phép gọi tôi?"
+       → allowed_origins
+
+       Và app.example.com / api.example.com chỉ là tên minh họa; project thực tế của bạn sẽ dùng domain hoặc localhost của bạn.
+  
+  config/cors.php:                                                <
+       allowed_origins
+       → AI ĐƯỢC GỌI?
+
+       allowed_methods
+       → ĐƯỢC GỌI BẰNG METHOD NÀO?
+
+       allowed_headers
+       → ĐƯỢC GỬI HEADER NÀO?
+
+       paths
+       → CORS ÁP DỤNG ROUTE NÀO?
+
+       supports_credentials
+       → CÓ CHO CREDENTIAL/CREDENTIAL-BASED
+         CROSS-ORIGIN REQUEST KHÔNG?
  11. Áp dụng vào CQRS của bạn                                                <
            Ví dụ:                                                <
                 POST
@@ -6402,7 +6812,7 @@ Câu trả lời phỏng vấn:                                                 
                   ↓
                Authentication
                   ↓
-               CSRF validation
+               CSRF validation                                                <
                      ↓
                   FormRequest
                      ↓
@@ -6449,8 +6859,14 @@ Câu trả lời phỏng vấn:                                                 
                Authorization: Bearer ...       
 
                thì CSRF thường không phải mối đe dọa chính theo cùng cơ chế, vì browser không tự động gửi Bearer token như session        cookie.                   
-7.7 IDOR / Broken Access Control                       <
+7.7 IDOR / Broken Access Control               User đổi id trên URL/request để truy cập dữ liệu không thuộc về mình, nhưng backend không chặn.          <
+   Ví dụ URL:   
+      /employees/10   
 
+   User tự sửa:   
+      /employees/11   
+
+   Nếu backend trả luôn employee 11 dù user không có quyền xem, đó là lỗi IDOR.
  Ví dụ nguy hiểm: 
 
  /payroll/100
