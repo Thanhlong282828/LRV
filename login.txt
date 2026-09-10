@@ -1715,6 +1715,11 @@ Model
  ↓
 DB
  
+ HEALTHY vẫn 25, SPARSE_BUT_VALID tăng 3 → 6 là hợp lý; một dự án thật chưa cần bị ép thành “healthy”.?
+Revenue/COGS by Cost Center vẫn NOT_ENOUGH_EVIDENCE.?
+Project Revenue vẫn NOT_IMPLEMENTED.?
+Notification Project vẫn PARTIAL.?
+Historical unattributed vẫn phải giữ nguyên. ?
 Khi bạn có VPS/staging riêng, phase tiếp theo sẽ là:    
 
     STAGING DEPLOYMENT
@@ -4389,7 +4394,7 @@ Có thể trả lời ngắn:
  Password reset
  Email verification
  Login throttling
-7.2 Authorization                      <
+7.2 Authorization   chi tiết phân quyền                   <
  Gate          |  → quyền/hành động đơn lẻ  | function tổng chứa phân quyền của company > nối > function chủ chứa function chứa quyền
  Policy          |   → quyền xoay quanh một Resource/Model   | tập hợp khai báo tất cả các function phân quyền 
  Role          |   = vai trò của user.     |  bảng DB:  roles 
@@ -5557,7 +5562,7 @@ Trong Security, nên nghĩ theo chuỗi:                        <
        Whitelist
 Câu trả lời phỏng vấn:                                                 <
    SQL Injection là gì và Laravel chống thế nào?
-   SQL Injection là lỗ hổng xảy ra khi input không tin cậy được ghép trực tiếp vào câu SQL, khiến attacker có thể thay đổi ý nghĩa truy vấn. Trong Laravel, tôi ưu tiên Eloquent hoặc Query Builder vì chúng sử dụng parameter binding cho các giá trị. Nếu phải dùng raw SQL, tôi dùng positional/named bindings, không nối trực tiếp user input. Với dynamic column, table hoặc sort direction, tôi sử dụng whitelist.
+   SQL Injection là lỗ hổng xảy ra khi input không tin cậy được ghép trực tiếp vào câu SQL, khiến attacker có thể thay đổi ý nghĩa truy vấn. Trong Laravel, tôi ưu tiên Eloquent hoặc Query Builder vì chúng sử dụng parameter binding cho các giá trị. Nếu phải dùng raw SQL, tôi dùng positional/named bindings, không nối trực tiếp usexzr input. Với dynamic column, table hoặc sort direction, tôi sử dụng whitelist.
 7.5 XSS          5              <
 
  Blade mặc định escape: 
@@ -6859,7 +6864,7 @@ Câu trả lời phỏng vấn:                                                 
                Authorization: Bearer ...       
 
                thì CSRF thường không phải mối đe dọa chính theo cùng cơ chế, vì browser không tự động gửi Bearer token như session        cookie.                   
-7.7 IDOR / Broken Access Control               User đổi id trên URL/request để truy cập dữ liệu không thuộc về mình, nhưng backend không chặn.          <
+7.7 IDOR / Broken Access Control    | lệnh code chưa gắn quyền |           User đổi id trên URL/request để truy cập dữ liệu không thuộc về mình, nhưng backend không chặn.          <
    Ví dụ URL:   
       /employees/10   
 
@@ -6878,7 +6883,26 @@ Câu trả lời phỏng vấn:                                                 
  $this->authorize('view', $payroll); 
 
  Đây là phần cực kỳ quan trọng với HRM/ERP. 
-7.8 Mass Assignment                      <
+ ------------------------
+     Authentication
+    → User là ai?    
+    
+
+    Authorization
+    → User có quyền không?    
+    
+
+    IDOR
+    → User đổi ID để lấy tài nguyên khác    
+    
+
+    Tenant check
+    → Tài nguyên có thuộc company của user không?    
+    
+
+    Policy
+    → permission + ownership + tenant + business rule
+7.8 Mass Assignment  | Tránh cho client tự gửi các field nhạy cảm                    <
  protected $fillable = [
      'name',
      'email',
@@ -6895,20 +6919,20 @@ Câu trả lời phỏng vấn:                                                 
  rồi ghi thẳng: 
 
  User::create($request->all());
-7.9 File Upload Security                       <
+7.9 File Upload Security      10                     <
 
  Học: 
 
- validate extension
- MIME type
- file signature
- giới hạn dung lượng
- random filename
- private storage
- signed URL
- chống path traversal
- malware scanning
- không cho execute file upload 
+ * validate extension    | luật xuất ra                            <
+ * MIME type  | Hệ thống nhận diện Kiểm tra loại nội dung file mà server nhận diện                            <
+ * file signature | Bên trong file = “dấu vân tay định dạng” nằm trong nội dung file, không phải phần .pdf, .jpg ở tên file.    |   Extension: xem tên file ngoài , file signature: mã bên trong file > < sever kiểm tra                            <
+ * giới hạn dung lượng | tránh up file lớn                            <                
+ * random filename |→ KHÓ ĐOÁN / an toàn tên lưu trữ | Không dùng tên file do user gửi làm tên file thật trên server. Laravel/server tự tạo một tên khó đoán và an toàn hơn.  | lệnh code: mã hoá tên file     |   original_name : → tên của USER→ dùng hiển thị  |  random filename :   → tên của SERVER→ dùng lưu trữ | khi user dowload > cài lệnh return xuất 2 cái : mã hoá lưu , tên hiển thị                            <
+ * private storage |→ GIẤU file khỏi public | nơi lưu file mà người dùng không thể truy cập trực tiếp bằng URL.  | config/filesystems.php  public/uploads/contracts/...❌         storage/app/private/...✅                            <   
+ * signed URL |→ LINK có chữ ký, chống sửa URL |  Signed URL là URL có chữ ký và thường có thời hạn. | Nó hữu ích khi cần cấp quyền truy cập tạm thời. \ Temporary Signed URL→ LINK có chữ ký + HẾT HẠN                             <   
+ * chống path traversal | attacker cố điều khiển đường dẫn file để backend đi ra ngoài thư mục được phép và đọc/ghi file khác. | lệnh code: Path đã được SERVER biết + được lấy từ record DB + không lấy trực tiếp từ request hiện tại                            <
+ * malware scanning | → "PDF này có chứa mã độc không?"  quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không                           < 
+ * không cho execute file upload 
 
  Ví dụ: 
 
@@ -6920,6 +6944,1348 @@ Câu trả lời phỏng vấn:                                                 
          'max:10240',
      ],
  ]);
+ 1 Validate extension                           <
+    Kiểm tra phần mở rộng cho phép, ví dụ:                           <
+         'document' => [
+             'required',
+             'file',
+             'mimes:pdf,jpg,jpeg,png',
+         ],    
+
+    Không cho kiểu:    
+
+        .php
+        .exe
+        .sh    
+
+    Nhưng không được chỉ tin extension, vì attacker có thể đổi tên file.                               <
+
+ 2 MIME type                           <
+    Kiểm tra loại nội dung file mà server nhận diện.
+          'document' => [
+              'required',
+              'file',
+              'mimetypes:application/pdf,image/jpeg,image/png',
+          ],    
+
+    Ví dụ:                                  <   
+
+          hopdong.pdf          
+
+          nhưng MIME lại không phải PDF → reject.                               <
+                           <
+ 3 File signature / magic bytes                           <
+    Đây là bước sâu hơn MIME/extension.    
+
+    Ví dụ file PDF thật thường bắt đầu bằng signature kiểu:                              < 
+          %PDF-    
+
+    PNG có signature đặc trưng riêng.    
+
+    Ý tưởng:                                    <
+         Tên file nói: PDF
+                 ↓
+         MIME nói: PDF
+                 ↓
+         Signature nói: PDF
+                 ↓
+         ✅ đáng tin hơn    
+
+    Không nên tự viết kiểm tra signature thủ công cho mọi format nếu có thư viện/validator đáng tin cậy.         
+
+     Nó không nhìn tên file.     
+     Ví dụ user upload:     
+         hopdong.pdf     
+
+     Extension nói:     
+         .pdf     
+
+     Nhưng server mở nội dung file ra và kiểm tra những byte đầu.     
+     PDF thường bắt đầu bằng:     
+         %PDF-     
+
+     PNG có signature đặc trưng dạng:     
+         89 50 4E 47 0D 0A 1A 0A     
+
+     JPEG thường bắt đầu:     
+         FF D8 FF
+
+     Tại sao cần?     
+     Attacker có thể đổi tên:     
+         malware.exe
+             ↓
+         đổi tên
+             ↓
+         hopdong.pdf     
+
+     Nếu hệ thống chỉ kiểm tra extension:     
+     hopdong.pdf
+             ↓
+     ".pdf" hợp lệ
+             ↓
+            ✅  ← chưa đủ     
+
+     Nếu kiểm tra thêm nội dung:     
+           hopdong.pdf
+               ↓
+           Extension
+           .pdf
+               ↓
+           MIME
+           application/pdf
+               ↓
+           File Signature
+           %PDF-
+               ↓
+           các dấu hiệu khớp PDF
+               ↓
+           ✅ đáng tin hơn     
+
+     Nếu:     
+
+     Tên:       hopdong.pdf
+     Extension: pdf          ✅     
+
+     Nhưng nội dung:
+     4D 5A ...     
+
+     thì signature không khớp với PDF → reject.
+
+     Cách nhớ:
+       hopdong.pdf
+       │
+       ├── Extension
+       │   → "Tên nó nói nó là gì?"
+       │
+       ├── MIME type
+       │   → "Hệ thống nhận diện nó là loại gì?"
+       │
+       └── Magic bytes / File signature
+           → "Bên trong file có dấu hiệu của đúng định dạng đó không?"       
+
+       File signature = “dấu vân tay định dạng” nằm trong nội dung file, không phải phần .pdf, .jpg ở tên file.
+ 4 Giới hạn dung lượng                           <
+         'document' => [
+             'required',
+             'file',
+             'max:10240',
+         ],    
+
+    Ví dụ 10240 KB ≈ 10 MB.    
+
+    Để tránh:                               <
+         upload file cực lớn
+         → đầy disk
+         → tốn RAM
+         → tốn bandwidth
+         → DoS
+ 5 Random filename                               <
+    Không nên:                               <
+         $file->move($path, $file->getClientOriginalName());    
+
+    Nên để Laravel tạo tên hoặc tự generate:                            <   
+         $path = $file->store('documents', 'local');    
+
+    Hoặc:                                   <
+        use Illuminate\Support\Str;        
+        $name = Str::uuid().'.'.$file->extension();        
+
+    Mục tiêu:                                   <
+        user-controlled filename ❌
+        random/server-generated filename ✅
+        -------------------------
+        Hiểu đơn giản:           
+           Không dùng tên file do user gửi làm tên file thật trên server. Laravel/server tự tạo một tên khó đoán và an toàn hơn.           
+
+        Ví dụ user upload:           
+           hop-dong-lao-dong.pdf           
+
+        Thay vì server lưu:           
+           storage/app/private/
+           └── hop-dong-lao-dong.pdf           
+
+        thì lưu:           
+           storage/app/private/
+           └── employee-documents/
+               └── K8jHd92ksL0pQx7....pdf
+      1. Tại sao phải random filename?                                    <          
+
+           Tên file từ user là input không đáng tin.           
+
+         Ví dụ:           
+
+           ../../abc.pdf           
+
+         hoặc nhiều user cùng upload:           
+
+           hopdong.pdf
+           hopdong.pdf
+           hopdong.pdf           
+
+         Random filename giúp giảm các vấn đề như:           
+
+           trùng tên
+           ghi đè file
+           đoán tên file
+           phụ thuộc tên do client cung cấp
+           một số rủi ro xử lý filename/path           
+
+           Nhưng lưu ý: random filename không tự chống path traversal; vẫn phải dùng Storage API và không cho client tự quyết định path.           
+
+      2. Laravel có thể tự tạo tên                                             < 
+         Cách đơn giản:           
+
+           $file = $request->file('document');           
+
+           $path = $file->store(
+               'employee-documents',
+               'private'
+           );           
+
+           Laravel sẽ tạo tên file thay vì sử dụng tên gốc trực tiếp.           
+
+         Ví dụ:           
+
+        User upload:                                              <
+
+           hopdong.pdf           
+
+                   ↓           
+
+           Laravel store()           
+
+                   ↓           
+
+           employee-documents/
+           7fKsd83Hks92....pdf           
+
+           $path sẽ chứa đường dẫn đã lưu:           
+
+           employee-documents/7fKsd83Hks92....pdf
+     3. Nếu muốn tự tạo bằng UUID                                    <          
+
+         Ví dụ:                                      <        
+
+           use Illuminate\Support\Str;           
+
+           $file = $request->file('document');           
+
+           $filename = Str::uuid() . '.' . $file->extension();           
+
+           $path = $file->storeAs(
+               'employee-documents',
+               $filename,
+               'private'
+           );           
+
+         Có thể ra:                                        <      
+
+           employee-documents/
+           550e8400-e29b-41d4-a716-446655440000.pdf           
+
+           Luồng:                                           <   
+
+           hopdong.pdf
+               ↓
+           validate
+               ↓
+           Server tạo UUID
+               ↓
+           550e8400-e29b-41d4-a716-446655440000.pdf
+               ↓
+           Private Storage
+     4. Vậy tên gốc hopdong.pdf mất luôn?                                     <         
+
+           Không cần. Bạn có thể lưu 2 thông tin khác nhau trong DB:           
+
+           original_name                                   <
+           → tên để HIỂN THỊ cho user           
+
+           storage_path                                   <
+           → đường dẫn thật server dùng           
+
+         Ví dụ DB:                                              <
+
+           employee_documents
+           ────────────────────────────────────────────           
+
+           original_name
+           = hop-dong-lao-dong.pdf           
+
+           storage_path
+           = employee-documents/550e8400-....pdf           
+
+        Khi user download:                                              <
+
+           return Storage::disk('private')->download(
+               $document->storage_path,
+               $document->original_name
+           );           
+
+        Kết quả:                                              <
+
+         Server lưu:                                   <
+           550e8400-e29b....pdf           
+
+                     ↓ download           
+
+         User nhận:                                   <
+           hop-dong-lao-dong.pdf           
+
+           Đây là pattern rất đẹp cho HRM.           
+
+     5. Không nên làm                                   <
+           $file->storeAs(
+               'employee-documents',
+               $file->getClientOriginalName(),
+               'private'
+           );           
+
+        Vì bạn đang lấy:                                          <    
+
+           Tên do CLIENT cung cấp
+                   ↓
+           dùng trực tiếp làm storage filename           
+
+        Thay vào đó:                                              <
+
+           Client original filename
+                   ↓
+           chỉ lưu metadata / hiển thị           
+
+           Server-generated filename
+                   ↓
+           dùng để lưu file thật
+     6. Ghép với Private Storage bạn vừa học                                      <        
+
+         Một flow tốt:           
+
+           User upload
+               ↓
+           hopdong.pdf
+               ↓
+           Validate extension/MIME/signature/size
+               ↓
+           Random filename
+               ↓
+           550e8400-....pdf
+               ↓
+           Private Storage
+               ↓
+           storage/app/private/employee-documents/
+               ↓
+           DB
+           ├── original_name = hopdong.pdf
+           └── storage_path  = employee-documents/550e8400-....pdf
+     Cách nhớ                                   <
+           original_name                                   <
+           → tên của USER
+           → dùng hiển thị           
+           
+
+           random filename                                   <
+           → tên của SERVER
+           → dùng lưu trữ           
+
+           Với Laravel, cách đơn giản nhất thường là:           
+
+           $path = $file->store('employee-documents', 'private');           
+
+           Laravel lo việc tạo tên lưu trữ cho bạn.
+ 6 Private storage                               <
+  nơi lưu file mà người dùng không thể truy cập trực tiếp bằng URL.
+    File nhạy cảm không nên nằm public:                            <   
+        public/uploads/contracts/...    
+ 
+    Nên:                               <
+        storage/app/private/...    
+
+    và download phải đi qua Laravel:                              < 
+         Request
+          ↓
+         Auth
+          ↓
+         Policy
+          ↓
+         Storage::download()
+       ---------
+         Đặc biệt phù hợp với HRM của bạn:
+
+        CCCD
+        Hợp đồng lao động
+        Payslip
+        CV
+        Bằng cấp
+        Chứng từ
+        Hồ sơ nhân viên
+        1. Public Storage vs Private Storage
+
+        Public:
+            public/storage/avatar.jpg
+                    ↓
+            https://example.com/storage/avatar.jpg
+                    ↓
+            Browser truy cập trực tiếp
+
+        Nếu biết URL thì có thể truy cập file nếu không có lớp bảo vệ khác.
+
+        Private:
+              storage/app/private/contracts/abc.pdf
+
+        User không thể đơn giản mở:
+              https://example.com/private/contracts/abc.pdf
+
+        để lấy file.
+
+        Thay vào đó:
+              User
+               ↓
+              GET /documents/10/download
+               ↓
+              Laravel
+               ↓
+              Authentication
+               ↓
+              Policy / Permission
+               ↓
+              Tenant / Ownership
+               ↓
+              Private Storage
+               ↓
+              trả file
+        2. Laravel cấu hình ở đâu?
+        Xem:
+             config/filesystems.php                                  < 
+
+        Bạn có thể có disk private, ví dụ:
+             'disks' => [
+
+                 'private' => [
+                     'driver' => 'local',
+                     'root' => storage_path('app/private'),
+                     'throw' => false,
+                 ],
+
+             ],
+
+        Sau đó file nằm kiểu:
+              storage/
+              └── app/
+                  └── private/
+                      └── employee-documents/
+                          └── 8f29c....pdf
+
+        Không cần:
+            php artisan storage:link
+
+        cho private file.
+
+        storage:link thường liên quan tới việc expose public files.
+
+        3. Upload vào Private Storage
+
+        FormRequest:
+                public function rules(): array        
+                {
+                    return [
+                        'document' => [
+                            'required',
+                            'file',
+                            'mimes:pdf',
+                            'max:10240',
+                        ],
+                    ];        
+                }
+
+        Controller/Use Case:
+                $file = $request->file('document');
+
+                $path = $file->store(
+                    'employee-documents',
+                    'private'
+                );
+
+        Ví dụ Laravel lưu:
+                 storage/app/private/
+                 └── employee-documents/
+                     └── f83Hd82k....pdf
+
+        DB chỉ cần lưu path:
+                 employee_documents
+
+                 id             = 10
+                 employee_id    = 55
+                 storage_path   = employee-documents/f83Hd82k....pdf
+                 original_name  = hop-dong.pdf
+        4. User muốn download thì sao?
+
+        Không đưa đường dẫn filesystem trực tiếp cho user.
+
+        Tạo route:
+                Route::get(
+                    '/documents/{document}/download',
+                    [DocumentController::class, 'download']
+                )->middleware('auth');
+
+        Controller:
+                public function download(EmployeeDocument $document)        
+                {
+                    $this->authorize('download', $document);
+
+                    return Storage::disk('private')->download(
+                        $document->storage_path,
+                        $document->original_name
+                    );        
+                }
+
+        Policy:
+                public function download(
+                    User $user,
+                    EmployeeDocument $document
+                ): bool {
+                    return $user->company_id === $document->company_id
+                        && $user->can('employee.document.download');        
+                }
+
+        Bây giờ:
+               User A
+                ↓
+               /documents/10/download
+                ↓
+               Login chưa?
+                ↓
+               Permission?
+                ↓
+               Cùng company?
+                ↓
+               Policy
+                ├── ❌ → 403
+                └── ✅
+                     ↓
+                  Laravel đọc private file
+                     ↓
+                  trả file
+
+        Đây chính là lý do Private Storage rất mạnh khi kết hợp với phần IDOR/Broken Access Control bạn vừa học.
+ 7 Signed URL                               <
+    Signed URL là URL có chữ ký và thường có thời hạn.    
+    Ví dụ:                                   <
+        /download/document/55
+        ?expires=...
+        &signature=...    
+
+    Laravel kiểm tra:                                    <
+         signature đúng?
+                 ↓
+         còn hạn?
+                 ↓
+         ✅ cho request tiếp tục         
+
+         Nó hữu ích khi cần cấp quyền truy cập tạm thời.    
+
+    Nhưng:                               <
+         Signed URL không tự thay thế authorization trong mọi tình huống.    
+         Với tài liệu HRM nhạy cảm, thường vẫn phải thiết kế quyền truy cập cẩn thận.    
+         --------------
+         Hiểu đơn giản:
+          
+          Signed URL = đường link có “chữ ký bảo mật” do server tạo, để Laravel kiểm tra link có phải do chính hệ thống tạo ra và có bị sửa           hay không.
+          
+          Nó thường được dùng để cấp quyền truy cập tạm thời vào một URL.
+          
+    Ví dụ HR gửi link tải hợp đồng:
+          
+          https://hrm.com/documents/55/download
+              ?expires=1789000000
+              &signature=abcXYZ...
+          
+    Trong đó:
+          
+          documents/55/download
+          → tài nguyên muốn truy cập
+          
+          expires
+          → thời điểm link hết hạn
+          
+          signature
+          → chữ ký xác minh link
+          Luồng hoạt động
+          Laravel
+             ↓
+          tạo URL
+             ↓
+          gắn expires
+             ↓
+          tạo signature bằng secret của hệ thống
+             ↓
+          Signed URL
+             ↓
+          gửi cho User
+             ↓
+          User click
+             ↓
+          Laravel kiểm tra
+             ├── signature đúng?
+             ├── URL có bị sửa?
+             └── còn hạn?
+                    ↓
+                 ✅ cho qua
+          
+     Nếu attacker sửa:
+          
+          /documents/55/download
+          
+     thành:
+          
+          /documents/56/download
+          
+          thì signature ban đầu không còn khớp:
+          
+          document 55 + signature ABC ✅
+          
+                  ↓ sửa ID
+          
+          document 56 + signature ABC ❌
+          
+          Laravel từ chối.
+          
+          Code Laravel
+          
+     Tạo signed URL:
+          
+          use Illuminate\Support\Facades\URL;
+          
+          $url = URL::signedRoute(
+              'documents.download',
+              ['document' => 55]
+          );
+          
+     Route:
+          
+          Route::get(
+              '/documents/{document}/download',
+              [DocumentController::class, 'download']
+          )
+              ->name('documents.download')
+              ->middleware('signed');
+          
+          Laravel middleware signed sẽ kiểm tra chữ ký.
+          
+          Temporary Signed URL
+          
+  Thực tế download file thường nên có thời hạn.
+          
+     Ví dụ link chỉ sống 10 phút:
+          
+          $url = URL::temporarySignedRoute(
+              'documents.download',
+              now()->addMinutes(10),
+              ['document' => 55]
+          );
+          
+     Kết quả dạng:
+          
+          /documents/55/download
+          ?expires=...
+          &signature=...
+          
+     Sau 10 phút:
+          
+          User click
+             ↓
+          signature đúng ✅
+             ↓
+          nhưng expires đã hết ❌
+             ↓
+          403
+          Signed URL + Private Storage
+          
+          Hai cái này kết hợp rất tốt.
+          
+          PRIVATE STORAGE
+          → file không truy cập trực tiếp
+          
+          
+          SIGNED URL
+          → tạo đường dẫn tạm thời để truy cập
+          
+     Ví dụ:
+          storage/app/private/
+          └── contracts/
+              └── a8f92....pdf
+          
+                  ↑
+             không public URL
+          
+     User muốn download:
+          Laravel tạo temporary signed URL
+                    ↓
+          /documents/55/download
+          ?expires=...
+          &signature=...
+                    ↓
+          User click
+                    ↓
+          signed middleware
+                    ↓
+          signature hợp lệ?
+                    ↓
+          Policy / Authorization
+                    ↓
+          Private Storage
+                    ↓
+          Download file
+          
+    Controller:
+          public function download(EmployeeDocument $document)
+          {
+              $this->authorize('download', $document);
+          
+              return Storage::disk('private')->download(
+                  $document->storage_path,
+                  $document->original_name
+              );
+          }
+     Signed URL có thay Policy không?
+          Không nhất thiết.
+          
+     Với file HRM nhạy cảm như:
+          CCCD
+          Payslip
+          Hợp đồng
+          Hồ sơ nhân viên
+          
+     pattern an toàn thường là:
+          
+          Signed URL
+              ↓
+          "Link có hợp lệ không?"
+          
+          Authentication
+              ↓
+          "User là ai?"
+          
+          Policy
+              ↓
+          "User có quyền tải file này không?"
+          
+          Private Storage
+              ↓
+          "Lấy file"
+          
+     Ví dụ user A có signed URL hợp lệ nhưng quyền employee.document.download đã bị thu hồi, Policy vẫn có thể:
+          
+          ❌ 403
+          Cách nhớ
+          Private Storage
+          → GIẤU file khỏi public
+          
+          
+          Random Filename
+          → KHÓ ĐOÁN / an toàn tên lưu trữ
+         
+          
+          Signed URL
+          → LINK có chữ ký, chống sửa URL
+          
+          
+          Temporary Signed URL
+          → LINK có chữ ký + HẾT HẠN
+          
+          
+          Policy
+          → USER có quyền truy cập không
+          
+          Với HRM của bạn, Private Storage + Temporary Signed URL + Policy là một bộ rất phù hợp cho hợp đồng, payslip và tài liệu nhân viên.
+          
+ 8 Chống Path Traversal | Path đã được SERVER biết + được lấy từ record DB + không lấy trực tiếp từ request hiện tại (đọc) | ....( download )                                  <
+    Attacker có thể cố gửi tên kiểu:                               <
+          ../../../../etc/passwd    
+
+    hoặc:                               <
+          ../../../config/app.php    
+
+    Nếu code tự nối path:                               <
+          $path = storage_path('app/' . $request->filename);    
+    rất nguy hiểm.    
+    Không nên cho client quyết định filesystem path.    
+
+    Nên:                               <
+          Storage::disk('local')->get($knownDbPath);    
+
+    trong đó path được server lưu từ trước.    
+
+    Tư duy:                               <
+          User gửi ID
+             ↓
+          Backend tìm record
+             ↓
+          DB có storage_path an toàn
+             ↓
+          Storage đọc file    
+
+    không phải:                                    <
+         User gửi path
+            ↓
+         Backend đọc thẳng path ❌
+
+         Storage::disk('local')->get($knownDbPath);        
+
+  thì CQRS có thể viết rất dễ hiểu như sau.  |  cho lệnh code đọc file chứ ko lấy trực tiếp từ request       <
+      USER
+       ↓
+      GET /documents/55/content
+       ↓
+      CONTROLLER
+       ↓
+      QUERY
+      documentId = 55
+       ↓
+      HANDLER
+       ↓
+      REPOSITORY
+       ↓
+      DATABASE
+       ↓
+      storage_path = documents/a8H92k.pdf
+       ↓
+      $knownDbPath
+       ↓
+      Storage::disk('local')->get($knownDbPath)
+       ↓
+      NỘI DUNG FILE
+   1. Controller        
+
+      User chỉ gửi ID = 55, không gửi path:        
+
+      public function show(int $id)
+      {
+          $query = new GetDocumentContentQuery(
+              documentId: $id
+          );        
+
+          return $this->queryBus->dispatch($query);
+      }
+   2. Query
+      final readonly class GetDocumentContentQuery
+      {
+          public function __construct(
+              public int $documentId
+          ) {}
+      }        
+
+      Query lúc này chứa:        
+
+      documentId = 55        
+
+      Không chứa:        
+
+      ❌ path = ../../../../.env
+   3. Handler        
+
+      Đây là chỗ quan trọng:        
+
+      final class GetDocumentContentHandler
+      {
+          public function __construct(
+              private DocumentRepositoryInterface $repository
+          ) {}        
+
+          public function handle(
+              GetDocumentContentQuery $query
+          ): string {        
+
+              // 1. Lấy document từ DB bằng ID                            <
+              $document = $this->repository->findById(
+                  $query->documentId
+              );        
+
+              if (! $document) {
+                  abort(404);
+              }        
+
+              // 2. Path lấy từ record trong DB                            <
+              $knownDbPath = $document->storage_path;        
+
+              // 3. Đọc file                            <
+              return Storage::disk('local')->get(
+                  $knownDbPath
+              );
+          }
+      }        
+
+      Giả sử DB:        
+
+      documents
+      ─────────────────────────────────────────────
+      id              55
+      original_name   hopdong.pdf
+      storage_path    documents/a8H92k.pdf        
+
+      Thì:        
+
+      $knownDbPath = $document->storage_path;        
+
+      sẽ trở thành:        
+
+      $knownDbPath = 'documents/a8H92k.pdf';        
+
+      Cuối cùng:        
+
+      $content = Storage::disk('local')->get(
+          'documents/a8H92k.pdf'
+      );
+      4. Repository
+      final class DocumentRepository
+          implements DocumentRepositoryInterface
+      {
+          public function findById(int $id): ?Document
+          {
+              return Document::query()
+                  ->whereKey($id)
+                  ->first();
+          }
+      }
+      Tại sao gọi là $knownDbPath?        
+
+      known ở đây có ý:        
+
+         Path đã được SERVER biết                            <
+         +
+         được lấy từ record DB                            <
+         +
+         không lấy trực tiếp từ request hiện tại                                 <   
+
+      So sánh:        
+
+      // ❌ Nguy hiểm
+      $userPath = $request->input('path');        
+
+      Storage::disk('local')->get($userPath);        
+
+      Attacker gửi:        
+
+      path=../../../../.env        
+
+      Còn:        
+
+      // ✅ Pattern tốt hơn
+      $document = $repository->findById($documentId);        
+
+      $knownDbPath = $document->storage_path;        
+
+      Storage::disk('local')->get($knownDbPath);        
+
+      Luồng rất dễ nhớ:        
+
+      Client
+       │
+       │ documentId = 55
+       ▼
+      Controller
+       │
+       ▼
+      Query
+       │
+       ▼
+      Handler
+       │
+       ▼
+      Repository
+       │
+       ▼
+      DB
+       │
+       │ storage_path
+       ▼
+      $knownDbPath
+       │
+       ▼
+      Storage::disk('local')->get($knownDbPath)
+       │
+       ▼
+      FILE CONTENT        
+
+      Cốt lõi chống Path Traversal:        
+
+      ❌ Request → path → Storage        
+
+      ✅ Request → ID → DB → knownDbPath → Storage        
+
+      Còn get() chỉ có nhiệm vụ đọc nội dung file.
+  Path Traversal khi download file nên nhìn như này:                  <
+     USER / FRONTEND
+        |
+        | GET /employee-documents/55/download
+        | chỉ gửi document ID
+        v
+     ROUTE
+        |
+        v
+     CONTROLLER
+        |
+        | Authentication
+        | Authorization sơ bộ
+        |
+        | tạo Query / DTO
+        v
+     DOWNLOAD EMPLOYEE DOCUMENT QUERY
+        |
+        | documentId = 55
+        | userId = 1
+        | companyId = 10
+        v
+     QUERY HANDLER / USE CASE
+        |
+        | 1. lấy document từ Repository
+        | 2. kiểm tra tenant/company
+        | 3. kiểm tra permission/policy
+        | 4. lấy storage_path từ DB
+        v
+     REPOSITORY
+        |
+        | SELECT ...
+        | WHERE id = 55
+        | AND company_id = 10
+        v
+     DATABASE
+        |
+        | id = 55
+        | original_name = hopdong.pdf
+        | storage_path =
+        | employee-documents/abc123.pdf
+        v
+     QUERY HANDLER
+        |
+        | $knownDbPath =
+        | $document->storage_path
+        |
+        | KHÔNG lấy path từ request
+        v
+     STORAGE SERVICE
+        |
+        | Storage::disk('private')
+        |     ->download($knownDbPath)
+        v
+     PRIVATE STORAGE
+        |
+        | storage/app/private/
+        | employee-documents/abc123.pdf
+        v
+     HTTP RESPONSE
+        |
+        v
+     USER DOWNLOAD FILE     
+
+     Điểm quan trọng nhất:     
+
+     USER
+       ↓
+     chỉ gửi ID     
+
+     DB
+       ↓
+     trả về path đã biết     
+
+     SERVER
+       ↓
+     dùng path đó để đọc file     
+
+     Không phải:     
+
+     USER
+       ↓
+     gửi path
+       ↓
+     ../../../../.env
+       ↓
+     SERVER đọc path     
+
+     Trong CQRS, phần Controller nên rất mỏng:     
+
+     public function download(
+         EmployeeDocument $document
+     ) {
+         $query = new DownloadEmployeeDocumentQuery(
+             documentId: $document->id,
+             userId: auth()->id(),
+             companyId: auth()->user()->company_id,
+         );     
+
+         return $this->queryBus->dispatch($query);
+     }     
+
+     Query:     
+
+     final readonly class DownloadEmployeeDocumentQuery
+     {
+         public function __construct(
+             public int $documentId,
+             public int $userId,
+             public int $companyId,
+         ) {
+         }
+     }     
+
+     Handler:     
+
+     final class DownloadEmployeeDocumentHandler
+     {
+         public function __construct(
+             private EmployeeDocumentRepositoryInterface $documents,
+         ) {
+         }     
+
+         public function handle(
+             DownloadEmployeeDocumentQuery $query
+         ) {
+             $document = $this->documents->findForCompany(
+                 documentId: $query->documentId,
+                 companyId: $query->companyId,
+             );     
+
+             if (! $document) {
+                 abort(404);
+             }     
+
+             Gate::forUser(
+                 User::findOrFail($query->userId)
+             )->authorize('download', $document);     
+
+             $knownDbPath = $document->storage_path;     
+
+             return Storage::disk('private')->download(
+                 $knownDbPath,
+                 $document->original_name
+             );
+         }
+     }     
+
+     Repository:     
+
+     final class EloquentEmployeeDocumentRepository
+         implements EmployeeDocumentRepositoryInterface
+     {
+         public function findForCompany(
+             int $documentId,
+             int $companyId
+         ): ?EmployeeDocument {
+             return EmployeeDocument::query()
+                 ->whereKey($documentId)
+                 ->where('company_id', $companyId)
+                 ->first();
+         }
+     }     
+
+     Nhìn theo trách nhiệm CQRS:     
+
+     Controller
+     → nhận request     
+
+     Query DTO
+     → mang dữ liệu cần đọc     
+
+     Handler
+     → xử lý use case     
+
+     Repository
+     → truy vấn DB     
+
+     DB
+     → trả document + storage_path     
+
+     Handler
+     → authorize + lấy knownDbPath     
+
+     Storage
+     → đọc/download file     
+
+     Response
+     → trả file cho user     
+
+     Cách nhớ ngắn nhất:     
+
+     Request
+     → Controller
+     → Query
+     → Handler
+     → Repository
+     → DB
+     → knownDbPath
+     → Private Storage
+     → Response     
+
+     Và chỗ chống Path Traversal nằm ở đoạn này:     
+
+     Request
+     ❌ không chứa filesystem path     
+
+     DB
+     ✅ chứa storage_path do server quản lý     
+
+     Nên nếu dùng CQRS, pattern đẹp nhất là:     
+
+     ID từ client
+     → Query
+     → Handler
+     → Repository
+     → DB path
+     → Storage     
+
+     chứ không phải:     
+
+     path từ client
+     → Storage
+  Vì vậy: get() đọc file |  download() tải file | Và local với private cũng không phải hai cách chống Path Traversal khác nhau:    Storage::disk('local')   là dùng disk tên local.   Storage::disk('private')    là dùng disk tên private mà bạn tự cấu hình.      <
+
+   get()
+   → ĐỌC nội dung file vào PHP   
+
+   download()
+   → TRẢ file cho browser download   
+
+   Ví dụ cùng một $knownDbPath:   
+
+   $document = EmployeeDocument::findOrFail($id);   
+
+   $knownDbPath = $document->storage_path;   
+
+   Muốn đọc:   
+
+   $content = Storage::disk('private')->get($knownDbPath);   
+
+   Muốn user tải:   
+
+   return Storage::disk('private')->download(
+       $knownDbPath,
+       $document->original_name
+   );   
+
+   Còn cái không nên làm là:   
+
+   // ❌ User điều khiển path
+   $path = $request->input('path');   
+
+   return Storage::disk('private')->download($path);   
+
+   vì attacker có thể cố đưa:   
+
+   ../../something   
+
+   Pattern cần nhớ là:   
+
+   User gửi document ID
+           ↓
+   EmployeeDocument::findOrFail($id)
+           ↓
+   DB
+           ↓
+   $document->storage_path
+           ↓
+   $knownDbPath
+           ↓
+   Storage
+          / \
+         /   \
+      get()  download()
+       ↓        ↓
+   đọc file   tải file   
+
+   Và local với private cũng không phải hai cách chống Path Traversal khác nhau:   
+
+   Storage::disk('local')   
+
+   là dùng disk tên local.   
+
+   Storage::disk('private')   
+
+   là dùng disk tên private mà bạn tự cấu hình.   
+
+   Câu chuẩn nhất tôi nên nói ngay từ đầu là:   
+
+   $knownDbPath = $document->storage_path;   
+
+   Storage::disk('private')->get($knownDbPath);       // cần đọc nội dung   
+
+   Storage::disk('private')->download($knownDbPath);  // cần cho user tải   
+
+   Điểm chống Path Traversal chính là $knownDbPath do server/DB kiểm soát, chứ không phải get() hay download().
+ 9 Malware scanning | quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không                              <
+    Sau upload:                               <
+          Upload
+           ↓
+          Validate
+           ↓
+          Quarantine
+           ↓
+          ClamAV / malware scanner
+           ↓
+          Clean?
+           ├── yes → ready
+           └── no  → reject/quarantine    
+
+    Rất phù hợp với:                               <
+         CV
+         PDF
+         DOCX
+         XLSX
+         ZIP
+         hồ sơ nhân viên
+ 10 Không cho execute file upload                              <
+    Đây là cực kỳ quan trọng.    
+    Ví dụ attacker upload:                               <
+         shell.php    
+
+    Nếu file nằm ở:                               <
+         public/uploads/shell.php    
+
+    và web server cho PHP execute ở đó:                            <   
+         https://example.com/uploads/shell.php    
+
+      thì có thể cực kỳ nguy hiểm.    
+
+    Thiết kế đúng:                               <
+         Uploaded Files
+               ↓
+         Private Storage
+               ↓
+         không nằm trong web root
+               ↓
+         không được PHP/web server execute    
+
+    Với Laravel, ưu tiên:                            <   
+        storage/app/private    
+
+    thay vì:                               <
+        public/uploads
+    Checklist senior dễ nhớ                           <
+         UPLOAD
+           ↓
+         Extension whitelist
+           ↓
+         MIME validation
+           ↓
+         File signature
+           ↓
+         Size limit
+           ↓
+         Random filename
+           ↓
+         Safe path
+           ↓
+         Private storage
+           ↓
+         No execute permission
+           ↓
+         Malware scan
+           ↓
+         DB metadata / SHA-256
+           ↓
+         Download
+           ↓
+         Auth + Policy
+           ↓
+         Signed URL nếu cần
 7.10 API Security                      <
  Sanctum token
  Token abilities/scopes
