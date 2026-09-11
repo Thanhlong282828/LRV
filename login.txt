@@ -6925,13 +6925,13 @@ Câu trả lời phỏng vấn:                                                 
 
  * validate extension    | luật xuất ra                            <
  * MIME type  | Hệ thống nhận diện Kiểm tra loại nội dung file mà server nhận diện                            <
- * file signature | Bên trong file = “dấu vân tay định dạng” nằm trong nội dung file, không phải phần .pdf, .jpg ở tên file.    |   Extension: xem tên file ngoài , file signature: mã bên trong file > < sever kiểm tra                            <
+ * file signature |→ "Bên trong file có dấu hiệu của đúng định dạng đó không?" | Bên trong file = “dấu vân tay định dạng” nằm trong nội dung file, không phải phần .pdf, .jpg ở tên file.    |   Extension: xem tên file ngoài , file signature: mã bên trong file > < sever kiểm tra                            <
  * giới hạn dung lượng | tránh up file lớn                            <                
  * random filename |→ KHÓ ĐOÁN / an toàn tên lưu trữ | Không dùng tên file do user gửi làm tên file thật trên server. Laravel/server tự tạo một tên khó đoán và an toàn hơn.  | lệnh code: mã hoá tên file     |   original_name : → tên của USER→ dùng hiển thị  |  random filename :   → tên của SERVER→ dùng lưu trữ | khi user dowload > cài lệnh return xuất 2 cái : mã hoá lưu , tên hiển thị                            <
  * private storage |→ GIẤU file khỏi public | nơi lưu file mà người dùng không thể truy cập trực tiếp bằng URL.  | config/filesystems.php  public/uploads/contracts/...❌         storage/app/private/...✅                            <   
  * signed URL |→ LINK có chữ ký, chống sửa URL |  Signed URL là URL có chữ ký và thường có thời hạn. | Nó hữu ích khi cần cấp quyền truy cập tạm thời. \ Temporary Signed URL→ LINK có chữ ký + HẾT HẠN                             <   
  * chống path traversal | attacker cố điều khiển đường dẫn file để backend đi ra ngoài thư mục được phép và đọc/ghi file khác. | lệnh code: Path đã được SERVER biết + được lấy từ record DB + không lấy trực tiếp từ request hiện tại                            <
- * malware scanning | → "PDF này có chứa mã độc không?"  quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không                           < 
+ * malware scanning | → "PDF này có chứa mã độc không?"  quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không | trong file job chứa code: $fullPath = Storage::disk('private')->path($document->storage_path); $result = shell_exec('clamscan --no-summary ' . escapeshellarg($fullPath));      <  đoạn thực sự quét malware                           < 
  * không cho execute file upload 
 
  Ví dụ: 
@@ -6944,7 +6944,7 @@ Câu trả lời phỏng vấn:                                                 
          'max:10240',
      ],
  ]);
- 1 Validate extension                           <
+ 1 Validate extension  | luật xuất ra                          <
     Kiểm tra phần mở rộng cho phép, ví dụ:                           <
          'document' => [
              'required',
@@ -6960,7 +6960,7 @@ Câu trả lời phỏng vấn:                                                 
 
     Nhưng không được chỉ tin extension, vì attacker có thể đổi tên file.                               <
 
- 2 MIME type                           <
+ 2 MIME type | Hệ thống nhận diện Kiểm tra loại nội dung file mà server nhận diện                          <
     Kiểm tra loại nội dung file mà server nhận diện.
           'document' => [
               'required',
@@ -6974,7 +6974,7 @@ Câu trả lời phỏng vấn:                                                 
 
           nhưng MIME lại không phải PDF → reject.                               <
                            <
- 3 File signature / magic bytes                           <
+ 3 File signature / magic bytes | → "Bên trong file có dấu hiệu của đúng định dạng đó không?"                          <
     Đây là bước sâu hơn MIME/extension.    
 
     Ví dụ file PDF thật thường bắt đầu bằng signature kiểu:                              < 
@@ -7064,7 +7064,7 @@ Câu trả lời phỏng vấn:                                                 
            → "Bên trong file có dấu hiệu của đúng định dạng đó không?"       
 
        File signature = “dấu vân tay định dạng” nằm trong nội dung file, không phải phần .pdf, .jpg ở tên file.
- 4 Giới hạn dung lượng                           <
+ 4 Giới hạn dung lượng | tránh up file lớn                               <
          'document' => [
              'required',
              'file',
@@ -7079,7 +7079,7 @@ Câu trả lời phỏng vấn:                                                 
          → tốn RAM
          → tốn bandwidth
          → DoS
- 5 Random filename                               <
+ 5 Random filename |→ KHÓ ĐOÁN / an toàn tên lưu trữ                              <
     Không nên:                               <
          $file->move($path, $file->getClientOriginalName());    
 
@@ -7292,7 +7292,7 @@ Câu trả lời phỏng vấn:                                                 
            $path = $file->store('employee-documents', 'private');           
 
            Laravel lo việc tạo tên lưu trữ cho bạn.
- 6 Private storage                               <
+ 6 Private storage |→ GIẤU file khỏi public                             <
   nơi lưu file mà người dùng không thể truy cập trực tiếp bằng URL.
     File nhạy cảm không nên nằm public:                            <   
         public/uploads/contracts/...    
@@ -7467,7 +7467,7 @@ Câu trả lời phỏng vấn:                                                 
                   trả file
 
         Đây chính là lý do Private Storage rất mạnh khi kết hợp với phần IDOR/Broken Access Control bạn vừa học.
- 7 Signed URL                               <
+ 7 Signed URL |→ LINK có chữ ký, chống sửa URL                              <
     Signed URL là URL có chữ ký và thường có thời hạn.    
     Ví dụ:                                   <
         /download/document/55
@@ -8210,7 +8210,7 @@ Câu trả lời phỏng vấn:                                                 
    Storage::disk('private')->download($knownDbPath);  // cần cho user tải   
 
    Điểm chống Path Traversal chính là $knownDbPath do server/DB kiểm soát, chứ không phải get() hay download().
- 9 Malware scanning | quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không                              <
+ 9 Malware scanning | quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không  | trong file job chứa code: $fullPath = Storage::disk('private')->path($document->storage_path); $result = shell_exec('clamscan --no-summary ' . escapeshellarg($fullPath));      <  đoạn thực sự quét malware                           <
     Sau upload:                               <
           Upload
            ↓
@@ -8224,14 +8224,305 @@ Câu trả lời phỏng vấn:                                                 
            ├── yes → ready
            └── no  → reject/quarantine    
 
-    Rất phù hợp với:                               <
+    Rất phù hợp với:                                       <
          CV
          PDF
          DOCX
          XLSX
          ZIP
          hồ sơ nhân viên
- 10 Không cho execute file upload                              <
+   Malware Scanning là gì?                                       <
+     Hiểu đơn giản:                                       <
+         Malware Scanning = quét file sau khi upload để xem file có chứa virus, mã độc, trojan, ransomware... hay không.
+         Đừng nhầm với mimes:pdf.
+
+         mimes:pdf
+         → "Đây có phải PDF không?"
+
+         Malware Scan
+         → "PDF này có chứa mã độc không?"
+
+     Ví dụ:                                       <
+
+         Tên file: hopdong.pdf
+         MIME: application/pdf
+         Signature: %PDF-
+
+     Tất cả đều đúng nhưng file vẫn có thể độc hại.                                       <
+       Luồng trong CQRS (HRM)
+         User Upload
+               ↓
+         Controller
+               ↓
+         Command
+         (StoreEmployeeDocumentCommand)
+               ↓
+         Command Handler
+               ↓
+         Validate
+         (extension + MIME + size)
+               ↓
+         Random filename
+               ↓
+         Private Storage (Quarantine)
+               ↓
+         Queue Job
+         (ScanUploadedDocumentJob)
+               ↓
+         ClamAV
+               ↓
+         ┌──────────────┐
+         │              │
+         Clean       Malware
+         │              │
+         ▼              ▼
+         status=ready  status=quarantined
+
+         Điểm Senior: File được lưu vào quarantine/private storage trước, chưa cho người khác tải ngay. Sau khi scan sạch mới chuyển trạng thái ready.
+
+     Ví dụ Laravel + Queue + ClamAV
+         Bước 1: Upload                                       <
+         public function handle(StoreEmployeeDocumentCommand $command)
+         {
+             $path = $command->file->store(
+                 'employee-documents',
+                 'private'
+             );
+
+             $document = EmployeeDocument::create([
+                 'employee_id'   => $command->employeeId,
+                 'storage_path'  => $path,
+                 'original_name' => $command->file->getClientOriginalName(),
+                 'status'        => 'scanning',                                             <
+             ]);
+
+             ScanUploadedDocumentJob::dispatch($document->id);
+
+             return $document;
+        }
+
+     DB:                                       <
+           id    storage_path                   status
+           55    employee-documents/abc.pdf     scanning
+
+     Bước 2: Queue Job                                       <
+         class ScanUploadedDocumentJob implements ShouldQueue
+         {
+             public function __construct(
+                 public int $documentId
+             ) {}
+
+             public function handle()
+             {
+                 $document = EmployeeDocument::findOrFail($this->documentId);
+
+                 $fullPath = Storage::disk('private')->path(                  <đoạn thực sự quét malware chính là phần gọi ClamAV trong Job:
+                     $document->storage_path
+                 );
+
+                 $result = shell_exec(                                       <đoạn thực sự quét malware chính là phần gọi ClamAV trong Job:
+                     'clamscan --no-summary ' . escapeshellarg($fullPath)                     <clamscan --no-summary | dòng quan trọng nhất  
+                 );//clamscan chính là chương trình antivirus thực hiện việc quét file tìm malware.
+                 //'mimes:pdf,jpg,jpeg,png' | không phải malware scanning. Nó kiểm tra loại file.
+                 //escapeshellarg($fullPath) | cũng không quét malware; nó giúp giảm nguy cơ command injection khi truyền path vào shell command.
+
+                 if (str_contains($result, 'OK')) {
+
+                     $document->update([
+                         'status' => 'ready',
+                     ]);
+
+                 } else {
+
+                     $document->update([
+                         'status' => 'quarantined',
+                     ]);
+                 }
+             }
+          }
+       Luồng:                                       <
+
+                      $document->storage_path
+                              ↓
+                      Lấy đường dẫn thật của file
+                              ↓
+                      $fullPath
+                              ↓
+                      clamscan $fullPath
+                              ↓
+                      ClamAV quét file
+                              ↓
+                            Kết quả
+                            /     \
+                           /       \
+                         OK        FOUND
+                          ↓          ↓
+                       ready     quarantined                      
+
+                Sau khi quét, đoạn này xử lý kết quả:                      
+
+                      if (str_contains($result, 'OK')) {                      
+
+                          $document->update([
+                              'status' => 'ready',
+                          ]);                      
+
+                      } else {                      
+
+                          $document->update([
+                              'status' => 'quarantined',
+                          ]);
+                      }                      
+
+                Và đoạn này ở download là chặn file chưa sạch/bị nhiễm không cho tải:                      
+
+                      if ($document->status !== 'ready') {
+                          abort(403, 'File đang quét hoặc bị cách ly.');
+                      }                      
+
+                Vậy chia rõ trách nhiệm:                      
+
+                    1. QUÉT MALWARE
+                         ↓
+                      clamscan --no-summary $fullPath
+                         ↓
+                      Đây là phần chính                      
+                      
+
+                    2. XỬ LÝ KẾT QUẢ
+                         ↓
+                      OK    → status = ready
+                      FOUND → status = quarantined                      
+                      
+
+                    3. NGĂN FILE NGUY HIỂM ĐƯỢC SỬ DỤNG
+                         ↓
+                      if ($document->status !== 'ready')
+                          abort(403);                      
+
+                Còn những đoạn như:                      
+
+                      'mimes:pdf,jpg,jpeg,png'                      
+
+                      không phải malware scanning. Nó kiểm tra loại file.                      
+
+                      escapeshellarg($fullPath)                      
+
+                      cũng không quét malware; nó giúp giảm nguy cơ command injection khi truyền path vào shell command.                      
+
+                Tóm lại, nếu phỏng vấn hỏi “code nào quét malware?”, chỉ thẳng vào:                      
+
+                      $result = shell_exec(
+                          'clamscan --no-summary ' . escapeshellarg($fullPath)
+                      );                      
+
+                      ClamAV (clamscan) mới là thành phần thực sự phát hiện malware.
+     -------------------
+      ClamAV trả:                                       <
+
+         employee-documents/abc.pdf: OK
+
+         hoặc
+
+         employee-documents/abc.pdf: Win.Trojan FOUND
+     Bước 3: Download                                       <
+     Controller:                                       <
+
+         public function download(EmployeeDocument $document)
+         {
+             $this->authorize('download', $document);
+
+             if ($document->status !== 'ready') {
+                 abort(403, 'File đang quét hoặc bị cách ly.');
+             }
+
+             return Storage::disk('private')->download(
+                 $document->storage_path,
+                 $document->original_name
+             );
+         }
+
+     Nếu:                                       <
+
+         status = scanning
+
+         → không cho tải.
+
+     Nếu:                                       <
+
+         status = quarantined
+
+         → cũng không cho tải.
+
+     Vì sao dùng Queue?                                       <
+
+         Nếu scan ngay trong request:
+
+         Upload
+           ↓
+         Quét virus
+           ↓
+         3–10 giây
+           ↓
+         Response
+
+                User phải chờ.
+
+    Dùng Queue:                                       <
+
+         Upload
+           ↓
+         Lưu Private Storage
+           ↓
+         Trả "Upload thành công"
+           ↓
+         Queue chạy nền
+           ↓
+         Quét virus
+           ↓
+         Cập nhật trạng thái
+
+         Đây là pattern Senior rất phổ biến.
+
+     ClamAV là gì?                                       <
+         ClamAV
+         là antivirus mã nguồn mở, thường dùng phía server.
+
+         Upload
+           ↓
+         ClamAV
+           ↓
+         Virus?
+          ├── Không → Ready
+          └── Có → Quarantine
+ Kết hợp với các lớp bảo mật khác                                       <
+         User Upload
+               ↓
+         Extension whitelist
+               ↓
+         MIME validation
+               ↓
+         Magic bytes
+               ↓
+         Size limit
+               ↓
+         Random filename
+               ↓
+         Private Storage
+               ↓
+         Malware Scan
+               ↓
+         SHA-256
+               ↓
+         DB metadata
+               ↓
+         Policy
+               ↓
+         Download
+    Câu nhớ phỏng vấn                                       <
+
+         Malware Scanning không thay thế MIME hay Magic Bytes. MIME/Magic Bytes kiểm tra định dạng file, còn Malware Scanning kiểm tra nội dung có độc hại hay không. Trong Laravel doanh nghiệp, file thường được lưu vào Private Storage, đánh dấu scanning, quét bằng Queue (ví          dụ ClamAV), sau đó mới chuyển sang ready hoặc quarantined.      
+ 10 Không cho execute file upload | File user upload chỉ được xem/tải/đọc như dữ liệu, tuyệt đối không được server chạy nó như code.   | tổng hợp code ảnh trên                         <
     Đây là cực kỳ quan trọng.    
     Ví dụ attacker upload:                               <
          shell.php    
@@ -8286,19 +8577,1199 @@ Câu trả lời phỏng vấn:                                                 
          Auth + Policy
            ↓
          Signed URL nếu cần
+
+  Hiểu đơn giản:                  <
+
+         File user upload chỉ được xem/tải/đọc như dữ liệu, tuyệt đối không được server chạy nó như code.
+
+    Ví dụ attacker upload:                  <
+
+         shell.php
+
+     Nội dung:                  <
+
+         <?php
+         system($_GET['cmd']);
+
+         Nếu server lưu file vào nơi web server có thể truy cập và thực thi PHP, attacker có thể cố truy cập:
+
+         /uploads/shell.php?cmd=whoami
+
+         Nếu cấu hình server sai:                  <
+
+         shell.php
+            ↓
+         PHP chạy
+            ↓
+         system("whoami")
+            ↓
+         💥 Remote Code Execution
+
+         Đây là tình huống rất nguy hiểm.
+
+    1. Sai: lưu upload vào public/                  <
+
+       Ví dụ không nên:                  <
+
+         $file->move(
+             public_path('uploads'),
+             $file->getClientOriginalName()
+         );
+                  <
+       File có thể nằm:                  <
+
+         project/
+         └── public/
+             └── uploads/
+                 └── shell.php
+
+       public/ là web root:                  <
+
+         Internet
+            ↓
+         https://example.com/uploads/shell.php
+            ↓
+         Web Server
+
+         Nếu web server/PHP handler cho phép execute .php trong thư mục đó → nguy hiểm.
+
+    2. Tốt hơn: Private Storage                  <
+
+      Ví dụ bạn vừa học:                  <
+
+         $path = $file->store(
+             'employee-documents',
+             'private'
+         );
+
+      File nằm ngoài web root:                  <
+
+         project/
+         ├── public/
+         │   └── index.php
+         │
+         └── storage/
+             └── app/
+                 └── private/
+                     └── employee-documents/
+                         └── abc123.pdf
+
+      Browser không thể trực tiếp gọi:                  <
+
+         https://example.com/storage/app/private/employee-documents/abc123.pdf
+
+         để web server thực thi nó.
+
+      Luồng phải đi:                  <
+
+         User
+           ↓
+         Laravel Route
+            ↓
+         Authentication
+            ↓
+         Policy
+            ↓
+           DB
+            ↓
+         $knownDbPath
+            ↓
+         Private Storage
+            ↓
+         File được trả như DATA
+    3. Chặn loại file executable ngay từ upload                  <
+
+       FormRequest:                  <
+
+         public function rules(): array
+         {
+             return [
+                 'document' => [
+                     'required',
+                     'file',
+                     'mimes:pdf,jpg,jpeg,png',
+                     'max:10240',
+                 ],
+             ];
+         }
+
+      Cho phép:                  <
+
+         .pdf
+         .jpg
+         .jpeg
+         .png
+
+      Không nằm trong whitelist:                  <
+
+         .php
+         .phar
+         .sh
+         .exe
+
+         → reject.
+
+         Nhưng validation không nên là lớp bảo vệ duy nhất. File upload vẫn nên được lưu ở nơi không executable.
+
+    4. Random filename                  <
+
+      Tiếp tục:
+
+         $path = $file->store(
+             'employee-documents',
+             'private'
+         );
+
+      Thay vì tin:                  <
+
+         hopdong.pdf
+
+         server tạo tên lưu trữ riêng:
+
+         a8Hd92ks....pdf
+
+      Không làm:                  <
+
+         $file->storeAs(
+             'employee-documents',
+             $file->getClientOriginalName(),
+             'private'
+         );
+
+      Tên gốc chỉ nên dùng làm metadata/display:                  <
+
+         'original_name' => $file->getClientOriginalName(),
+         'storage_path'  => $path,
+    5. Download file, không include / require                  <
+
+         Đây cũng rất quan trọng.
+
+         ❌ Tuyệt đối không
+         include $knownDbPath;
+
+      hoặc:                  <
+
+         require $knownDbPath;
+
+         Bởi vì PHP có thể coi nội dung đó là code cần thực thi.
+
+         ✅ File chỉ là dữ liệu
+
+      Đọc:                  <
+
+         $content = Storage::disk('private')->get(
+             $knownDbPath
+         );
+
+         hoặc download:                  <
+
+         return Storage::disk('private')->download(
+             $knownDbPath,
+             $document->original_name
+         );
+
+      get() ở đây:                  <
+
+         File
+          ↓
+         đọc bytes/content
+           ↓
+         $data
+
+         không có nghĩa là:
+
+         File
+           ↓
+         execute PHP
+    6. Kết hợp với Malware Scanning vừa học                  <
+
+         Một hệ thống tốt không chỉ có một lớp:                  <                   <                  <
+
+                       UPLOAD
+                          ↓
+                       Extension/MIME whitelist
+                          ↓
+                       Magic bytes
+                          ↓
+                       Size limit
+                          ↓
+                       Random filename
+                          ↓
+                       Private Storage / Quarantine
+                          ↓
+                       Malware scanning
+                          ↓
+                 ┌───────────────┐
+                 │               │
+               CLEAN          MALWARE
+                 │               │
+                 ↓               ↓
+               ready        quarantined
+                 ↓
+         Policy/Authorization
+                 ↓
+         Download as DATA
+                 ↓
+               USER
+    7. CQRS của bạn                  <
+
+         Có thể nhìn như:                  <
+
+         Request
+           ↓
+         FormRequest
+           ↓
+         Controller
+           ↓
+         Command
+           ↓
+         Command Handler
+           ↓
+         Validate file
+           ↓
+         Private Storage
+           ↓
+         Queue Malware Scan
+           ↓
+          DB
+          ├── storage_path
+          └── status
+
+         Khi download:                  <
+
+         GET /documents/55/download
+           ↓
+         Controller
+           ↓
+         Query
+           ↓
+         Query Handler
+           ↓
+         Repository
+           ↓
+           DB
+           ↓
+         $knownDbPath
+           ↓
+         status == ready?
+           ↓
+         Policy
+           ↓
+         Storage::disk('private')->download(...)
+         Vậy code nào đang “không cho execute”?
+
+      Không có một dòng thần kỳ kiểu:                  <
+
+         // disableExecute();
+
+      Nó là nhiều lớp bảo vệ. Quan trọng nhất trong ví dụ của bạn là:                  <
+
+         $path = $file->store(
+             'employee-documents',
+             'private'
+         );
+
+         → lưu ngoài public/.
+
+     Tiếp theo:                  <
+
+         'mimes:pdf,jpg,jpeg,png'
+
+         → không cho upload loại executable thông thường.
+
+     Và:                  <
+
+         return Storage::disk('private')->download(
+             $knownDbPath
+          );
+
+         → phục vụ file như file/data thay vì include/require để thực thi.
+ Cách nhớ tổng                 <
+         Upload file
+              ↓
+         KHÔNG đặt vào vùng executable
+              ↓
+         Private Storage
+              ↓
+         KHÔNG include/require
+              ↓
+         chỉ get()/download()
+              ↓
+         FILE = DATA, KHÔNG PHẢI CODE
+
+         Nguyên tắc: File do user upload phải luôn được đối xử như dữ liệu không đáng tin, không bao giờ như mã chương trình.
+
 7.10 API Security                      <
- Sanctum token
- Token abilities/scopes
- Token expiration
- Token rotation/revocation
- Rate Limit
- CORS
- HTTPS
- API authorization
- API validation
- chống replay attack
- Idempotency Key
- API versioning security
+ 1 Sanctum token  |  Dùng token để xác thực API client/user.                         <
+    Dùng token để xác thực API client/user.   
+
+   Tạo token:   
+
+   $token = $user
+       ->createToken('react-native')
+       ->plainTextToken;   
+
+   Server trả:   
+
+   1|xH8K92....   
+
+   App lưu token và các request sau gửi:   
+
+   Authorization: Bearer 1|xH8K92....   
+
+   Route:   
+
+   Route::middleware('auth:sanctum')->get(
+       '/employees',
+       EmployeeController::class
+   );   
+
+   Luồng:   
+
+   Bearer Token
+       ↓
+   auth:sanctum
+       ↓
+   Token hợp lệ?
+       ↓
+   User   
+
+   Sanctum token → “Bạn là ai?”
+ 2 Token abilities/scopes | Không nên cho một token làm tất cả mọi thứ. | Ability→ token này được phép dùng cho mục đích gì |  Ability không thay Policy/Permission                     <
+
+    Ví dụ:
+
+    $token = $user->createToken(
+        'payroll-app',
+        [
+            'employee:read',
+            'payroll:read',
+        ]
+    )->plainTextToken;
+
+    Token được:
+
+    employee:read  ✅
+    payroll:read   ✅
+
+    payroll:approve ❌
+    employee:delete ❌
+
+    Kiểm tra:
+
+    if (! $request->user()->tokenCan('payroll:read')) {
+        abort(403);    
+     }
+
+    Cách nhớ:
+
+    Token
+    → xác thực client/user
+
+    Ability
+    → token này được phép dùng cho mục đích gì
+
+    Ability không thay Policy/Permission.
+ 3 Token expiration | Token không nên sống vô hạn trong những trường hợp cần bảo mật cao.                     <
+    Ví dụ token hết hạn:   
+      Login
+       ↓
+      Token
+       ↓
+      sử dụng...
+       ↓
+      Expiration
+       ↓
+      ❌ không sử dụng được nữa      
+
+      Sanctum hỗ trợ cấu hình expiration và cũng có thể đặt expiration khi tạo token tùy phiên bản/cách triển khai.      
+
+    Mục đích:      
+
+      Token bị đánh cắp không thể được sử dụng mãi mãi.
+ 4 Token rotation/revocation | Revocation = thu hồi token.                     <
+   Ví dụ logout thiết bị hiện tại:    
+
+    $request->user()->currentAccessToken()->delete();    
+
+    Thu hồi tất cả token:    
+
+    $request->user()->tokens()->delete();    
+
+  Luồng:    
+
+    Token ABC
+     ↓
+    bị revoke
+     ↓
+    DB xóa/thu hồi
+     ↓
+    request tiếp theo
+     ↓
+    401    
+
+  Rotation là:    
+
+    Token A
+     ↓
+    gần hết hạn / cần thay
+     ↓
+    cấp Token B
+     ↓
+    vô hiệu Token A    
+
+    Giúp giảm thời gian một credential cũ có giá trị.
+ 5 Rate Limit | Ngăn client gọi API quá nhiều lần.                     <
+   Ví dụ:      
+
+      Attacker
+       ↓
+      POST /api/login
+       ↓
+      10.000 request/phút      
+
+      Rate Limit:      
+
+      Request
+       ↓
+      RateLimiter
+       ↓
+      quá giới hạn?
+       ├── NO  → tiếp tục
+       └── YES → 429 Too Many Requests      
+
+   Laravel có throttle middleware, ví dụ:      
+
+      Route::middleware([
+          'throttle:60,1'
+      ])->group(function () {
+          // API routes
+      });      
+
+   Đặc biệt quan trọng cho:      
+
+      login
+      OTP
+      password reset
+      search
+      export
+      expensive reports
+      public API
+ 6 CORS |  CORS quyết định browser có được phép thực hiện/đọc cross-origin request theo policy hay không.  backend vs app                        <
+   Bạn đã học phần này.     
+
+     React
+     https://app.example.com
+            ↓
+     Laravel API
+     https://api.example.com     
+
+   CORS quyết định browser có được phép thực hiện/đọc cross-origin request theo policy hay không.     
+
+     Ví dụ:     
+
+     'allowed_origins' => [
+         'https://app.example.com',
+     ],     
+
+     Nhớ:     
+
+     CORS ≠ Authentication
+     CORS ≠ Authorization
+     CORS ≠ CSRF     
+
+     CORS không phải cơ chế ngăn attacker gọi API từ mọi loại client.
+ 7 HTTPS |  Không gửi token qua HTTP ở production. | bài CSRF SPA API bài trên                      <
+     Không gửi token qua HTTP ở production.
+      
+      ❌:
+
+      http://api.example.com
+      
+      ✅:
+
+      https://api.example.com
+
+      Vì request chứa:
+
+      Authorization: Bearer SECRET_TOKEN
+
+      HTTPS/TLS bảo vệ dữ liệu trên đường truyền khỏi việc bị đọc/sửa dễ dàng bởi bên trung gian.
+
+      Luồng:
+
+      App
+       ↓
+      Bearer Token
+       ↓
+      TLS encrypted connection
+       ↓
+      Internet
+       ↓
+      Laravel
+ 8 API authorization | Có token hợp lệ chưa có nghĩa là được làm mọi thứ.                     <
+     Có token hợp lệ chưa có nghĩa là được làm mọi thứ.
+
+   Ví dụ:
+
+    User A
+    company_id = 1
+
+    Payroll Run #900
+    company_id = 2
+
+   Request:
+
+    GET /api/payroll-runs/900
+    Authorization: Bearer VALID_TOKEN
+
+   Token hợp lệ:
+
+    Authentication ✅
+
+   Nhưng:
+
+    company khác ❌
+
+   Policy:
+
+    public function view(User $user, PayrollRun $run): bool    
+    {
+        return $user->company_id === $run->company_id
+            && $user->can('payroll-run.view');    
+    }
+
+    Đây chính là chống Broken Access Control/IDOR.
+ 9 API validation | Không tin JSON frontend gửi lên.                     <
+    Không tin JSON frontend gửi lên.
+
+   Request:
+   
+    {
+       "company_id": 999,
+       "status": "HACKED",
+       "amount": -999999999   
+    }
+
+   FormRequest:
+
+   public function rules(): array   
+   {
+       return [
+           'company_id' => [
+               'required',
+               'integer',
+               'exists:companies,id',
+           ],
+
+           'amount' => [
+               'required',
+               'integer',
+               'min:0',
+           ],
+
+           'status' => [
+               'required',
+               Rule::in([
+                   'draft',
+                   'submitted',
+               ]),
+           ],
+       ];   
+    }
+
+   Sau đó:
+
+   $data = $request->validated();
+
+   Rồi mới:
+
+   validated()
+    ↓
+   DTO
+    ↓
+   Command
+    ↓
+   Handler
+ 10 chống replay attack | Attacker lấy được một request hợp lệ rồi gửi lại chính request đó để hành động xảy ra lần nữa.   5                < lệnh ATM
+   Replay Attack hiểu đơn giản:
+
+     Attacker lấy được một request hợp lệ rồi gửi lại chính request đó để hành động xảy ra lần nữa.
+
+   Ví dụ request hợp lệ:
+
+     POST /api/payments
+     amount = 1,000,000
+
+   Attacker replay:
+
+     Request #1 → trừ 1 triệu
+     Request #2 → trừ 1 triệu
+     Request #3 → trừ 1 triệu
+
+   Có thể chống tùy loại API bằng:
+
+     Timestamp | request được tạo lúc nào?                        <
+        1. Timestamp — request được tạo lúc nào?
+
+         Client gửi:
+
+          timestamp = 1789100000
+
+         Server quy định:
+
+          Request chỉ hợp lệ trong ±5 phút
+
+         Kiểm tra kiểu:
+
+          $timestamp = (int) $request->header('X-Timestamp');
+
+          if (abs(now()->timestamp - $timestamp) > 300) {
+              abort(401, 'Request expired.');
+          }
+
+         Attacker lấy request hôm qua và replay hôm nay:
+
+          Timestamp
+             ↓
+          quá 5 phút
+             ↓
+          ❌ Reject
+
+          Nhưng Timestamp một mình chưa đủ.
+
+        Attacker có thể bắt request rồi replay ngay:
+
+          10:00:01 Request thật
+          10:00:02 Replay
+
+          Vẫn nằm trong 5 phút.
+     Nonce  |  một giá trị ngẫu nhiên/duy nhất cho một request.                       <
+       2. Nonce — request này đã được dùng chưa?
+
+           Nonce = một giá trị ngẫu nhiên/duy nhất cho một request.
+
+         Ví dụ client tạo:
+
+           X-Nonce: 7d00c3f1-8b...
+
+         Laravel kiểm tra Redis:
+
+           $nonce = $request->header('X-Nonce');
+
+           $key = "api:nonce:{$nonce}";
+
+           if (! Cache::add($key, true, now()->addMinutes(5))) {
+               abort(409, 'Request already used.');
+            }
+
+           Cache::add() rất hữu ích ở đây vì nó chỉ thành công nếu key chưa tồn tại.                         <
+
+         Lần đầu:
+
+           Nonce ABC
+            ↓
+           Redis chưa có
+            ↓
+           Cache::add() = true
+            ↓
+           ✅ cho qua
+
+         Replay:
+
+           Nonce ABC
+            ↓
+           Redis đã có
+            ↓
+           Cache::add() = false
+            ↓
+           ❌ Reject
+
+           Đây mới trực tiếp phát hiện request identifier đã được dùng.
+     Signature/HMAC | request có bị giả mạo/chỉnh sửa?                        <
+            Giả sử client gửi:
+
+               {
+                   "amount": 1000000,
+                   "employee_id": 55
+               }
+
+             Ta ký các thành phần quan trọng:
+
+               POST
+               +
+               /api/payments
+               +
+               timestamp
+               +
+               nonce
+               +
+               body
+               +
+               SECRET
+
+             Ví dụ:
+
+               $payload =
+                   $request->method() . "\n" .
+                   $request->path() . "\n" .
+                   $timestamp . "\n" .
+                   $nonce . "\n" .
+                   $request->getContent();
+
+               $expectedSignature = hash_hmac(
+                   'sha256',
+                   $payload,
+                   $secret
+               );
+
+             Client gửi:
+
+               X-Signature: a893fd82...
+
+             Server so sánh:
+
+               if (! hash_equals(
+                   $expectedSignature,
+                   $request->header('X-Signature')
+               )) {
+                   abort(401, 'Invalid signature.');
+               }
+
+             Nếu attacker sửa:
+
+               amount = 1,000,000
+
+               thành:
+
+               amount = 100,000,000
+
+             thì:
+
+               Body thay đổi
+                ↓
+               HMAC thay đổi
+                ↓
+               Signature không khớp
+                ↓
+               ❌ Reject
+
+               Lưu ý quan trọng: HMAC dùng shared secret phù hợp hơn cho server-to-server/webhook hoặc client tin cậy. Không nên nhúng một HMAC secret lâu                dài vào React web/React Native rồi coi nó là bí mật tuyệt đối, vì client có thể bị phân tích/reverse-engineer.
+     Idempotency Key | nghiệp vụ không chạy hai lần                        <
+      Ví dụ:
+
+           POST /api/payments
+           Idempotency-Key: PAY-ABC-123
+
+         Lần đầu:
+
+           PAY-ABC-123
+            ↓
+           chưa xử lý
+            ↓
+           Payment
+            ↓
+           1.000.000đ
+            ↓
+           lưu kết quả
+
+         Do mạng lag, app retry:
+
+           PAY-ABC-123
+            ↓
+           đã xử lý
+            ↓
+           ❌ không tạo payment thứ hai
+            ↓
+           trả lại kết quả trước
+
+        DB có thể có:
+
+           idempotency_key
+           ----------------
+           PAY-ABC-123
+
+         và:
+
+           UNIQUE(idempotency_key)
+
+           Đây rất hợp với Payroll của bạn:
+
+           POST /payroll-runs/100/finalize
+
+           Idempotency-Key:
+           finalize-run-100-abc123
+
+        Request bị gửi 5 lần:
+
+           Request 1 → Finalize ✅
+           Request 2 → không finalize lại
+           Request 3 → không finalize lại
+           Request 4 → không finalize lại
+           Request 5 → không finalize lại
+     Short-lived credentials/signatures  | ignatures — chỉ sống thời gian ngắn                       <
+       
+            5. Short-lived Credentials / Signatures — chỉ sống thời gian ngắn                 
+
+             Ví dụ tạo một signed URL chỉ sống 5 phút:                 
+
+                 URL::temporarySignedRoute(
+                     'payroll.download',
+                     now()->addMinutes(5),
+                     ['payslip' => $payslip->id]
+                 );                 
+
+              Luồng:                 
+
+                 10:00
+                  ↓
+                 Signature được tạo
+                  ↓
+                 hết hạn 10:05                 
+
+                 10:03 → ✅                 
+
+                 10:06 → ❌ expired                 
+
+                 Hoặc credential/token ngắn hạn:                 
+
+                 Credential
+                  ↓
+                 TTL = 5 phút
+                  ↓
+                 Attacker đánh cắp
+                  ↓
+                 cửa sổ sử dụng bị giới hạn                 
+
+                 Nó không đảm bảo một request không thể replay trong chính khoảng thời gian còn hiệu lực, nên thường phải kết hợp với nonce/idempotency tùy                  bài toán.
+    Timestamp
+          → CÒN MỚI?      
+
+    Nonce
+          → ĐÃ GỬI CHƯA?      
+
+    HMAC
+          → CÓ BỊ GIẢ/SỬA?      
+
+    Idempotency Key
+          → ĐÃ XỬ LÝ NGHIỆP VỤ CHƯA?      
+
+    Short-lived
+          → CÒN HẠN?
+   Ví dụ signed request:
+
+     timestamp = 1789000000
+     nonce = abc123
+     signature = HMAC(...)
+
+   Server kiểm tra:
+
+     Signature đúng?
+      ↓
+     Timestamp còn trong window?
+      ↓
+     Nonce đã dùng chưa?
+      ↓
+     NO
+      ↓
+     xử lý
+      ↓
+     đánh dấu nonce đã dùng
+
+     Nếu gửi lại cùng nonce:
+
+     nonce = abc123
+
+     → đã sử dụng
+     → ❌ reject
+
+     Không phải mọi API nội bộ thông thường đều cần tự xây HMAC/nonce; cơ chế phụ thuộc threat model.
+ 11 Idempotency Key | Key đã tồn tại KHÔNG finalize lần 2                     <
+  Cái này cực kỳ quan trọng với Payroll/Payment.     
+
+   Frontend tạo:     
+
+     Idempotency-Key: 550e8400-e29b-41d4-a716     
+
+   Request:     
+
+     POST /api/payroll-runs/100/finalize     
+
+   Lần đầu:     
+
+     Key ABC
+      ↓
+     chưa tồn tại
+      ↓
+     Finalize
+      ↓
+     lưu ABC
+      ↓
+     200 OK     
+
+   Request retry:     
+
+     Key ABC
+      ↓
+     đã tồn tại
+      ↓
+     KHÔNG finalize lần 2
+      ↓
+     trả kết quả cũ / trạng thái phù hợp     
+
+   Database nên có UNIQUE:     
+
+     UNIQUE(idempotency_key)     
+
+   Cái này đặc biệt quan trọng với:     
+
+     Payment
+     Payroll finalize
+     Create invoice
+     Transfer money
+     Generate payslip batch
+     Create order
+ 12 API versioning security | cho projec cái version , chô bản vá thì nhớ đóng version cũ                      <
+   Ví dụ:
+     /api/v1/employees
+     /api/v2/employees
+
+     Versioning không chỉ để thay đổi tính năng.
+
+   Vấn đề bảo mật xảy ra khi:
+
+     v2
+     → đã sửa authorization vulnerability
+
+     nhưng
+
+     v1
+     → vẫn public
+     → vẫn chứa vulnerability
+
+   Attacker chỉ việc gọi:
+
+     /api/v1/...
+
+     Vì vậy:
+
+     API v1
+      ↓
+     deprecated
+      ↓
+     thông báo migration
+      ↓
+     sunset date
+      ↓
+     disable/remove
+
+   Và các version đang hoạt động đều phải có:
+
+     Authentication
+     Authorization
+     Validation
+     Rate Limit
+     Logging
+     Security patches | cho projec cái version , chô bản vá thì nhớ đóng version cũ | Do đó:API version đang được support > phải nhận security patches | Còn version hết support: v1 >Deprecated > Sunset > Disable                      <
+      Security Patches là gì?
+
+         Security patch = bản vá bảo mật.
+
+         Hiểu đơn giản:
+
+         Laravel, PHP hoặc package phát hiện lỗ hổng → nhà phát triển phát hành phiên bản đã sửa → bạn cập nhật project để nhận bản vá đó.
+
+         Ví dụ:
+
+         Laravel/package v1.2
+                ↓
+         phát hiện lỗ hổng
+                ↓
+         attacker có thể khai thác
+                ↓
+         nhà phát triển sửa
+                ↓
+         v1.2.1
+                ↓
+         Security Patch
+         Ví dụ trong Laravel
+
+         Project có thể gồm:
+
+         Laravel Framework
+         Sanctum
+         Spatie Permission
+         Yajra DataTables
+         Laravel Excel
+         Redis client
+         PHP
+         npm packages
+         ...
+
+         Nếu một dependency có lỗ hổng, code của bạn viết đúng vẫn có thể chịu ảnh hưởng.
+
+         Kiểm tra Composer dependency có advisory bảo mật:
+
+         composer audit
+
+         Nếu có vấn đề, output có thể chỉ ra package/version/advisory liên quan. Sau đó cần xem dependency nào cần nâng cấp và cập nhật có kiểm soát.
+
+         Ví dụ kiểm tra package cũ:
+
+         composer outdated
+
+         Rồi cập nhật package cụ thể khi phù hợp:
+
+         composer update vendor/package
+
+         Không nên cứ thấy security issue là chạy mù quáng:
+
+         composer update
+
+         trên production, vì có thể nâng nhiều dependency cùng lúc và gây breaking change. Nên:
+
+         Security advisory
+               ↓
+         Xác định package/version bị ảnh hưởng
+               ↓
+         Đọc bản vá/changelog
+               ↓
+         Update dependency
+               ↓
+         PHPStan/Larastan
+               ↓
+         Unit Test
+               ↓
+         Feature Test
+               ↓
+         Integration/E2E
+               ↓
+         Staging
+               ↓
+         Production
+         npm/frontend cũng phải kiểm tra
+
+         Ví dụ:
+
+         npm audit
+
+         Và xem package cũ:
+
+         npm outdated
+
+         Nhưng cũng không nên mặc định:
+
+         npm audit fix --force
+
+         vì --force có thể nâng major version và phá compatibility.
+
+         PHP/server cũng thuộc phạm vi patch
+
+         Không chỉ Laravel:
+
+         Application
+         ├── Laravel
+         ├── Sanctum
+         ├── Composer packages
+         ├── npm packages         
+         │
+         Runtime
+         ├── PHP
+         ├── Redis
+         ├── MySQL         
+         │
+         └── Infrastructure
+             ├── Nginx/Apache
+             ├── Docker images
+             └── OS packages
+
+         Tất cả đều có thể cần security patch.
+
+         Liên quan API Versioning Security
+
+         Đây là chỗ tôi vừa nhắc Security patches.
+
+         Giả sử:
+
+         /api/v1/payroll
+         /api/v2/payroll
+
+         Bạn phát hiện authorization vulnerability:
+
+         v1 ❌ có lỗ hổng
+         v2 ✅ đã sửa
+
+         Nhưng nếu:
+
+         /api/v1
+
+         vẫn public, attacker vẫn có thể gọi version cũ.
+
+         Do đó:
+
+         API version đang được support
+                 ↓
+         phải nhận security patches
+
+         Còn version hết support:
+
+         v1
+          ↓
+         Deprecated
+          ↓
+         Sunset
+          ↓
+         Disable
+         Ví dụ với project ERP của bạn
+
+         Giả sử phát hiện package xử lý quyền có vulnerability:
+
+         Security advisory
+               ↓
+         Kiểm tra project có dùng version bị ảnh hưởng?
+               ↓
+         Có
+               ↓
+         Nâng lên patched version
+               ↓
+         composer audit
+               ↓
+         PHPStan
+               ↓
+         Unit + Feature tests
+               ↓
+         Test:
+         Permission
+         Policy
+         Tenant Isolation
+         Payroll Authorization
+               ↓
+         Deploy
+
+         Cách nhớ:
+
+         Security Patch
+         = Vá lỗ hổng đã được phát hiện
+
+         composer audit
+         = Kiểm tra advisory của Composer dependencies
+
+         npm audit
+         = Kiểm tra npm dependencies
+
+         Update + Test + Deploy
+         = Đưa bản vá vào hệ thống an toàn
+
+         Trong môi trường doanh nghiệp, không patch dependency cũng là một rủi ro bảo mật, dù code nghiệp vụ của bạn không thay đổi.
+
+  Đừng nghĩ:
+
+     v2 an toàn
+     → hệ thống an toàn
+
+     nếu:
+
+     v1 vẫn mở và có lỗ hổng
 7.11 Rate Limiting / Brute Force                              <
  RateLimiter::for('login', function (Request $request) {
      return Limit::perMinute(5)
