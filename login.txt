@@ -8899,7 +8899,7 @@ Câu trả lời phỏng vấn:                                                 
 
          Nguyên tắc: File do user upload phải luôn được đối xử như dữ liệu không đáng tin, không bao giờ như mã chương trình.
 
-7.10 API Security                      <
+7.10 API Security       12               <
  1 Sanctum token  |  Dùng token để xác thực API client/user.                         <
     Dùng token để xác thực API client/user.   
 
@@ -9770,7 +9770,7 @@ Câu trả lời phỏng vấn:                                                 
      nếu:
 
      v1 vẫn mở và có lỗ hổng
-7.11 Rate Limiting / Brute Force                              <
+7.11 Rate Limiting / Brute Force | giới hạn time cho   Login |Forgot password | OTP | API | Export | Import | Search nặng | gửi email/SMS                             <
  RateLimiter::for('login', function (Request $request) {
      return Limit::perMinute(5)
          ->by($request->ip());
@@ -9786,21 +9786,825 @@ Câu trả lời phỏng vấn:                                                 
  Import
  Search nặng
  gửi email/SMS
+
+     Hai khái niệm này liên quan chặt với nhau:     <
+
+            Brute Force = kẻ tấn công thử rất nhiều lần.
+            Rate Limiting = giới hạn số lần được thử/gọi trong một khoảng thời gian.     
+
+         Ví dụ login:     
+
+            Attacker
+               ↓
+            password: 123456     ❌
+            password: admin123   ❌
+            password: password   ❌
+            password: qwerty     ❌
+            password: 12345678   ❌
+            ...
+            1.000.000 lần     
+
+            Nếu API không giới hạn:     
+
+            POST /api/login
+            POST /api/login
+            POST /api/login
+            POST /api/login
+            ...     
+
+            Attacker có thể thử mật khẩu liên tục.     
+
+            Rate Limit đặt một "cổng":     
+
+            POST /api/login
+                  ↓
+            Rate Limiter
+                  ↓
+            Đã thử bao nhiêu lần?
+                  ↓
+             ┌────┴────┐
+             ≤ 5       > 5
+             ↓           ↓
+            Cho qua     429
+                        Too Many Requests
+       1. Rate Limiting cơ bản trong Laravel     
+
+            Ví dụ:     
+
+            Route::post('/login', LoginController::class)
+                ->middleware('throttle:5,1');     
+
+            Hiểu đơn giản:     
+
+            5 request
+            trong
+            1 phút     
+
+            Request:     
+
+            #1 → ✅
+            #2 → ✅
+            #3 → ✅
+            #4 → ✅
+            #5 → ✅     
+
+            #6 → ❌ 429 Too Many Requests     
+
+            Sau khi cửa sổ giới hạn được reset, request lại có thể được phép theo limiter.     
+
+       2. Laravel RateLimiter     
+
+            Với hệ thống lớn, nên định nghĩa limiter rõ ràng thay vì rải các con số khắp route.     
+
+            Ví dụ:     
+
+            use Illuminate\Cache\RateLimiting\Limit;
+            use Illuminate\Support\Facades\RateLimiter;     
+
+            RateLimiter::for('login', function ($request) {
+                return Limit::perMinute(5)
+                    ->by($request->ip());
+            });     
+
+            Route:     
+
+            Route::post('/login', LoginController::class)
+                ->middleware('throttle:login');     
+
+            Luồng:     
+
+            Request
+             ↓
+            throttle:login
+             ↓
+            RateLimiter "login"
+             ↓
+            IP này đã gọi bao nhiêu lần?
+             ↓
+            Limit::perMinute(5)
+             ↓
+            Controller
+       3. Chỉ giới hạn theo IP có đủ không?     
+
+            Không phải lúc nào cũng đủ.     
+
+            Ví dụ:     
+
+            ->by($request->ip())     
+
+            Attacker có thể dùng nhiều IP.     
+
+            Ngược lại, nhiều user thật có thể dùng chung IP công ty/NAT.     
+
+            Với login, thường nên cân nhắc kết hợp định danh tài khoản + IP.     
+
+            Ví dụ:     
+
+            use Illuminate\Support\Str;     
+
+            $email = Str::lower(
+                (string) $request->input('email')
+            );     
+
+            $key = $email . '|' . $request->ip();     
+
+            Sau đó:     
+
+            return Limit::perMinute(5)
+                ->by($key);     
+
+            Tức là:     
+
+            email@example.com
+                   +
+            192.168.1.100
+                   ↓
+            email@example.com|192.168.1.100
+                   ↓
+            Rate Limit Key     
+
+            Không nên đưa raw email vào key/log nếu hệ thống có yêu cầu privacy cao; có thể hash identifier.     
+
+       4. Brute Force không chỉ xảy ra ở Login     
+
+            Các endpoint nhạy cảm khác:     
+
+            POST /login
+            POST /forgot-password
+            POST /reset-password
+            POST /otp/verify
+            POST /otp/resend
+            POST /email/verify
+            POST /api-token
+            POST /invitation/accept     
+
+            Đặc biệt OTP.     
+
+            Nếu OTP có 6 số:     
+
+            000000
+            →
+            999999     
+
+            mà API cho thử vô hạn:     
+
+            POST /otp/verify
+             ↓
+            000001 ❌
+            000002 ❌
+            000003 ❌
+            ...     
+
+            Rate Limit giúp hạn chế tốc độ thử.     
+
+        5. Rate Limit cho OTP     
+
+            Ví dụ:     
+
+            RateLimiter::for('otp', function ($request) {     
+
+                $key = $request->ip()
+                    . '|'
+                    . hash(
+                        'sha256',
+                        (string) $request->input('email')
+                    );     
+
+                return Limit::perMinute(5)
+                    ->by($key);
+            });     
+
+            Route:     
+
+            Route::post('/otp/verify', VerifyOtpController::class)
+                ->middleware('throttle:otp');     
+
+            Nhưng OTP bảo mật tốt còn cần:     
+
+            Rate Limit
+            +
+            OTP expiration
+            +
+            Maximum failed attempts
+            +
+            One-time use
+            +
+            Secure random generation
+       6. Login failed attempts     
+
+            Ngoài request rate limiting, bạn có thể kiểm soát failed authentication attempts.     
+
+            Luồng:     
+
+            Login
+             ↓
+            Password đúng?
+             ├── YES
+             │    ↓
+             │  Login
+             │
+             └── NO
+                  ↓
+             Failed attempts +1
+                  ↓
+             đạt ngưỡng?
+                  ├── NO → cho thử tiếp
+                  └── YES
+                        ↓
+                      cooldown     
+
+            Ví dụ tư duy:     
+
+            5 lần sai
+               ↓
+            chặn thử thêm trong khoảng ngắn     
+
+            Tuy nhiên tránh khóa tài khoản quá cứng chỉ dựa vào username/email, vì attacker có thể cố tình nhập sai để gây DoS khóa tài khoản nạn        nhân.     
+
+       7. Rate Limit API bình thường     
+
+            Không chỉ chống brute force.     
+
+            Ví dụ API:     
+
+            GET /api/employees     
+
+            Bạn có thể giới hạn request theo user/token.     
+
+            Ví dụ:     
+
+            RateLimiter::for('api', function ($request) {
+                return Limit::perMinute(60)
+                    ->by(
+                        $request->user()?->id
+                        ?? $request->ip()
+                    );
+            });     
+
+            Luồng:     
+
+            Authenticated?
+                  ↓
+                 YES
+                  ↓
+               user_id
+                  ↓
+            60 requests/minute     
+
+            Nếu chưa login:     
+
+            IP
+             ↓
+            60 requests/minute
+      8. Endpoint nặng phải limit thấp hơn     
+
+            Ví dụ ERP của bạn:     
+
+            GET  /api/employees
+            POST /api/payroll/export
+            POST /api/payroll-runs/calculate
+            POST /api/reports/generate     
+
+            Không nên nhất thiết cho tất cả cùng một limit.     
+
+            Ví dụ:     
+
+            employees list
+            → 120/min     
+
+            login
+            → 5/min     
+
+            OTP verify
+            → 5/min     
+
+            export
+            → 10/min     
+
+            payroll calculation
+            → thấp hơn + Queue + idempotency     
+
+            Con số thực tế phải dựa vào workload và threat model, không có một con số đúng cho mọi hệ thống.     
+
+      9. HTTP 429     
+
+            Khi vượt giới hạn:     
+
+            HTTP/1.1 429 Too Many Requests     
+
+            Ý nghĩa:     
+
+            Bạn đang gửi quá nhiều request.     
+
+            Client nên xử lý:     
+
+            429
+             ↓
+            không spam retry ngay
+             ↓
+            chờ
+             ↓
+            retry sau     
+
+            Thường có thể có metadata/header cho biết thời gian retry tùy middleware/config.     
+
+      10. Rate Limiting không phải Authorization     
+
+            Cực kỳ quan trọng:     
+
+            Rate Limit
+            → được gọi BAO NHIÊU LẦN?     
+
+            Authentication
+            → BẠN LÀ AI?     
+
+            Authorization
+            → BẠN ĐƯỢC LÀM GÌ?     
+
+            Ví dụ:     
+
+            Attacker gọi /admin/payroll
+            chỉ 1 request     
+
+            Rate Limit:     
+
+            1/60
+            → ✅     
+
+            Nhưng Authorization phải:     
+
+            Không có payroll.approve
+            → ❌ 403
+       11. Rate Limit cũng không thay CAPTCHA/MFA     
+
+            Đối với login quan trọng có thể có nhiều lớp:     
+
+            Login Request
+                 ↓
+            Rate Limit
+                 ↓
+            Credentials
+                 ↓
+            Suspicious behavior?
+                 ↓
+            CAPTCHA / additional challenge
+                 ↓
+            MFA
+                 ↓
+            Session / Token     
+
+            Không nhất thiết request nào cũng bắt CAPTCHA.     
+
+       12. CQRS trong project của bạn     
+
+            Rate Limit nên xảy ra trước Controller/CQRS Handler.     
+
+            React Native
+                 ↓
+            POST /api/login
+                 ↓
+            HTTPS
+                 ↓
+            Rate Limit Middleware
+                 ↓
+            FormRequest
+                 ↓
+            Controller
+                 ↓
+            Command
+                 ↓
+            Handler
+                 ↓
+            Authentication Service
+                 ↓
+            Database
+                 ↓
+            Sanctum Token     
+
+            Nếu vượt limit:     
+
+            Request
+             ↓
+            Rate Limit
+             ↓
+            429     
+
+            Nó không cần chạy tiếp:     
+
+            ❌ Controller
+            ❌ Command
+            ❌ Handler
+            ❌ DB authentication query     
+
+            Điều này vừa giúp security vừa giảm tải.     
+
+            Cách nhớ
+            BRUTE FORCE
+            = thử đi thử lại rất nhiều lần     
+
+            RATE LIMIT
+            = giới hạn tốc độ/số request     
+
+            429
+            = Too Many Requests     
+
+            Với Laravel:     
+
+            RateLimiter::for('login', function ($request) {
+                return Limit::perMinute(5)
+                    ->by($request->ip());
+            });     
+
+            và:     
+
+            ->middleware('throttle:login');     
+
+            là hai phần quan trọng cần nhớ: định nghĩa luật giới hạn → gắn luật đó vào endpoint.
 7.12 Session & Cookie Security                       <
 
  Hiểu các cấu hình: 
 
- SESSION_SECURE_COOKIE=true
- SESSION_HTTP_ONLY=true
- SESSION_SAME_SITE=lax 
+ SESSION_SECURE_COOKIE=true      //→ chỉ gửi cookie qua HTTPS | Cookie session chỉ được browser gửi qua kết nối HTTPS.           <
+    1. SESSION_SECURE_COOKIE=true     
+
+         .env:     
+
+         SESSION_SECURE_COOKIE=true     
+
+         Ý nghĩa:     
+
+         Cookie session chỉ được browser gửi qua kết nối HTTPS.     
+
+         Ví dụ:     
+
+         https://hrm.example.com
+                 ↓
+         cookie được gửi ✅     
+
+         Còn:     
+
+         http://hrm.example.com
+                 ↓
+         Secure cookie không được gửi ❌     
+
+         Cookie có thuộc tính:     
+
+         Set-Cookie: laravel_session=XYZ; Secure     
+
+         Production:     
+
+         SESSION_SECURE_COOKIE=true
+         +
+         HTTPS     
+
+         là cấu hình quan trọng.     
+
+         Local nếu chỉ chạy:     
+
+         http://127.0.0.1:8000     
+
+         thì cần lưu ý Secure cookie có thể khiến luồng session qua HTTP local không hoạt động như mong đợi.
+ SESSION_HTTP_ONLY=true          //→ JavaScript không đọc session cookie | JavaScript trong browser không được đọc session cookie bằng document.cookie.      <
+   2. SESSION_HTTP_ONLY=true
+      SESSION_HTTP_ONLY=true      
+
+      Cookie có:      
+
+      HttpOnly      
+
+      Ý nghĩa:      
+
+      JavaScript trong browser không được đọc session cookie bằng document.cookie.      
+
+      Ví dụ attacker có XSS:      
+
+      document.cookie      
+
+      Nếu session cookie là HttpOnly, JavaScript không đọc trực tiếp giá trị cookie đó.      
+
+      JavaScript
+          ↓
+      document.cookie
+          ↓
+      laravel_session?
+          ↓
+      ❌ HttpOnly      
+
+      Nhưng cần nhớ:      
+
+      HttpOnly giúp bảo vệ cookie khỏi bị đọc trực tiếp bằng JS, chứ không làm XSS trở nên vô hại. XSS vẫn có thể thực hiện hành động dưới quyền       browser/user.
+ SESSION_SAME_SITE=lax           //→ hạn chế cookie trong cross-site context | SameSite kiểm soát việc browser gửi cookie trong cross-site context.          <
+    2. SESSION_HTTP_ONLY=true
+         SESSION_HTTP_ONLY=true         
+
+         Cookie có:         
+
+         HttpOnly         
+
+         Ý nghĩa:         
+
+         JavaScript trong browser không được đọc session cookie bằng document.cookie.         
+
+         Ví dụ attacker có XSS:         
+
+         document.cookie         
+
+         Nếu session cookie là HttpOnly, JavaScript không đọc trực tiếp giá trị cookie đó.         
+
+         JavaScript
+             ↓
+         document.cookie
+             ↓
+         laravel_session?
+             ↓
+         ❌ HttpOnly         
+
+         Nhưng cần nhớ:         
+
+         HttpOnly giúp bảo vệ cookie khỏi bị đọc trực tiếp bằng JS, chứ không làm XSS trở nên vô hại. XSS vẫn có thể thực hiện hành động dưới quyền          browser/user.         
+
+         3. SESSION_SAME_SITE=lax
+         SESSION_SAME_SITE=lax         
+
+         SameSite kiểm soát việc browser gửi cookie trong cross-site context.         
+
+         Có ba mức thường gặp:         
+
+         Strict
+         Lax
+         None
+         Strict         
+
+         Rất chặt:         
+
+         Website khác
+            ↓
+         request sang HRM
+            ↓
+         Cookie thường không được gửi         
+
+         Bảo mật mạnh nhưng có thể ảnh hưởng một số luồng điều hướng/SSO.         
+
+         Lax         
+
+         Cân bằng giữa usability và security:         
+
+         SESSION_SAME_SITE=lax         
+
+         Đây thường là lựa chọn hợp lý cho nhiều web app.         
+
+         Nó hạn chế cookie trong nhiều tình huống cross-site, đặc biệt giúp giảm một số CSRF scenarios, nhưng không nên xem nó là thứ thay thế toàn          bộ CSRF protection.         
+
+         None
+         SESSION_SAME_SITE=none         
+
+         Cho phép cookie trong cross-site contexts phù hợp, và browser hiện đại yêu cầu cookie SameSite=None phải đi cùng Secure.         
+
+         Thường chỉ dùng khi kiến trúc thực sự cần cross-site cookie.
 
  Và: 
 
- Session fixation
- Session hijacking
- regenerate session sau login
- logout/invalidate session
- remember token
+ * Session fixation        // attacker cố khiến nạn nhân sử dụng một session identifier mà attacker đã biết/kiểm soát trước khi nạn nhân login.       <
+   4. Session Fixation
+    Đây là phần rất quan trọng.
+
+      Session Fixation = attacker cố khiến nạn nhân sử dụng một session identifier mà attacker đã biết/kiểm soát trước khi nạn nhân login.
+
+    Ví dụ đơn giản:
+
+      Attacker biết Session ID
+              ↓
+             XYZ
+              ↓
+      Nạn nhân sử dụng Session XYZ
+              ↓
+      Nạn nhân Login
+              ↓
+      Nếu hệ thống vẫn giữ XYZ
+              ↓
+      XYZ bây giờ là authenticated session
+              ↓
+      Attacker có XYZ
+              ↓
+      💥 nguy hiểm
+      Cách chống
+
+    Sau khi login thành công:
+
+      $request->session()->regenerate();
+
+    Luồng:
+
+     Trước login:
+          Session ID = ABC
+                 ↓ LOGIN SUCCESS
+          regenerate()
+                 ↓
+          Session ID = XYZ
+                 ↓
+          ABC cũ không còn là authenticated session
+ * Session hijacking       // attacker đánh cắp một session đang hợp lệ rồi sử dụng nó.      <
+     6. Session Hijacking          
+
+        Khác với fixation.          
+
+     Session Hijacking = attacker đánh cắp một session đang hợp lệ rồi sử dụng nó.          
+
+          Ví dụ:          
+
+          User đã login
+           ↓
+          Session Cookie = XYZ
+           ↓
+          Attacker lấy được XYZ
+           ↓
+          Attacker gửi:          
+
+          Cookie: laravel_session=XYZ
+           ↓
+          Server có thể coi đó là session của User          
+
+          So sánh:          
+
+          Session Fixation
+          → biết/cố định session TRƯỚC login          
+
+          Session Hijacking
+          → đánh cắp session ĐANG hoạt động          
+
+          Các lớp phòng vệ gồm:          
+
+          HTTPS
+          Secure Cookie
+          HttpOnly
+          SameSite
+          XSS protection
+          CSRF protection
+          Session expiration
+          Regenerate session
+          Logout/invalidate
+          Re-authentication cho hành động nhạy cảm       
+ * regenerate session sau login      // Chống Session Fixation.| Các starter/authentication flows chuẩn của Laravel thường đã xử lý việc regenerate session sau authentication; nếu tự viết login thì phải chú ý bước này.       <
+        Ví dụ Laravel:            
+
+            if (Auth::attempt($credentials)) {            
+
+                $request->session()->regenerate();            
+
+                return redirect()->intended('/dashboard');
+            }            
+
+            Đây là pattern cần nhớ.            
+
+            email/password
+                  ↓
+            Auth::attempt()
+                  ↓
+            credentials đúng?
+                  ↓
+                 YES
+                  ↓
+            session()->regenerate()
+                  ↓
+            Session ID mới
+                  ↓
+            Dashboard            
+
+            Mục đích chính:            
+
+            Chống Session Fixation.            
+
+            Các starter/authentication flows chuẩn của Laravel thường đã xử lý việc regenerate session sau authentication; nếu tự viết login thì phải chú ý bước này.
+ * logout/invalidate session    //           <
+          7. Logout / Invalidate Session
+
+               Logout không nên chỉ:
+
+               Auth::logout();
+
+               Pattern Laravel phổ biến:
+
+               public function logout(Request $request)
+               {
+                   Auth::logout();
+
+                   $request->session()->invalidate();
+
+                   $request->session()->regenerateToken();
+
+                   return redirect('/');
+               }
+
+           Ba bước:
+
+               Auth::logout()
+                     ↓
+               bỏ authentication của user
+
+               session()->invalidate()
+                     ↓
+               vô hiệu session hiện tại
+
+               session()->regenerateToken()
+                     ↓
+               tạo CSRF token mới
+
+          Luồng:
+
+               User logged in
+                ↓
+               Session XYZ
+                ↓
+               Logout
+                ↓
+               Auth::logout()
+                ↓
+               invalidate()
+                ↓
+               XYZ không còn session đăng nhập hợp lệ
+                ↓
+               regenerateToken()
+                ↓
+               CSRF token mới
+
+          8. Tại sao regenerateToken()?               
+
+               Bạn đã học CSRF trước đó.               
+
+            Session có thể hình dung:               
+
+               SESSION
+               ├── Session identifier
+               ├── Authentication state
+               ├── CSRF token
+               └── các session data khác               
+
+            Logout:               
+
+               $request->session()->regenerateToken();               
+
+               → tạo CSRF token mới.               
+
+            Đừng nhầm:               
+
+               session()->regenerate()
+               → chủ yếu regenerate Session ID               
+
+               session()->regenerateToken()
+               → regenerate CSRF token     
+ * remember token       //  → phục vụ chức năng "Remember Me"         <
+     9. Remember Token
+        Đây lại là một thứ khác.
+          Ví dụ login:
+
+          Auth::attempt(
+              $credentials,
+              remember: true
+          );
+
+        Ý tưởng:
+
+        User chọn:
+          ☑ Remember me
+
+          Browser có persistent remember cookie/token theo cơ chế authentication của Laravel.
+
+          Khi session thông thường hết, cơ chế remember-me có thể giúp Laravel nhận diện/đăng nhập lại user theo thiết kế của guard.
+
+        Model User thường có:
+
+          remember_token
+
+          column trong DB.
+
+    10. Remember Token ≠ Session ID
+
+         Đây rất dễ nhầm:
+
+           Session ID
+           → phiên hiện tại
+
+           Remember Token
+           → phục vụ chức năng "Remember Me"
+
+         Ví dụ:
+
+           Login
+            ↓
+           Remember me = true
+            ↓
+           Session
+            +
+           Remember mechanism
+            ↓
+           Đóng browser
+            ↓
+           quay lại sau
+            ↓
+           remember mechanism có thể giúp
+           xác thực lại user
+
+           Vì remember-me credential nhạy cảm, cookie liên quan cũng phải được bảo vệ và logout/password/security-sensitive flows cần được thiết kế cẩn thận.
 7.13 Password Security                      <
  bcrypt
  Argon2
