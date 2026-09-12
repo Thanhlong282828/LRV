@@ -1757,7 +1757,7 @@ Khi bạn có VPS/staging riêng, phase tiếp theo sẽ là:
  cổng thanh toán/vận chuyển bên ngoài.
  operating-company dataset  
 9 - Eloquent và Database 
-findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
+* findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key  | where(...) > firstOrFail() > lấy record đầu tiên thỏa điều kiện                             <
   public function show(int $id)
  {
     $employee = Employee::findOrFail($id);
@@ -1770,121 +1770,121 @@ findOrFail() khác firstOrFail()    |    findOrFail($id) > tìm theo Primary Key
  Employee::where('email', 'abc@gmail.com')->firstOrFail();
  nên học thêm : 
     PHPUnit
-Eloquent | get(), first(), find(), firstOrFail()   |  get() Lấy nhiều record |  first() Lấy 1 record đầu tiên | find($id) Tìm 1 record theo Primary Key | firstOrFail() Lấy 1 record, không có thì báo lỗi                         <
+* Eloquent | get(), first(), find(), firstOrFail()   |  get() Lấy nhiều record |  first() Lấy 1 record đầu tiên | find($id) Tìm 1 record theo Primary Key | firstOrFail() Lấy 1 record, không có thì báo lỗi                         <
  Method	              Dùng để	                   Kết quả	     Không tìm thấy
  get()	        Lấy nhiều record	             Collection	     Collection rỗng
  first()	    Lấy 1 record đầu tiên	           Model	            null
  find()	        Tìm 1 record theo Primary Key	    Model             	null
  firstOrFail()	Lấy 1 record, không có thì báo lỗi	Model	   Exception → thường HTTP 404
  * 1. get() — lấy nhiều record
- $users = User::where('status', 'active')->get();
- Ví dụ DB:
- id | name | status
- 1  | An   | active
- 2  | Bình | inactive
- 3  | Nam  | active
- Kết quả:
- Collection [
-     User(id=1, name="An"),
-     User(id=3, name="Nam")
- ]
- Bạn có thể:
- foreach ($users as $user) {
-     echo $user->name;
- }
- Nếu không có user nào:
- $users = User::where('status', 'xxx')->get();
- thì:
- $users->isEmpty(); // true
- Chứ không phải null.
+      $users = User::where('status', 'active')->get();
+      Ví dụ DB:
+      id | name | status
+      1  | An   | active
+      2  | Bình | inactive
+      3  | Nam  | active
+      Kết quả:
+      Collection [
+          User(id=1, name="An"),
+          User(id=3, name="Nam")
+      ]
+      Bạn có thể:
+      foreach ($users as $user) {
+          echo $user->name;
+      }
+      Nếu không có user nào:
+      $users = User::where('status', 'xxx')->get();
+      thì:
+      $users->isEmpty(); // true
+      Chứ không phải null.
 
  * 2. first() — lấy record đầu tiên
- $user = User::where('status', 'active')->first();
- Nếu có nhiều user active:
- 1 | An  | active
- 3 | Nam | active
- thì chỉ lấy một Model:
- $user->name;
- Nếu không tìm thấy:
- $user = User::where('email', 'abc@xyz.com')->first();
- $user === null; // true
- Vì vậy thường phải kiểm tra:
- if (!$user) {
-     // xử lý không tìm thấy
- }
- get() vs first()
-  User::where('status', 'active')->get();
- → nhiều User:
-  Collection<User>
- Còn:
-  User::where('status', 'active')->first(); 
- → một User:
- User
+      $user = User::where('status', 'active')->first();
+      Nếu có nhiều user active:
+      1 | An  | active
+      3 | Nam | active
+      thì chỉ lấy một Model:
+      $user->name;
+      Nếu không tìm thấy:
+      $user = User::where('email', 'abc@xyz.com')->first();
+      $user === null; // true
+      Vì vậy thường phải kiểm tra:
+      if (!$user) {
+          // xử lý không tìm thấy
+      }
+      get() vs first()
+       User::where('status', 'active')->get();
+      → nhiều User:
+       Collection<User>
+      Còn:
+       User::where('status', 'active')->first(); 
+      → một User:
+      User
 
  * 3. find() — tìm theo Primary Key
- Đây là điểm rất quan trọng.
- $user = User::find(10);
- Laravel hiểu là tìm:
- WHERE id = 10
- Nếu Model có:
- protected $primaryKey = 'id';
- thì:
- User::find(10);
- gần tương đương:
-  User::where('id', 10)->first();
- Ví dụ:
-  $user = User::find(5);
- Có id = 5:
-  $user->name;
- Không có:
-  $user === null; // true
- Không dùng find() để tìm email
- Sai:
-  User::find('abc@gmail.com');
- Vì find() tìm theo primary key, không phải email.
- Phải dùng:
-  User::where('email', 'abc@gmail.com')->first();
+      Đây là điểm rất quan trọng.
+      $user = User::find(10);
+      Laravel hiểu là tìm:
+      WHERE id = 10
+      Nếu Model có:
+      protected $primaryKey = 'id';
+      thì:
+      User::find(10);
+      gần tương đương:
+       User::where('id', 10)->first();
+      Ví dụ:
+       $user = User::find(5);
+      Có id = 5:
+       $user->name;
+      Không có:
+       $user === null; // true
+      Không dùng find() để tìm email
+      Sai:
+       User::find('abc@gmail.com');
+      Vì find() tìm theo primary key, không phải email.
+      Phải dùng:
+       User::where('email', 'abc@gmail.com')->first();
 
  * 4. firstOrFail() — không có thì fail
- Ví dụ:
-  $user = User::where('email', $email)->firstOrFail();
- Nếu tìm thấy:
-  User
- Nếu không tìm thấy, Laravel throw:
-  ModelNotFoundException
- Trong request web/API, thông thường nó được chuyển thành:
-  404 Not Found
- Nên bạn không cần viết:
-  $user = User::where('email', $email)->first();
-  if (!$user) {
-      abort(404);
-  }
- Có thể viết:
- $user = User::where('email', $email)->firstOrFail();
+     Ví dụ:
+      $user = User::where('email', $email)->firstOrFail();
+     Nếu tìm thấy:
+      User
+     Nếu không tìm thấy, Laravel throw:
+      ModelNotFoundException
+     Trong request web/API, thông thường nó được chuyển thành:
+      404 Not Found
+     Nên bạn không cần viết:
+      $user = User::where('email', $email)->first();
+      if (!$user) {
+          abort(404);
+      }
+     Có thể viết:
+     $user = User::where('email', $email)->firstOrFail();
  
  * 5. findOrFail()  -  tìm theo Primary Key 
- Ngoài 4 method bạn hỏi, nên học luôn:
-  $user = User::findOrFail($id);
- Nó là sự kết hợp ý tưởng của:
-  find()
-  +
-  OrFail
- Ví dụ:
-  $user = User::findOrFail(10);
- Có id = 10:
-  User
- Không có:
-  ModelNotFoundException
-  → 404
- So sánh:
-  User::find(10);
- → không có:
-  null
- Còn:
-  User::findOrFail(10);
- → không có:
-  404
-Eloquent | whereHas() , with() , withWhereHas()  |  whereHas() lọc model cha dựa trên relationship. | with() LOAD + lọc theo con ( né N+1 ) | withWhereHas() lọc theo quan hệ và load luôn chính nó ( né N+1 )                           <
+      Ngoài 4 method bạn hỏi, nên học luôn:
+       $user = User::findOrFail($id);
+      Nó là sự kết hợp ý tưởng của:
+       find()
+       +
+       OrFail
+      Ví dụ:
+       $user = User::findOrFail(10);
+      Có id = 10:
+       User
+      Không có:
+       ModelNotFoundException
+       → 404
+      So sánh:
+       User::find(10);
+      → không có:
+       null
+      Còn:
+       User::findOrFail(10);
+      → không có:
+       404
+* Eloquent | whereHas() , with() , withWhereHas()  |  whereHas() lọc model cha dựa trên relationship. | with() LOAD + lọc theo con ( né N+1 ) | withWhereHas() lọc theo quan hệ và load luôn chính nó ( né N+1 )                           <
  whereHas() lọc theo bảng quan hệ
  Employee::query()
     ->whereHas('contracts', function ($query) {
@@ -2089,7 +2089,7 @@ Eloquent | whereHas() , with() , withWhereHas()  |  whereHas() lọc model cha d
     $query->where('status', 'failed');
  })->get();
  = Chỉ lấy PayrollRun có item failed và load chính các item failed đó.          <
-Eloquent | chunk(), chunkById(), cursor(), lazyById() | chuck() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy 1000 tiếp ( lỗi nếu đang False chỉnh sang True )( Batch + OFFSET ) | chunkById() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy tiếp từ id > ID cuối ( Batch + ID ) | cursor() = lấy/duyệt từng model → xử lý → bỏ model cũ > sang model tiếp theo, không gom batch. ( Từng model một ) | lazyById() = lấy 1 batch > trả từng model > xoá batch(iải phóng/bỏ batch cũ khỏi bộ nhớ) > lấy batch mới( batch theo ID)                       <
+* Eloquent | chunk(), chunkById(), cursor(), lazyById() | chuck() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy 1000 tiếp ( lỗi nếu đang False chỉnh sang True )( Batch + OFFSET ) | chunkById() = 1000 Employee → xử lý hết → bỏ batch cũ → lấy tiếp từ id > ID cuối ( Batch + ID ) | cursor() = lấy/duyệt từng model → xử lý → bỏ model cũ > sang model tiếp theo, không gom batch. ( Từng model một ) | lazyById() = lấy 1 batch > trả từng model > xoá batch(iải phóng/bỏ batch cũ khỏi bộ nhớ) > lấy batch mới( batch theo ID)                       <
  1. chunk() — chia thành từng lô
  Ví dụ có 100.000 employees, xử lý mỗi lần 1.000:
  Employee::chunk(1000, function ($employees) {
@@ -2436,7 +2436,7 @@ CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 4. Queue Chain
 5. Redis                    composer require predis/predis     |    .env : CACHE_STORE=redis  REDIS_HOST=127.0.0.1   REDIS_PASSWORD=null   REDIS_PORT=6379    |  php artisan queue:work redis --queue=emails   (emails : là name của cái job)    |    php artisan queue:work redis --queue=imports,exports,default  | lệnh:Queue phía trước thường được ưu tiên hơn.
   Kiểm tra:redis-server --version    Nếu báo: command not found  | thì cài:  brew install redis  | Khởi động:  brew services start redis  |  Kiểm tra:  redis-cli ping   |  Nếu trả: PONG   là OK.
-5.1. Retry :
+* 5.1. Retry :
 final class GeneratePayrollExport implements ShouldQueue
 {
     public int $tries = 3;  // Lần 1 ❌ > Lần 2 ❌ > Lần 3 ✅ Nếu vẫn lỗi:failed_jobs
@@ -2449,14 +2449,14 @@ public int $timeout = 120; // Timeout: Job tối đa 120 giây  |  Job chạy qu
     {
     }
 }
-5.2. Failed Jobs:  
+* 5.2. Failed Jobs:  
   Nếu retry hết vẫn lỗi:  failed_jobs
   Kiểm tra:    php artisan queue:failed
   Retry lại:   php artisan queue:retry all
   Xóa:         php artisan queue:flush
-5.3. Idempotency:      |     Balance / stock / payment :
+* 5.3. Idempotency:      |     Balance / stock / payment :
   Job phải có tính idempotent (Đây là phần rất quan trọng.  >  Queue/Job có thể retry. > handle() phải an toàn khi chạy nhiều lần. )
-Ví dụ 1 — Generate Payroll Delivery ( Phiếu lương )  |   ( gắn UNIQUE vào DB, updateOrCreate , ghi rõ luồng và trạng thái nối tới )               <
+* Ví dụ 1 — Generate Payroll Delivery ( Phiếu lương )  |   ( gắn UNIQUE vào DB, updateOrCreate , ghi rõ luồng và trạng thái nối tới )               <
   * Sai:
   PayrollDelivery::create([
      'payroll_run_id' => $this->payrollRunId,
@@ -2487,7 +2487,7 @@ Ví dụ 1 — Generate Payroll Delivery ( Phiếu lương )  |   ( gắn UNIQUE
     );
 >> Unique constraint mới là lớp bảo vệ cuối cùng.
 
-Ví dụ 2 — Payment: exists() vẫn chưa đủ Senior       |     exists() = kiểm tra rồi chạy                      <
+* Ví dụ 2 — Payment: exists() vẫn chưa đủ Senior       |     exists() = kiểm tra rồi chạy                      <
   if (
     PayrollPayment::where('reference', $this->reference)
         ->exists()                                                       <
@@ -2511,7 +2511,7 @@ Senior sẽ không coi:
     return; 
    }
  là hàng rào concurrency duy nhất.                      <
-Ví dụ 3 — Payment kiểu production        |   firstOrCreate() = tìm trước, nếu chưa có thì tạo mới.              <
+* Ví dụ 3 — Payment kiểu production        |   firstOrCreate() = tìm trước, nếu chưa có thì tạo mới.              <
       Giả sử nghiệp vụ:   PAYROLL-2026-08-EMP-100    chỉ được trả tiền một lần.
   * Database:
  
@@ -2542,7 +2542,7 @@ Ví dụ 3 — Payment kiểu production        |   firstOrCreate() = tìm trư�
        ↓                                 ↓
     SUCCESS                       DB unique constraint bảo vệ
  >  Nhưng với nghiệp vụ tài chính phức tạp hơn, còn phải thiết kế cách bắt duplicate/deadlock và retry phù hợp
-Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = + = không cứu được trường hợp này.     decrement() = -         <
+* Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = + = không cứu được trường hợp này.     decrement() = -         <
   Ban đầu:
   Wallet::whereKey($this->walletId)
        ->increment('balance_minor', 1_000_000);                  <
@@ -2666,7 +2666,7 @@ Ví dụ 4 — Wallet: đây mới là case khó       | Atomic-  increment() = 
  = tránh kiểu đọc → PHP tính → ghi lại
 
  Nhưng decrement() không phải idempotency. Nếu một Queue Job retry và chạy decrement() hai lần thì nó vẫn trừ hai lần.
-Ví dụ 5 — Wallet kiểu Senior: Ledger + Unique Business Key          |   whereKey()  lockForUpdate()  firstOrFail()  increment()     | firstOrCreate() = payroll_run_id = 100 > Có rồi?  | Có  → trả record cũ | Không → INSERT record mới            <
+* Ví dụ 5 — Wallet kiểu Senior: Ledger + Unique Business Key          |   whereKey()  lockForUpdate()  firstOrFail()  increment()     | firstOrCreate() = payroll_run_id = 100 > Có rồi?  | Có  → trả record cũ | Không → INSERT record mới            <
   Tạo bảng:  wallet_transactions
   id   wallet_id  reference  amount_minor type created_at
   Database:
@@ -2706,7 +2706,7 @@ Ví dụ 5 — Wallet kiểu Senior: Ledger + Unique Business Key          |   w
       ↓
    COMMIT
   >>>Đây mới là idempotent operation có ý nghĩa nghiệp vụ.
-Ví dụ 6 — Payroll Run: Transaction + Lock + Idempotency + Unique +  dispatch() | ->afterCommit() Job không chạy trước khi transaction commit     |   lockForUpdate() =  tìm thấy record cũ >  UPDATE status = generating           <
+* Ví dụ 6 — Payroll Run: Transaction + Lock + Idempotency + Unique +  dispatch() | ->afterCommit() Job không chạy trước khi transaction commit     |   lockForUpdate() =  tìm thấy record cũ >  UPDATE status = generating           <
   Giả sử:
   Một payroll period chỉ có một finalized run cho một calculation version.
   Database:
@@ -2763,7 +2763,7 @@ Ví dụ 6 — Payroll Run: Transaction + Lock + Idempotency + Unique +  dispatc
    afterCommit()
       ↓
    Job không chạy trước khi transaction commit
-Ví dụ 7 — API Idempotency Key kiểu Senior    |    trong db phải có cột : scope , key           <
+* Ví dụ 7 — API Idempotency Key kiểu Senior    |    trong db phải có cột : scope , key           <
  Client gửi:
   POST /api/payroll-runs/100/finalize
   Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
@@ -2799,7 +2799,7 @@ Ví dụ 7 — API Idempotency Key kiểu Senior    |    trong db phải có c�
  Server không finalize lần nữa mà:
  trả lại response cũ
  Đó là idempotency đúng nghĩa ở tầng API.
-Ví dụ 8 - Một tính năng rất hữu ích:      |     if (! $payment->wasRecentlyCreated{return;}     |   true→ chính lần gọi này vừa INSERT  |  false→ record đã tồn tại từ trước           <
+* Ví dụ 8 - Một tính năng rất hữu ích:      |     if (! $payment->wasRecentlyCreated{return;}     |   true→ chính lần gọi này vừa INSERT  |  false→ record đã tồn tại từ trước           <
  $payment = PayrollPayment::firstOrCreate(
     ['reference' => $this->reference],
     [
@@ -2840,7 +2840,7 @@ Ví dụ 8 - Một tính năng rất hữu ích:      |     if (! $payment->wasR
 
  Retry → đã tồn tại → return → không xử lý lại ✅
 Dispatch sau commit
-ShouldBeUnique   |   Nếu không muốn cùng một Job bị dispatch nhiều lần              <
+* ShouldBeUnique   |   Nếu không muốn cùng một Job bị dispatch nhiều lần              <
  final class GeneratePayrollJob implements ShouldQueue, ShouldBeUnique
  {
     public function uniqueId(): string
@@ -2857,7 +2857,7 @@ ShouldBeUnique   |   Nếu không muốn cùng một Job bị dispatch nhiều l
  Laravel chỉ cho một Job unique tồn tại tại thời điểm đó.
  Nhưng nhớ:
  ShouldBeUnique không thay thế database unique constraint hoặc idempotency business logic.
-Job chaining và batching                      <
+* Job chaining và batching                      <
  Chain :     Job sau chỉ chạy khi job trước thành công:
  Bus::chain([
     new ValidatePayrollRun($id),
@@ -2870,7 +2870,7 @@ Job chaining và batching                      <
     ->then(fn () => ...)
     ->catch(fn (Batch $batch, Throwable $e) => ...)
     ->dispatch();
-WithoutOverlapping    |     Dùng khi không muốn hai Job cùng xử lý một resource.              <
+* WithoutOverlapping    |     Dùng khi không muốn hai Job cùng xử lý một resource.              <
  public function middleware(): array
  {
     return [
@@ -2890,7 +2890,7 @@ WithoutOverlapping    |     Dùng khi không muốn hai Job cùng xử lý một
  Sync
  Generate Report
  Inventory sync
-Cách nhớ toàn bộ Queue :                       <
+* Cách nhớ toàn bộ Queue :                       <
  dispatch()
  = bỏ Job vào hàng đợi
 
@@ -2926,7 +2926,7 @@ Cách nhớ toàn bộ Queue :                       <
 
  Horizon
  = quản lý/quan sát Redis Queue
-Cách nhớ toàn bộ Cache :                       <
+* Cách nhớ toàn bộ Cache :                       <
  Cache::get()
  = đọc
 
@@ -2959,7 +2959,7 @@ Cách nhớ toàn bộ Cache :                       <
 
  Redis
  = cache store phổ biến production
-Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version thay forget > Các key cũ tự hết TTL.                    <
+* Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version thay forget > Các key cũ tự hết TTL.                    <
  Đây là phần khó nhất.
 
  Ví dụ cache:
@@ -3009,7 +3009,7 @@ Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: vers
   Khi write:
     Cache::increment("company:{$companyId}:employees:version");
   Các key cũ tự hết TTL.
-Cache invalidation :   Dùng: Cache::increment(version) thay Cache::forget - thiết kế key đọc cache có chứa version ngay từ đầu                              <
+* Cache invalidation :   Dùng: Cache::increment(version) thay Cache::forget - thiết kế key đọc cache có chứa version ngay từ đầu                              <
  về ý tưởng là thay cách Cache::forget() từng key bằng tăng version. Nhưng phải thiết kế key đọc cache có chứa version ngay từ đầu.                                   <
 
  Ví dụ bạn có nhiều cache:
@@ -3108,7 +3108,7 @@ Cache invalidation :   Dùng: Cache::increment(version) thay Cache::forget - thi
  "company:{$companyId}\:employees\:version"
 
  Versioning đặc biệt hữu ích khi một resource có rất nhiều cache key do filter, sort, pagination.                         <
-Cache invalidation bằng Event :                       <
+* Cache invalidation bằng Event :                       <
  Thay vì Controller tự xóa cache:
 
  Employee::create(...);
@@ -3136,7 +3136,7 @@ Cache invalidation bằng Event :                       <
  }
 
  Cách này sạch hơn.
-Cache trong CQRS :                            <
+* Cache trong CQRS :                            <
  Query side rất hợp để cache.
  Ví dụ:
   GET Dashboard > Query > Query Handler > Cache > Read Model
@@ -3156,7 +3156,7 @@ Cache trong CQRS :                            <
  Command side:
  ApprovePayrollRunCommand > Handler > Update DB > Event > Clear cache
  Rất hợp với CQRS.
-Cache Aside Pattern :                        <
+* Cache Aside Pattern :                        <
  Đây là pattern phổ biến nhất.
  Application hỏi cache trước
     ↓
@@ -3164,8 +3164,8 @@ Cache Aside Pattern :                        <
  ├─ Có → trả cache
  └─ Không → query DB → lưu cache → trả dữ liệu
  Laravel Cache::remember() chính là kiểu này.
-Cache-aside:
-Cache Stampede :              Giải pháp: Lock.  |  Stale-while-revalidate.  |  TTL có jitter. |  Background refresh.                <
+* Cache-aside:
+* Cache Stampede :              Giải pháp: Lock.  |  Stale-while-revalidate.  |  TTL có jitter. |  Background refresh.                <
  Ví dụ cache hết hạn lúc 12:00.
  Có 100 request cùng tới lúc 12:00:01.
  Tất cả đều thấy:
@@ -3180,7 +3180,7 @@ Cache Stampede :              Giải pháp: Lock.  |  Stale-while-revalidate.  |
    DB bị spike
  Đây gọi là:
    Cache Stampede
-Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,10)->block(5,...   =  Request khác chờ lock   |   10: Lock có thời hạn tối đa 10 giây.  |  5: Request sẵn sàng chờ tối đa 5 giây để lấy lock.               <
+* Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,10)->block(5,...   =  Request khác chờ lock   |   10: Lock có thời hạn tối đa 10 giây.  |  5: Request sẵn sàng chờ tối đa 5 giây để lấy lock.               <
  Đúng nhưng chỉ đối với đoạn code/resource đang bị lock, không phải toàn bộ hệ thống xử lý từng request một.
  Trong ví dụ:
  Cache::lock(                                              <
@@ -3398,7 +3398,7 @@ Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,1
  B/C/D lấy cache A vừa tạo
 
  Nên dashboard chỉ là ví dụ về dữ liệu đọc nhiều nhưng tính toán/query tương đối nặng. Cache cũng có thể áp dụng tương tự cho employee list, report, permission, thống kê payroll, cấu hình hệ thống...
-Stale-While-Revalidate (SWR) :Dashboard / report :        Cache::flexible()          = cache hết hạn mềm → request khác vẫn lấy CACHE CŨ trong lúc cache mới được build                       <
+* Stale-While-Revalidate (SWR) :Dashboard / report :        Cache::flexible()          = cache hết hạn mềm → request khác vẫn lấy CACHE CŨ trong lúc cache mới được build                       <
  Stale-While-Revalidate (SWR) hiểu cực ngắn:
  Cache cũ hết “thời gian tươi” vẫn tạm trả cho user, trong lúc hệ thống tạo cache mới ở phía sau.
  Nó giúp user không phải đứng chờ việc rebuild cache.
@@ -10294,35 +10294,7 @@ Câu trả lời phỏng vấn:                                                 
 
       HttpOnly giúp bảo vệ cookie khỏi bị đọc trực tiếp bằng JS, chứ không làm XSS trở nên vô hại. XSS vẫn có thể thực hiện hành động dưới quyền       browser/user.
  SESSION_SAME_SITE=lax           //→ hạn chế cookie trong cross-site context | SameSite kiểm soát việc browser gửi cookie trong cross-site context.          <
-    2. SESSION_HTTP_ONLY=true
-         SESSION_HTTP_ONLY=true         
-
-         Cookie có:         
-
-         HttpOnly         
-
-         Ý nghĩa:         
-
-         JavaScript trong browser không được đọc session cookie bằng document.cookie.         
-
-         Ví dụ attacker có XSS:         
-
-         document.cookie         
-
-         Nếu session cookie là HttpOnly, JavaScript không đọc trực tiếp giá trị cookie đó.         
-
-         JavaScript
-             ↓
-         document.cookie
-             ↓
-         laravel_session?
-             ↓
-         ❌ HttpOnly         
-
-         Nhưng cần nhớ:         
-
-         HttpOnly giúp bảo vệ cookie khỏi bị đọc trực tiếp bằng JS, chứ không làm XSS trở nên vô hại. XSS vẫn có thể thực hiện hành động dưới quyền          browser/user.         
-
+          
          3. SESSION_SAME_SITE=lax
          SESSION_SAME_SITE=lax         
 
@@ -10330,34 +10302,32 @@ Câu trả lời phỏng vấn:                                                 
 
          Có ba mức thường gặp:         
 
-         Strict
-         Lax
-         None
-         Strict         
-
+              Strict
+              Lax
+              None
+     Strict              
          Rất chặt:         
 
-         Website khác
-            ↓
-         request sang HRM
-            ↓
-         Cookie thường không được gửi         
+              Website khác
+                 ↓
+              request sang HRM
+                 ↓
+              Cookie thường không được gửi         
 
          Bảo mật mạnh nhưng có thể ảnh hưởng một số luồng điều hướng/SSO.         
 
-         Lax         
-
+     Lax         
          Cân bằng giữa usability và security:         
 
-         SESSION_SAME_SITE=lax         
+              SESSION_SAME_SITE=lax         
 
          Đây thường là lựa chọn hợp lý cho nhiều web app.         
 
          Nó hạn chế cookie trong nhiều tình huống cross-site, đặc biệt giúp giảm một số CSRF scenarios, nhưng không nên xem nó là thứ thay thế toàn          bộ CSRF protection.         
 
-         None
-         SESSION_SAME_SITE=none         
-
+    None
+              SESSION_SAME_SITE=none         
+  
          Cho phép cookie trong cross-site contexts phù hợp, và browser hiện đại yêu cầu cookie SameSite=None phải đi cùng Secure.         
 
          Thường chỉ dùng khi kiến trúc thực sự cần cross-site cookie.
@@ -10431,8 +10401,7 @@ Câu trả lời phỏng vấn:                                                 
 
           Session Hijacking
           → đánh cắp session ĐANG hoạt động          
-
-          Các lớp phòng vệ gồm:          
+ Các lớp phòng vệ gồm:     xem lại bài 7.6 CSRF bên trên     
 
           HTTPS
           Secure Cookie
@@ -10444,7 +10413,7 @@ Câu trả lời phỏng vấn:                                                 
           Regenerate session
           Logout/invalidate
           Re-authentication cho hành động nhạy cảm       
- * regenerate session sau login      // Chống Session Fixation.| Các starter/authentication flows chuẩn của Laravel thường đã xử lý việc regenerate session sau authentication; nếu tự viết login thì phải chú ý bước này.       <
+ * regenerate session sau login      // Chống Session Fixation.| Các starter/authentication flows chuẩn của Laravel thường đã xử lý việc regenerate session sau authentication; nếu tự viết login thì phải chú ý bước này. | session()->regenerate() | tạo lại phiên làm việc      <
         Ví dụ Laravel:            
 
             if (Auth::attempt($credentials)) {            
@@ -10475,7 +10444,8 @@ Câu trả lời phỏng vấn:                                                 
             Chống Session Fixation.            
 
             Các starter/authentication flows chuẩn của Laravel thường đã xử lý việc regenerate session sau authentication; nếu tự viết login thì phải chú ý bước này.
- * logout/invalidate session    //           <
+ * logout/invalidate session    // dùng cái này để hacker ko dùng được token cũ: session()->regenerateToken() > tạo CSRF token mới            <
+               → regenerate CSRF token               <
           7. Logout / Invalidate Session
 
                Logout không nên chỉ:
@@ -10552,7 +10522,7 @@ Câu trả lời phỏng vấn:                                                 
 
                session()->regenerateToken()
                → regenerate CSRF token     
- * remember token       //  → phục vụ chức năng "Remember Me"         <
+ * remember token       //  → phục vụ chức năng "Remember Me" | create+ tokenHash > Auth > sau login: regenerate() - sau logout: regenerateToken()         <
      9. Remember Token
         Đây lại là một thứ khác.
           Ví dụ login:
@@ -10605,25 +10575,1279 @@ Câu trả lời phỏng vấn:                                                 
            xác thực lại user
 
            Vì remember-me credential nhạy cảm, cookie liên quan cũng phải được bảo vệ và logout/password/security-sensitive flows cần được thiết kế cẩn thận.
-7.13 Password Security                      <
- bcrypt
- Argon2
- Laravel Hash
- không lưu plaintext password
- password policy
- breached-password checking
- reset-token expiration
- MFA
-7.14 Encryption                      <
- Crypt::encryptString($value); 
+   -----------------------------------
+           Có. Remember Token phải được xem như một credential dài hạn: ai chiếm được credential hợp lệ có thể có cơ hội được hệ thống nhớ đăng nhập.
 
- Crypt::decryptString($encrypted); 
+                 Trong Laravel, nếu dùng cơ chế remember me chuẩn thì nên dùng Auth của framework, không tự thiết kế cookie kiểu user_id=1.
+
+          Thiết kế cơ bản
+
+             Form login:                      <
+
+                 <input type="checkbox" name="remember" value="1">
+                 Remember me
+
+             Controller:
+
+                 public function login(Request $request)
+                 {
+                     $credentials = $request->validate([
+                         'email' => ['required', 'email'],
+                         'password' => ['required', 'string'],
+                     ]);
+
+                     $remember = $request->boolean('remember');
+
+                     if (! Auth::attempt($credentials, $remember)) {                      <  
+                         return back()->withErrors([
+                             'email' => 'Thông tin đăng nhập không chính xác.',
+                         ]);
+                     }
+
+                     // Chống session fixation
+                     $request->session()->regenerate();                      <
+
+                     return redirect()->intended('/dashboard');
+                 }
+
+            Luồng:
+
+                 Email + Password
+                        ↓
+                 Auth::attempt($credentials, remember: true)
+                        ↓
+                 Authentication thành công
+                        ↓
+                 regenerate Session ID
+                        ↓
+                 Laravel thiết lập cơ chế Remember Me
+                        ↓
+                 Browser giữ persistent cookie
+                        ↓
+                 User quay lại sau
+                        ↓
+                 Laravel xác minh remember credential
+                        ↓
+                 khôi phục authentication theo guard
+         Cookie phải được bảo vệ
+            Production nên dùng HTTPS và các thuộc tính cookie phù hợp:                      <
+
+                 SESSION_SECURE_COOKIE=true
+                 SESSION_HTTP_ONLY=true
+                 SESSION_SAME_SITE=lax
+
+           Tư duy là:
+
+                 HTTPS
+                   ↓
+                 Secure cookie
+
+                 JavaScript
+                   ↓
+                 HttpOnly hạn chế đọc cookie
+
+                 Cross-site request
+                   ↓
+                 SameSite hạn chế một số tình huống
+
+           Lưu ý các biến SESSION_* trực tiếp mô tả session cookie; remember-me cookie được framework/guard tạo theo cấu hình cookie liên quan. Điểm quan trọng là                  đừng tự tạo một remember cookie kém an toàn.
+
+             Tuyệt đối không tự làm kiểu này                      <
+                 Cookie::queue(
+                     'remember_user',
+                     $user->id,
+                     60 * 24 * 365
+                 );
+
+             Rồi:
+
+                 $user = User::find(
+                     request()->cookie('remember_user')
+                 );
+
+                 Auth::login($user);
+
+           Đây là thiết kế cực kỳ nguy hiểm.
+
+           Attacker chỉ cần sửa:
+
+                 remember_user=1
+
+             thành:
+
+                 remember_user=2
+
+                 nếu backend tin giá trị đó thì có thể đăng nhập thành user khác.
+
+            Cũng không được lưu:
+
+                 ❌ password
+                 ❌ plaintext reusable secret tự chế
+                 ❌ user_id rồi tin trực tiếp
+                 Logout phải thu hồi phiên đúng cách
+
+            Pattern Laravel:                      <
+
+                 public function logout(Request $request)
+                 {
+                     Auth::logout();
+
+                     $request->session()->invalidate();
+
+                     $request->session()->regenerateToken();
+
+                     return redirect('/');
+                 }
+
+            Nếu yêu cầu nghiệp vụ là “đăng xuất khỏi tất cả thiết bị / thu hồi tất cả phiên lâu dài”, đó là bài toán khác với logout phiên hiện tại. Với hệ thống                  nhạy cảm, nên thiết kế session/device management rõ ràng thay vì giả định một logout() sẽ giải quyết mọi thiết bị.
+
+                 Đổi mật khẩu / sự kiện bảo mật
+
+            Với HRM/ERP, nên có chính sách mạnh hơn khi xảy ra:
+
+                 Password changed
+                 Password reset
+                 Account disabled
+                 User bị khóa
+                 Security incident
+                 Role/quyền nhạy cảm thay đổi
+
+                 Tùy yêu cầu, bạn có thể thu hồi các session/remember credentials liên quan và yêu cầu đăng nhập lại. Không nên để credential dài hạn cũ tiếp tục sống                  mà không có chiến lược revoke.
+
+                 Chức năng nhạy cảm phải re-authenticate
+
+                 Đây là điểm quan trọng trong ERP.
+
+            Giả sử user được Remember Me tự động nhận diện rồi vào:
+
+                 /dashboard
+
+                 có thể chấp nhận.
+
+            Nhưng các hành động như:
+
+                 Finalize Payroll
+                 Approve Payroll
+                 Thay tài khoản ngân hàng
+                 Đổi password
+                 Thay email
+                 Tạo API token
+                 Xem/xuất dữ liệu cực kỳ nhạy cảm
+
+            có thể yêu cầu nhập lại mật khẩu/MFA tùy threat model:
+
+                 Remember Me
+                      ↓
+                 Dashboard                    ✅
+                 Employee list                ✅
+                      ↓
+                 Finalize Payroll
+                      ↓
+                 Recent authentication?
+                      ├── YES → tiếp tục
+                      └── NO
+                           ↓
+                       nhập lại password/MFA
+                           ↓
+                       authorize
+                           ↓
+                        finalize
+
+             Remember Me nghĩa là:
+
+                 “Tôi nhớ thiết bị/browser này.”
+
+             Không nên mặc định nghĩa là:
+
+                 “Mọi hành động nhạy cảm đều được phép mãi mà không cần xác minh lại.”
+
+             Nếu bạn muốn mức Senior hơn
+             Với ERP doanh nghiệp, có thể thiết kế Trusted Device / Session Management riêng:
+
+                 users
+                  │
+                  ├── sessions
+                  │    ├── id
+                  │    ├── user_id
+                  │    ├── last_activity
+                  │    └── ...
+                  │
+                  └── trusted_devices
+                       ├── user_id
+                       ├── token_hash                               <
+                       ├── expires_at
+                       ├── last_used_at
+                       └── revoked_at
+
+             Credential ngẫu nhiên gửi cho browser:
+
+                 Browser
+                    ↓
+                 random secret
+
+                 DB chỉ giữ:
+
+                 hash(secret)
+
+             rồi hỗ trợ:
+
+                 Expiration
+                 Rotation
+                 Revocation
+                 Device list
+                 Revoke one device
+                 Revoke all devices
+                 Audit log
+
+                 Đây là thiết kế custom; nếu chỉ cần Remember Me thông thường thì ưu tiên cơ chế Laravel Auth chuẩn, đừng tự phát minh token system.
+
+             Cách nhớ
+                 Remember Token
+                      ↓
+                 credential dài hạn
+                      ↓
+                 phải bảo vệ
+
+                 HTTPS
+                   +
+                 Secure/HttpOnly/SameSite phù hợp
+                   +
+                 Framework Auth
+                   +
+                 Session regenerate
+                   +
+                 Expiration/chính sách thời hạn
+                   +
+                 Revocation
+                   +
+                 Re-auth cho hành động nhạy cảm
+                   +
+                 Audit/device management nếu cần
+
+            Với HRM/ERP của bạn, tư duy tốt là Remember Me dùng để tiện đăng nhập lại; còn Payroll approval/finalize và thay đổi security-sensitive vẫn phải đi qua                  Policy và có thể yêu cầu xác thực gần đây/MFA.
+7.13 Password Security       10                  <
+ * bcrypt  | password hashing                      <
+ * Argon2  | password hashing + được thiết kế để có chi phí bộ nhớ đáng kể                      <
+ * argon2id |  lựa chọn ưu tiên   Cân bằng tốt giữa chống brute-force, side-channel và GPU cracking                 <
+ * Laravel Hash | cấu hình .env : HASH_DRIVER=bcrypt - HASH_DRIVER=argon | config/hashing.php :'driver' => env('HASH_DRIVER', 'bcrypt'),  bcrypt, argon, argon2id                    <
+    Hash::make() — tạo password hash
+    Hash::check() — kiểm tra password
+    Hash::needsRehash() — hash cũ có cần nâng cấp không?
+
+    Nếu chọn cho project Laravel mới của bạn, ưu tiên argon2id.
+
+    So sánh ngắn:
+
+    Driver   	Mức nên dùng	                      Ghi chú
+    bcrypt	      Tốt	                            Rất phổ biến, tương thích rộng, vẫn an toàn nếu cost phù hợp
+    argon	  Không ưu tiên bằng argon2id	    Tên này thường trỏ tới Argon2i/Argon2 family tùy framework/config
+    argon2id	Nên chọn	                     Cân bằng tốt giữa chống brute-force, side-channel và GPU cracking
+
+    Với hệ thống HRM/ERP của bạn:
+
+    Khuyến nghị:
+    HASH_DRIVER=argon2id
+
+    Lý do là argon2id có tính memory-hard, nên attacker muốn thử hàng triệu password sẽ tốn cả CPU lẫn RAM hơn:
+
+    bcrypt
+    → chủ yếu tăng chi phí tính toán
+
+    argon2id
+    → tăng chi phí tính toán
+       +
+    tăng chi phí bộ nhớ
+
+    Nó phù hợp với password hashing hiện đại.
+ * không lưu plaintext password | là chưa mã hoá | Thanh@123456 chính là plaintext password.        <
+ * password policy  | luật cho pass        <        
+ * breached-password checking | uncompromised() Password user chọn có từng xuất hiện trong các tập dữ liệu password bị rò rỉ phổ biến hay không? | “Bị lộ” nghĩa là password đó đã xuất hiện trong dữ liệu bị đánh cắp/rò rỉ từ các hệ thống từng bị xâm nhập.          <
+    Cách nhớ
+           min(12)
+           → dài tối thiểu 12           
+
+           mixedCase()
+           → có HOA + thường           
+
+           numbers()
+           → có số           
+
+           symbols()
+           → có ký tự đặc biệt           
+
+           uncompromised()
+           → không dùng password đã bị lộ phổ biến  |   “Bị lộ” nghĩa là password đó đã xuất hiện trong dữ liệu bị đánh cắp/rò rỉ từ các hệ thống từng bị xâm nhập.      
+
+           confirmed
+           → password_confirmation phải khớp           
+
+           Hash::make()
+           → hash trước khi lưu DB           
+
+  Tóm lại:
+      'password' => [
+         'required',
+         'confirmed',     
+
+         Password::min(12)
+             ->mixedCase()
+             ->numbers()
+             ->symbols()
+             ->uncompromised(),
+     ],
+ * reset-token expiration  | Reset token không được sống mãi mãi. | cài time               <
+ * MFA  | đặc biệt quan trọng với ERP | Multi-Factor Authentication — xác thực đa yếu tố.             <
+     Bình thường:
+
+            Email
+            +
+            Password
+            ↓
+            Login
+
+        MFA thêm một yếu tố xác thực nữa:
+
+            Email
+            +
+            Password
+            ↓
+            đúng
+            ↓
+            MFA
+            ↓
+            mã từ Authenticator / Security Key...
+            ↓
+            đúng
+            ↓
+            Login hoàn tất
+
+            Mục tiêu: password bị lộ vẫn chưa đủ để attacker đăng nhập.
+
+    1. MFA khác 2FA thế nào?
+
+         2FA = chính xác 2 yếu tố.
+
+         MFA = từ 2 yếu tố trở lên.
+
+         Các factor thường chia:                            <
+
+            1. Something you KNOW                            <
+               → Password / PIN
+
+            2. Something you HAVE                            <
+               → Authenticator app
+               → Security Key
+               → thiết bị được xác minh
+
+            3. Something you ARE                            <
+               → Face ID
+               → Touch ID
+               → biometrics
+
+        Ví dụ:
+
+            Password
+               +
+            Authenticator
+
+            → 2 factor khác loại → 2FA và cũng là MFA.
+
+        Nhưng:
+
+            Password
+            +
+            PIN
+
+            cả hai đều là something you know, nên không phải cách thiết kế MFA mạnh chỉ vì có hai bí mật.
+
+     2. Ví dụ với ERP của bạn
+
+         User đăng nhập:
+
+            POST /login
+                ↓
+            Rate Limit
+                ↓
+            email + password
+                ↓
+            Auth::attempt()
+                ↓
+            Password đúng
+                ↓
+            User bật MFA?
+             ┌──────┴──────┐
+             NO            YES
+             ↓              ↓
+            Login        MFA Challenge
+                           ↓
+                     nhập mã 6 số
+                           ↓
+                        Verify
+                      ┌────┴────┐
+                    đúng         sai
+                     ↓            ↓
+                 hoàn tất        reject
+                   login
+     3. TOTP — loại bạn sẽ gặp rất nhiều
+
+         Ví dụ dùng:
+
+            Google Authenticator
+            Microsoft Authenticator
+            1Password Authenticator
+
+        User nhìn thấy mã:
+
+            482 193
+
+            Sau một khoảng thời gian mã đổi:
+
+            482193
+               ↓
+            hết thời gian
+               ↓
+            751028
+               ↓
+            hết thời gian
+               ↓
+            309441
+
+            Đây thường là TOTP — Time-based One-Time Password.
+
+            Server và Authenticator cùng có một secret.
+
+                             MFA SECRET
+                            /          \
+                           /            \
+                      Laravel       Authenticator
+                          ↓              ↓
+                         time           time
+                          ↓              ↓
+                         TOTP           TOTP
+                          ↓              ↓
+                       482193    ==    482193
+                                   ↓
+                                  ✅
+     4. Setup MFA
+
+         Khi user bật MFA:
+
+            Security Settings
+                   ↓
+            Enable MFA
+                   ↓
+            Laravel tạo secret
+                   ↓
+            QR Code
+                   ↓
+            Authenticator scan QR
+                   ↓
+            Authenticator lưu secret
+                   ↓
+            User nhập mã xác nhận
+                   ↓
+            Laravel verify
+                   ↓
+            MFA enabled
+
+         DB về mặt thiết kế có thể có:
+
+            users
+            ├── password
+            ├── mfa_enabled_at
+            └── ...
+
+            mfa_credentials
+            ├── user_id
+            ├── encrypted_secret
+            ├── type
+            └── ...
+
+            TOTP secret khác password hash.
+
+            Password:
+
+            password
+            ↓
+            Argon2id
+            ↓
+            hash
+
+         TOTP secret cần server sử dụng lại để tính/verify TOTP, nên nếu tự thiết kế thì thường cần encryption at rest, không phải one-way hash             đơn giản:
+
+            TOTP secret
+            ↓
+            encrypt
+            ↓
+            DB
+     5. Login có MFA
+
+            Một điểm kiến trúc quan trọng: password đúng chưa nên đồng nghĩa với hoàn tất authentication đầy đủ nếu MFA còn chưa verify.
+
+         Tư duy:
+
+            Password verified
+                   ↓
+            MFA required
+                   ↓
+            Pending MFA state
+                   ↓
+            POST /mfa/challenge
+                   ↓
+            TOTP verify
+                   ↓
+            Authentication hoàn tất
+                   ↓
+            session()->regenerate()
+                   ↓
+            Dashboard
+
+        Bạn không nên thiết kế:
+
+            Password đúng
+            ↓
+            cho toàn quyền vào ERP
+            ↓
+            sau đó mới hỏi MFA ❌
+    6. MFA cũng cần Rate Limit
+
+        Endpoint:
+
+            POST /mfa/challenge
+
+        không được cho attacker thử vô hạn:
+
+            000000
+            000001
+            000002
+            000003
+            ...
+
+        Phải có:
+
+            MFA
+            +
+            Rate Limit
+            +
+            attempt limit
+            +
+            temporary lock/cooldown
+
+        Ví dụ:
+
+            5 lần sai
+            ↓
+            429 / cooldown
+
+            Con số cụ thể tùy security policy.
+
+    7. Recovery Codes
+
+        Khi bật MFA, nên cấp recovery codes:
+
+            8HJK-2KLM
+            PQ91-XZ72
+            7HD2-MN82
+            ...
+
+        Nếu user mất điện thoại:
+
+            Mất Authenticator
+                   ↓
+            không lấy được TOTP
+                   ↓
+            Recovery Code
+                   ↓
+            Verify
+                   ↓
+            Login/recover MFA
+
+        Mỗi recovery code nên:
+
+            One-time use
+            ↓
+            dùng một lần
+            ↓
+            ❌ không dùng lại
+
+            Recovery codes là credential nhạy cảm và cần lưu/bảo vệ phù hợp.
+
+    8. MFA và Remember Me
+
+         Hai cái không giống nhau:
+
+            Remember Me
+            → nhớ đăng nhập/thiết bị
+
+            MFA
+            → xác minh thêm factor
+
+        Bạn có thể thiết kế:
+
+            Password
+            ↓
+            MFA
+            ↓
+            "Trust this device for 30 days?"
+            ↓
+            Trusted Device Token
+            ↓
+            token_hash DB
+
+         Lần sau:
+
+            Login
+            ↓
+            Trusted Device còn hợp lệ?
+            ├── YES → có thể không yêu cầu MFA lại
+            └── NO  → MFA Challenge
+
+            Nhưng với hành động cực kỳ nhạy cảm vẫn có thể yêu cầu step-up MFA.
+
+     9. MFA trong Payroll rất đáng dùng
+
+         Ví dụ:
+
+            User đã login
+            ↓
+            Xem dashboard
+            → bình thường
+
+            Xem employee
+            → Policy
+
+            Finalize Payroll
+            → nhạy cảm
+            ↓
+            Recent MFA?
+            ├── YES
+            │    ↓
+            │  Policy
+            │    ↓
+            │  Finalize
+            │
+            └── NO
+                 ↓
+               MFA Challenge
+                 ↓
+               Verify
+                 ↓
+               Policy
+                 ↓
+               Finalize
+
+            Đây gọi là step-up authentication.
+
+        Đặc biệt đáng cân nhắc cho:
+
+            Payroll approve/finalize
+            Thay đổi tài khoản ngân hàng
+            Thay đổi Role/Permission
+            Tạo Super Admin
+            Tạo/revoke API credential
+            Export dữ liệu nhân sự nhạy cảm
+            Thay đổi MFA
+    10. MFA không thay Authorization
+
+            MFA chỉ chứng minh authentication mạnh hơn.
+
+         Không phải:
+
+            MFA thành công
+            ↓
+            được làm tất cả ❌
+
+        Mà:
+
+            Password
+            ↓
+            MFA
+            ↓
+            Authentication
+            ↓
+            Permission
+            ↓
+            Policy
+            ↓
+            Tenant/Company isolation
+            ↓
+            Business rules
+            ↓
+            Use Case
+
+        Ví dụ:
+
+            HR Employee
+            ↓
+            Password đúng
+            ↓
+            MFA đúng
+            ↓
+            nhưng không có payroll.approve
+            ↓
+            ❌ 403
+        Cách nhớ
+            PASSWORD
+            → Something you KNOW
+
+            AUTHENTICATOR
+            → Something you HAVE
+
+            Password + Authenticator
+            → MFA
+
+            Với Laravel ERP:
+
+            Login
+            ↓
+            Password
+            ↓
+            MFA
+            ↓
+            session()->regenerate()
+            ↓
+            Permission / Policy
+            ↓
+            ERP
+
+            Và với tài khoản Super Admin, HR Manager, Payroll Manager, MFA rất đáng triển khai; riêng các thao tác như Payroll Approve/Finalize có             thể thêm step-up MFA ngay cả khi user đã đăng nhập.
+
+ kiểm tra: php artisan tinker > config('hashing.driver')   Nếu ra:"bcrypt"→ đang dùng bcrypt.  
+ password : bcrypt, argon , argon2id > php artisan optimize:clear  | .env :  HASH_DRIVER=argon2id 
+7.14 Encryption |  Mã hóa 2 chiều                    <
+ Crypt::encryptString($value);       // Mã hóa:
+
+ Crypt::decryptString($encrypted);       // Giải mã:
 
  Phân biệt rõ: 
 
  Hash       → một chiều
  Encryption → hai chiều
  Encoding   → không phải bảo mật
+
+  1. Encryption khác Hash                 <
+        Hash
+        Password
+            ↓
+        Hash::make()
+            ↓
+        $argon2id$...
+            ↓
+        ❌ không decrypt ngược         
+
+        Dùng cho password vì server không cần biết lại password cũ.         
+
+        Encryption
+        Số tài khoản ngân hàng
+                ↓
+            encrypt
+                ↓
+        ciphertext
+                ↓
+            decrypt
+                ↓
+        Số tài khoản ban đầu         
+
+        Dùng khi hệ thống cần lấy dữ liệu gốc trở lại.         
+
+     Cách nhớ:         
+
+	                                    Hash	             Encryption
+        Biến dữ liệu	                 ✅	                   ✅
+        Khôi phục dữ liệu gốc	         ❌	                   ✅
+        Cần key để decrypt               ❌	                   ✅
+        Password	                     ✅                     ❌
+        Dữ liệu cần đọc lại              ❌	                   ✅
+  2. Laravel Crypt                 <
+    Laravel cung cấp:
+        use Illuminate\Support\Facades\Crypt;
+     Mã hóa:   
+
+       $encrypted = Crypt::encryptString(
+           '0123456789'
+       );   
+
+     Giải mã:   
+
+       $plaintext = Crypt::decryptString(
+           $encrypted
+       );   
+
+     Ví dụ:   
+
+       $bankAccount = '123456789';   
+
+       $encrypted = Crypt::encryptString(
+           $bankAccount
+       );   
+
+       echo $encrypted;   
+
+       DB lưu:   
+
+       eyJpdiI6Ik...
+     Khi cần sử dụng:
+
+       $bankAccount = Crypt::decryptString(
+           $employee->bank_account
+       );
+
+       →
+
+       123456789
+  3. Key nằm ở đâu?                          <
+
+         Laravel encryption dựa vào application encryption key, thường:         
+
+         APP_KEY=base64:...         
+
+       Luồng:         
+
+         APP_KEY
+            ↓
+         Laravel Crypt
+            ↓
+         Encrypt / Decrypt         
+
+         Ví dụ:         
+
+                            APP_KEY
+                              │
+                   ┌──────────┴──────────┐
+                   ↓                     ↓
+                Encrypt               Decrypt
+                   ↓                     ↓
+         123456789 → ciphertext → 123456789
+         Không được đưa APP_KEY lên Git         
+
+         .env phải nằm ngoài source control.         
+
+        Không:         
+
+         GitHub
+         └── .env
+             └── APP_KEY=... ❌         
+
+        Nếu attacker có cả:         
+
+         Database
+         +
+         APP_KEY         
+
+         thì dữ liệu application-encrypted có nguy cơ bị decrypt.         
+
+  4. Nếu mất APP_KEY thì sao?                          <
+
+         Đây là vấn đề rất nghiêm trọng.         
+
+        Bạn có:         
+
+         Database:
+         eyJpdiI6...         
+
+        nhưng mất key dùng để encrypt:         
+
+         APP_KEY ❌         
+
+         thì dữ liệu đã mã hóa có thể không giải mã được nữa.         
+
+       Vì vậy:         
+
+         APP_KEY
+         → secret
+         → không commit
+         → backup/quản lý secret an toàn
+         → rotation phải có kế hoạch         
+
+        Không được tùy tiện:         
+
+         php artisan key:generate         
+
+         trên production đang có dữ liệu encrypted rồi nghĩ rằng không ảnh hưởng.         
+
+         Key mới có thể khiến dữ liệu mã hóa bằng key cũ không còn decrypt theo cách cũ.         
+
+  5. Eloquent encrypted cast                          <
+
+         Laravel có cách tiện hơn khi lưu model.         
+
+        Ví dụ:         
+
+         class Employee extends Model
+         {
+             protected function casts(): array
+             {
+                 return [
+                     'bank_account' => 'encrypted',
+                 ];
+             }
+         }         
+
+       Sau đó:         
+
+         $employee->bank_account = '123456789';         
+
+         $employee->save();         
+
+         Laravel tự:         
+
+         123456789
+            ↓
+         encrypt
+            ↓
+         DATABASE
+         eyJpdiI6...         
+
+       Khi:         
+
+         echo $employee->bank_account;         
+
+         Laravel tự decrypt:         
+
+         DATABASE
+         eyJpdiI6...
+            ↓
+         decrypt
+            ↓
+         123456789         
+
+         Nên code nghiệp vụ nhìn rất sạch:         
+
+         $employee->bank_account = $data['bank_account'];
+  6. Encrypt field nào?                          <
+
+         Không phải cứ có dữ liệu là encrypt hết.         
+
+         Trong HRM/ERP, những field đặc biệt nhạy cảm có thể cân nhắc application-level encryption, ví dụ:         
+
+         Bank account
+         Tax identifier tùy yêu cầu
+         Government identifier
+         Một số thông tin payroll nhạy cảm
+         MFA/TOTP secret
+         Credential của integration         
+
+        Nhưng:         
+
+         name
+         department
+         position
+         status
+         created_at         
+
+         không nhất thiết phải application-encrypt.         
+
+  7. Tại sao không encrypt mọi column?                          <
+
+         Bởi vì encrypted data khó query trực tiếp.         
+
+        Ví dụ:         
+
+         Employee::where(
+             'bank_account',
+             '123456789'
+         )->first();         
+
+         Nếu bank_account được randomized encryption thì DB đang chứa ciphertext:         
+
+         eyJpdiI6...         
+
+       chứ không phải:         
+
+         123456789         
+
+         nên equality search/indexing không hoạt động theo cách thông thường.         
+
+       Các thao tác như:         
+
+         WHERE
+         LIKE
+         ORDER BY
+         GROUP BY
+         INDEX lookup         
+
+         có thể bị ảnh hưởng.         
+
+         Do đó:         
+
+         Encryption phải được thiết kế theo threat model + nhu cầu query, không phải bật bừa trên toàn bộ DB.         
+
+  8. Encryption at Rest                          <
+
+       At Rest = dữ liệu đang nằm trong storage:         
+
+         Database
+         Disk
+         Backup
+         Object Storage         
+
+       Ví dụ:         
+
+         Employee bank account
+         ↓
+         Encrypt
+         ↓
+         Database         
+
+         hoặc infrastructure/database/disk cũng có thể có encryption at rest.         
+
+  9. Encryption in Transit                          <
+
+         In Transit = dữ liệu đang truyền qua mạng.         
+
+         Ví dụ:         
+
+         Browser
+            ↓
+         HTTPS / TLS
+            ↓
+         Laravel         
+
+       Không dùng:         
+
+         http://erp.example.com ❌         
+
+         Production:         
+
+         https://erp.example.com ✅         
+
+        HTTPS bảo vệ:         
+
+         Password
+         Session cookie
+         Bearer token
+         Payroll data
+         Employee data
+         API request/response         
+
+         trong quá trình truyền qua mạng.         
+
+  10. At Rest và In Transit cần cả hai                 <
+                             HTTPS/TLS
+         Browser ─────────────────────────→ Laravel
+                                              ↓
+                                           Encrypt
+                                              ↓
+                                           Database         
+
+        Nếu chỉ encrypt DB:         
+
+         DB encrypted ✅         
+
+         HTTP traffic plaintext ❌         
+
+         vẫn nguy hiểm.         
+
+        Nếu chỉ HTTPS:         
+
+         Network protected ✅         
+
+         DB sensitive field plaintext ❌         
+
+         DB leak vẫn có thể làm lộ dữ liệu.         
+
+         Đó là hai lớp khác nhau.         
+
+  11. Encryption cho MFA Secret                          <
+
+       Ở phần MFA bạn vừa học:         
+
+         Authenticator
+              ↕
+         TOTP Secret
+              ↕
+         Laravel         
+
+         Laravel cần secret để verify TOTP.         
+
+       Vì vậy không thể đơn giản:         
+
+         Hash::make($totpSecret);         
+
+         rồi mong lấy secret trở lại.         
+
+         Hash:         
+
+         TOTP Secret
+         ↓
+         Hash
+         ↓
+         ❌ không lấy secret gốc         
+
+       Trong thiết kế cần server đọc lại secret, encryption phù hợp hơn:         
+
+         TOTP Secret
+         ↓
+         Encrypt
+         ↓
+         DB
+         ↓
+         Decrypt
+         ↓
+         Verify TOTP         
+
+       Ví dụ model:         
+
+         protected function casts(): array
+         {
+             return [
+                 'totp_secret' => 'encrypted',
+             ];
+         }
+  12. Encryption cho API secret                          <
+
+       Ví dụ ERP kết nối một hệ thống bên ngoài:         
+
+         ERP
+         ↓
+         Payment Provider         
+
+       API Secret:
+         sk_live_xxxxxxxxx         
+
+       Nếu Laravel cần dùng lại secret để gọi provider:         
+
+         API Secret
+         ↓
+         Encrypt
+         ↓
+         DB         
+
+       Khi cần:         
+
+         DB ciphertext
+         ↓
+         Decrypt
+         ↓
+         API Secret
+         ↓
+         gọi API         
+
+         Không nên hash nếu server cần lấy secret gốc để gửi cho provider.                
+  13. Encryption không thay Authorization                          <
+
+         Dữ liệu được encrypt không có nghĩa user nào cũng được xem.         
+
+       Vẫn phải:         
+
+         Request
+         ↓
+         Authentication
+         ↓
+         Permission
+         ↓
+         Policy
+         ↓
+         Tenant Isolation
+         ↓
+         Repository
+         ↓
+         Encrypted data
+         ↓
+         Decrypt
+         ↓
+         Response         
+
+       Ví dụ Payroll Manager:         
+
+         payroll.view-sensitive
+                 ↓
+         Policy PASS
+                 ↓
+         decrypt bank account
+                 ↓
+         Response         
+
+         Employee khác:         
+
+         Policy FAIL
+         ↓
+         403         
+
+         không được decrypt/return dữ liệu đó.         
+
+  14. Encryption không thay Hash                          <
+
+       Đây là phần quan trọng nhất để không nhầm:         
+
+         PASSWORD
+         ↓
+         Hash::make()
+         ↓
+         Argon2id
+         ↓
+         DB         
+
+       Không:         
+
+         Password
+         ↓
+         Crypt::encryptString() ❌         
+
+         Vì password không cần lấy lại.         
+
+       Còn:         
+
+         BANK ACCOUNT
+         ↓
+         Crypt::encryptString()
+         ↓
+         DB
+         ↓
+         Crypt::decryptString()
+         ↓
+         Bank account         
+
+       vì hệ thống cần đọc lại.         
+
+         Tổng hợp với các phần bạn vừa học
+         PASSWORD
+         → Hash::make()
+         → Argon2id
+         → không decrypt         
+         
+
+         RANDOM TOKEN
+         → SHA-256
+         → token_hash
+         → không decrypt         
+         
+
+         SENSITIVE DATA CẦN ĐỌC LẠI
+         → Encryption
+         → APP_KEY
+         → decrypt được         
+         
+
+         SESSION ID
+         → regenerate()         
+         
+
+         CSRF TOKEN
+         → regenerateToken()         
+         
+
+         NETWORK
+         → HTTPS/TLS         
+
+        Câu nhớ quan trọng nhất:         
+
+         Không cần lấy dữ liệu gốc lại → Hash. Cần lấy dữ liệu gốc lại → Encryption.         
+
+         Và trong Laravel:         
+
+         // Password
+         Hash::make($password);         
+
+         // Kiểm tra password
+         Hash::check($plain, $hash);         
+
+         // Dữ liệu cần giải mã lại
+         Crypt::encryptString($value);
+         Crypt::decryptString($encrypted);         
+
+         // Eloquent sensitive field
+         'bank_account' => 'encrypted';       
 7.15 Secrets Management                       <
 
  Không hard-code: 
