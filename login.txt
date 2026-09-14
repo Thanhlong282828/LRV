@@ -10244,7 +10244,7 @@ Câu trả lời phỏng vấn:                                                 
             ->middleware('throttle:login');     
 
             là hai phần quan trọng cần nhớ: định nghĩa luật giới hạn → gắn luật đó vào endpoint.
-7.12 Session & Cookie Security                       <
+7.12 Session & Cookie Security         6              <
 
  Hiểu các cấu hình: 
 
@@ -11338,7 +11338,7 @@ Câu trả lời phỏng vấn:                                                 
 
  kiểm tra: php artisan tinker > config('hashing.driver')   Nếu ra:"bcrypt"→ đang dùng bcrypt.  
  password : bcrypt, argon , argon2id > php artisan optimize:clear  | .env :  HASH_DRIVER=argon2id 
-7.14 Encryption |  Mã hóa 2 chiều                    <
+7.14 Encryption |  Mã hóa 2 chiều       14             <
  Crypt::encryptString($value);       // Mã hóa:
 
  Crypt::decryptString($encrypted);       // Giải mã:
@@ -12380,24 +12380,909 @@ Câu trả lời phỏng vấn:                                                 
          'bank_account' => 'encrypted';       
 7.15 Secrets Management                       <
 
- Không hard-code: 
+       Không hard-code: 
 
- $apiKey = 'abc123...'; 
+       $apiKey = 'abc123...'; 
 
- Dùng: 
+       Dùng: 
 
- STRIPE_SECRET=... 
+       STRIPE_SECRET=... 
 
- và: 
+       và: 
 
- config('services.stripe.secret') 
+       config('services.stripe.secret') 
 
- Quan trọng: 
+       Quan trọng: 
 
- không commit .env
- rotate secret nếu bị lộ
- không log token/password/API key
- production secrets manager khi hệ thống lớn
+       không commit .env
+       rotate secret nếu bị lộ
+       không log token/password/API key
+       production secrets manager khi hệ thống lớn
+       -------------------
+   Secrets Management = quản lý các thông tin bí mật mà hệ thống cần để hoạt động.         
+
+     Ví dụ trong Laravel ERP của bạn:         
+
+         APP_KEY
+         DB_PASSWORD
+         REDIS_PASSWORD
+         MAIL_PASSWORD         
+
+         GOOGLE_CLIENT_SECRET
+         STRIPE_SECRET
+         CLOUDFLARE_API_TOKEN
+         AWS_SECRET_ACCESS_KEY         
+
+         JWT_SECRET
+         Webhook Secret
+         API Secret         
+
+     Tất cả những thứ này gọi chung là Secrets.  
+     ------------------------------
+     Bạn nên hiểu 6 cái này theo một mô hình chung trước, rồi mới học cách dùng từng cái:               
+
+               Trước đây:               
+
+               .env
+               DB_PASSWORD=abc123
+               API_SECRET=xyz789
+                       ↓
+                    Laravel               
+               
+
+               Dùng Secret Manager:               
+
+               Secret Manager
+               ├── DB_PASSWORD = abc123
+               └── API_SECRET  = xyz789
+                       ↓
+                  xác thực quyền
+                       ↓
+                    Laravel
+                       ↓
+               Database / API bên thứ 3               
+
+               Điểm quan trọng: không cần dùng cả 6. Chọn theo hạ tầng.               
+
+     * 1. Secret khác password user  | Secret là kết nối | Password là mk                        <
+
+         Phân biệt:         
+
+         User Password
+         ↓
+         Hash::make()
+         ↓
+         Database         
+         
+
+         Application Secret
+         DB_PASSWORD / API_SECRET / APP_KEY
+         ↓
+         Laravel cần dùng giá trị thật
+         ↓
+         không thể chỉ Hash
+         ↓
+         phải quản lý/bảo vệ Secret         
+
+         Ví dụ Laravel phải kết nối MySQL:         
+
+         DB_HOST=127.0.0.1
+         DB_DATABASE=erp
+         DB_USERNAME=erp_user
+         DB_PASSWORD=MySecret123         
+
+         Laravel cần MySecret123 thật để đăng nhập MySQL. Nếu bạn chỉ lưu:         
+
+         $argon2id$...         
+
+         Laravel không thể lấy lại password để kết nối.         
+
+     * 2. Laravel thường để Secret ở đâu?  | .env   ← Secrets  | .env.example   ← chỉ tên biến / giá trị mẫu                    <
+
+      Local development thường:         
+
+         Laravel Project
+         │
+         ├── app/
+         ├── Modules/
+         ├── config/
+         ├── .env             ← Secrets
+         └── .env.example     ← chỉ tên biến / giá trị mẫu         
+
+      Ví dụ:         
+
+         APP_KEY=base64:xxxxxxxx         
+
+         DB_USERNAME=erp_user
+         DB_PASSWORD=secret123         
+
+         GOOGLE_CLIENT_ID=...
+         GOOGLE_CLIENT_SECRET=...         
+
+         CLOUDFLARE_API_TOKEN=...         
+
+      Trong code:         
+
+         'secret' => env('GOOGLE_CLIENT_SECRET'),         
+
+         Tốt hơn là lấy env() trong config:         
+
+         // config/services.php         
+
+         'google' => [
+             'client_id' => env('GOOGLE_CLIENT_ID'),
+             'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+         ],         
+
+         Sau đó code ứng dụng dùng:         
+
+         config('services.google.client_secret');         
+
+      Luồng:         
+
+         .env
+         ↓
+         GOOGLE_CLIENT_SECRET
+         ↓
+         config/services.php
+         ↓
+         config('services.google.client_secret')
+         ↓
+         Service / Integration
+         ↓
+         Google API
+     * 3. Tuyệt đối không hard-code Secret  | ko viết code () Kết nối ) > Secret bị lộ                        <
+
+      ❌ Không nên:         
+
+         $apiSecret = 'sk_live_ABCXYZ123';         
+
+         Vì:         
+
+         Source Code
+         ↓
+         Git commit
+         ↓
+         GitHub
+         ↓
+         Secret bị lộ         
+
+      Nên:         
+
+         $apiSecret = config('services.payment.secret');         
+
+         và secret thực tế nằm ngoài source code.         
+
+     * 4. .env không được push GitHub                          <
+
+       Thường:         
+
+         .env         
+
+       GitHub nên có:         
+
+         .env.example ✅         
+
+       không có:         
+
+         .env ❌         
+
+       Ví dụ .env.example:         
+
+         DB_PASSWORD=         
+
+         GOOGLE_CLIENT_ID=
+         GOOGLE_CLIENT_SECRET=         
+
+         CLOUDFLARE_API_TOKEN=         
+
+         Không điền secret thật.         
+
+     * 5. Production nên mạnh hơn | local: .env  | production: các hệ thống quản lý secret:             (v)6                  <
+
+       Ở local:         
+
+         .env
+         ↓
+         Laravel         
+
+       Ở hệ thống production lớn có thể:         
+
+         Secret Manager
+         ↓
+         Laravel         
+
+       Ví dụ các hệ thống quản lý secret:         
+
+         AWS Secrets Manager
+         Google Secret Manager
+         Azure Key Vault
+         HashiCorp Vault
+         Docker / Kubernetes Secrets
+         CI/CD Secret Store         
+
+      +1. AWS Secrets Manager                   <
+
+               Dùng khi Laravel chạy trên AWS hoặc sử dụng nhiều dịch vụ AWS.               
+
+            Ví dụ bạn muốn cất:               
+
+               payroll/production/database               
+
+               DB_USERNAME = payroll_user
+               DB_PASSWORD = Abc@123456
+               Bước 1 — Tạo secret               
+
+          Trong AWS:               
+
+               AWS Console
+               ↓
+               Secrets Manager
+               ↓
+               Store a new secret
+               ↓
+               nhập:               
+
+               DB_USERNAME = payroll_user
+               DB_PASSWORD = Abc@123456
+               ↓
+               Secret name:
+               payroll/production/database
+          Bước 2 — Cấp quyền cho Laravel               
+
+          Laravel/server cần IAM permission:               
+
+               secretsmanager:GetSecretValue               
+
+         AWS xác nhận đây là quyền cần thiết để đọc secret.               
+
+         Bước 3 — Laravel cài AWS SDK
+               composer require aws/aws-sdk-php
+        Bước 4 — Laravel lấy secret               
+
+          Ví dụ Service:               
+
+               use Aws\SecretsManager\SecretsManagerClient;               
+
+               $client = new SecretsManagerClient([
+                   'version' => 'latest',
+                   'region' => 'ap-southeast-1',
+               ]);               
+
+               $result = $client->getSecretValue([
+                   'SecretId' => 'payroll/production/database',
+               ]);               
+
+               $secret = json_decode(
+                   $result['SecretString'],
+                   true
+               );               
+
+               $password = $secret['DB_PASSWORD'];               
+
+         Luồng:               
+
+               Laravel
+               ↓
+               IAM xác thực
+               ↓
+               AWS Secrets Manager
+               ↓
+               payroll/production/database
+               ↓
+               DB_PASSWORD
+               ↓
+               Laravel sử dụng               
+
+         AWS cũng hỗ trợ version/rotation và khuyến nghị caching secret khi phù hợp để giảm độ trễ/chi phí.               
+
+          AWS Secrets Manager hướng dẫn PHP               
+
+      +2. Google Secret Manager                   <
+
+           Ý tưởng gần như AWS.               
+
+           Ví dụ:               
+
+               Google Secret Manager               
+
+               Secret:
+               CLOUDFLARE_API_TOKEN               
+
+               Version:
+               1 → abcxyz...
+               2 → new-secret...
+           Bước 1               
+
+               Google Cloud:               
+
+               Project
+               ↓
+               Secret Manager
+               ↓
+               Create Secret
+               ↓
+               Name:
+               CLOUDFLARE_API_TOKEN               
+
+               Value:
+               secret-thật               
+
+        Google yêu cầu bật Secret Manager API và thiết lập authentication trước khi application truy cập.               
+
+        Bước 2 — Laravel cài SDK
+               composer require google/cloud-secret-manager
+        Bước 3 — cấp quyền               
+
+        Application/service account chỉ cần quyền đọc, thường dùng:               
+
+               roles/secretmanager.secretAccessor               
+
+        Bước 4 — Laravel đọc               
+
+           Concept:               
+
+               use Google\Cloud\SecretManager\V1\Client\SecretManagerServiceClient;
+               use Google\Cloud\SecretManager\V1\AccessSecretVersionRequest;               
+
+               $client = new SecretManagerServiceClient();               
+
+               $name = $client->secretVersionName(
+                   'my-project',
+                   'CLOUDFLARE_API_TOKEN',
+                   'latest'
+               );               
+
+               $request = AccessSecretVersionRequest::build($name);               
+
+               $response = $client->accessSecretVersion($request);               
+
+               $secret = $response->getPayload()->getData();               
+
+           Google hỗ trợ secret versions, nên latest có thể trỏ đến phiên bản mới nhất.               
+
+               Laravel
+               ↓
+               Google authentication
+               ↓
+               Secret Manager
+               ↓
+               CLOUDFLARE_API_TOKEN
+               ↓
+               latest
+               ↓
+               secret thật
+               ↓
+               Laravel               
+
+           Google Secret Manager hướng dẫn chính thức               
+
+      +3. Azure Key Vault                   <
+
+            Nếu Laravel chạy trong hệ sinh thái Microsoft Azure:               
+
+               Azure Key Vault
+               │
+               ├── DB-PASSWORD
+               ├── MAIL-PASSWORD
+               ├── STRIPE-SECRET
+               └── API-SECRET
+                      ↓
+                    Laravel               
+
+           Quy trình tương tự:               
+
+               1. Azure Portal
+                      ↓
+               2. Tạo Key Vault
+                      ↓
+               3. Secrets
+                      ↓
+               4. Generate/Import
+                      ↓
+               5. DB-PASSWORD = ****
+                      ↓
+               6. Cấp identity của Laravel quyền đọc
+                      ↓
+               7. Laravel authenticate với Azure
+                      ↓
+               8. Laravel lấy secret               
+
+         Điểm cần nhớ:               
+
+               AWS
+               → IAM               
+
+               Google
+               → IAM / Service Account               
+
+               Azure
+               → Microsoft Entra ID / Managed Identity               
+
+            Tức là Laravel không được phép đọc tất cả secret chỉ vì biết tên secret. Identity của workload phải được cấp quyền.               
+
+            Microsoft Azure Key Vault documentation               
+
+      +4. HashiCorp Vault                   <
+
+         Cái này thú vị hơn vì nó không buộc bạn phải dùng AWS/Google/Azure.               
+
+         Bạn có thể có:               
+
+               Your Server
+               │
+               ├── Laravel ERP
+               │
+               └── Vault
+                     │
+                     ├── payroll/database
+                     ├── payroll/cloudflare
+                     └── payroll/mail               
+
+          Ví dụ cài Vault rồi bật KV secrets engine:               
+
+               vault secrets enable -version=2 kv               
+
+          Lưu:               
+
+               vault kv put kv/payroll/database \
+                   username="payroll_user" \
+                   password="Abc@123456"               
+
+         Đọc:               
+
+               vault kv get kv/payroll/database               
+
+          Vault KV v2 có versioning; mặc định có thể giữ nhiều phiên bản của secret và hỗ trợ cơ chế check-and-set để tránh ghi đè ngoài ý muốn.               
+
+         Application thực tế sẽ authenticate với Vault rồi gọi API/SDK:               
+
+               Laravel
+               ↓
+               authenticate với Vault
+               ↓
+               Vault Policy kiểm tra
+               ↓
+               được phép đọc?               
+
+               kv/payroll/database
+               ↓
+               YES
+               ↓
+               username
+               password
+               ↓
+               Laravel               
+
+          Bạn còn có thể tạo policy kiểu:               
+
+               Payroll Application               
+
+               được:
+               ✅ read kv/payroll/*               
+
+               không được:
+               ❌ read finance/*
+               ❌ read super-admin/*               
+
+       Đây chính là Least Privilege.               
+
+       HashiCorp Vault KV documentation               
+
+      +5. Docker / Kubernetes Secrets                   <
+
+         Hai cái này hơi khác các Secret Manager phía trên.               
+
+          Giả sử container Laravel cần:               
+
+               DB_PASSWORD               
+
+          Bạn không muốn viết thẳng vào Docker image:               
+
+               ENV DB_PASSWORD=123456               
+
+         rồi build nó vào image.               
+
+          Kubernetes               
+
+          Tạo Secret:               
+
+               kubectl create secret generic laravel-secrets \
+                   --from-literal=DB_PASSWORD='Abc@123456'               
+
+          Sau đó Pod Laravel tham chiếu secret:               
+
+               env:
+                 - name: DB_PASSWORD
+                   valueFrom:
+                     secretKeyRef:
+                       name: laravel-secrets
+                       key: DB_PASSWORD               
+
+          Kết quả:               
+
+               Kubernetes Secret
+               DB_PASSWORD
+                     ↓
+                     ↓ inject
+                     ↓
+               Laravel Pod
+                     ↓
+               environment:
+               DB_PASSWORD
+                     ↓
+               Laravel config               
+
+          Laravel vẫn có thể:               
+
+               env('DB_PASSWORD');               
+
+          nhưng giá trị được Kubernetes inject vào environment thay vì bạn viết secret trực tiếp vào repository.               
+
+          Kubernetes cũng hỗ trợ mount Secret thành file thay vì environment variable.               
+
+          Một lưu ý quan trọng: Kubernetes Secret không mặc nhiên đồng nghĩa với một vault bảo mật hoàn chỉnh; cần cấu hình RBAC, encryption at                rest cho cluster, giới hạn quyền truy cập, và ở hệ thống lớn thường kết hợp external secret manager.               
+
+          Kubernetes Secrets documentation               
+
+      +6. CI/CD Secret Store — cái này rất gần project của bạn                   <
+
+         Ví dụ bạn deploy Laravel bằng GitHub Actions.               
+
+          Bạn cần:               
+
+               SSH_PRIVATE_KEY
+               SERVER_HOST
+               SERVER_USER
+               DEPLOY_TOKEN               
+
+          Không được viết:               
+
+               password: MyRealPassword123               
+
+          vào:               
+
+               .github/workflows/deploy.yml
+         GitHub Actions Secrets               
+
+          Vào repository:               
+
+               GitHub
+               ↓
+               Repository
+               ↓
+               Settings
+               ↓
+               Secrets and variables
+               ↓
+               Actions
+               ↓
+               New repository secret              
+          Đây chính là flow hiện tại trong tài liệu GitHub.               
+
+          Tạo:               
+
+               SERVER_HOST
+               SERVER_USER
+               SSH_PRIVATE_KEY               
+
+         Workflow sử dụng:               
+
+               env:
+                 SERVER_HOST: ${{ secrets.SERVER_HOST }}
+                 SERVER_USER: ${{ secrets.SERVER_USER }}               
+
+          Luồng:               
+
+               GitHub Secret Store
+               │
+               ├── SERVER_HOST
+               ├── SERVER_USER
+               └── SSH_PRIVATE_KEY
+                       ↓
+               GitHub Actions
+                       ↓
+               build
+               test
+               deploy
+                       ↓
+               Production Server               
+
+          GitHub hỗ trợ secret ở repository, environment và organization level.               
+
+          GitHub Actions Secrets hướng dẫn chính thức               
+
+          Vậy 6 cái liên quan với nhau thế nào?               
+
+         Bạn đừng học thành:               
+
+               Laravel phải dùng:               
+
+               AWS
+               +
+               Google
+               +
+               Azure
+               +
+               Vault
+               +
+               Kubernetes
+               +
+               GitHub Secrets               
+
+         ❌ Không phải.               
+
+         Hãy hiểu:               
+
+                                SECRET
+                                  │
+                         ┌────────┴────────┐
+                         ↓                 ↓               
+
+                    Runtime Secret      Deployment Secret
+                         │                 │
+                         ↓                 ↓
+                AWS Secrets Manager    GitHub Actions Secrets
+                Google Secret Manager
+                Azure Key Vault
+                HashiCorp Vault
+                         │
+                         ↓
+                   Docker/Kubernetes
+                    có thể inject
+                         │
+                         ↓
+                      Laravel               
+
+          Ví dụ một kiến trúc Laravel ERP thực tế:               
+
+               GitHub
+               │
+               │ Source Code
+               │
+               ↓
+               GitHub Actions
+               │
+               │ CI/CD Secrets
+               │
+               ↓
+               Deploy
+               │
+               ↓
+               AWS
+               │
+               ├── Laravel Container
+               │       │
+               │       │ IAM Role
+               │       ↓
+               │   AWS Secrets Manager
+               │       │
+               │       ├── DB_PASSWORD
+               │       ├── REDIS_PASSWORD
+               │       └── API_SECRET
+               │
+               └── Database               
+
+               Laravel không cần chứa password thật trong GitHub.               
+
+         Với project Laravel của bạn nên học theo thứ tự này               
+
+          Hiện tại bạn chưa cần lao vào cả 6. Học theo thứ tự:               
+
+               .env → GitHub Actions Secrets → Docker Secrets/Kubernetes Secrets → một Cloud Secret Manager → Vault.               
+
+          Nếu sau này ERP deploy AWS thì chọn AWS Secrets Manager; Google Cloud thì Google Secret Manager; Azure thì Key Vault. Vault nên học sau                khi bạn đã hiểu IAM, container, production deployment và secret rotation.               
+
+         Và nhớ nguyên tắc quan trọng nhất:               
+
+               Secret Manager không có nghĩa:               
+
+               Secret Manager
+               ↓
+               cho tất cả mọi người đọc ❌               
+               
+
+               Mà phải:               
+
+               Laravel / CI/CD / Service
+               ↓
+               Identity
+               ↓
+               Permission / Policy
+               ↓
+               Secret Manager
+               ↓
+               chỉ secret được phép
+               ↓
+               Secret               
+
+          Đó mới là cách Secrets Management được sử dụng đúng trong kiến trúc senior.       
+
+       Mục tiêu vẫn giống nhau:         
+
+         Secret
+         ↓
+         không nằm trong source code
+         ↓
+         chỉ application/service được phép mới lấy được
+         ↓
+         sử dụng khi cần
+     * 6. Secret Rotation              <
+
+         Rotation = thay secret cũ bằng secret mới.         
+
+       Ví dụ:         
+
+         API_SECRET_OLD
+               ↓
+            rotate
+               ↓
+         API_SECRET_NEW         
+
+         Tại sao cần?         
+
+         Secret bị nghi lộ
+         Secret đã tồn tại quá lâu
+         Nhân viên có quyền truy cập đã nghỉ
+         Security policy yêu cầu rotation
+         Credential của integration cần đổi         
+
+       Ví dụ API key bị lộ:         
+
+         API_KEY_OLD
+         ↓
+         ❌ revoke         
+
+         API_KEY_NEW
+         ↓
+         ✅ Laravel sử dụng         
+
+         Không chỉ sửa code.         
+
+     * 7. Least Privilege cho Secret              <
+
+         API token chỉ nên có quyền nó cần.         
+
+      Ví dụ ERP chỉ cần Cloudflare upload ảnh:         
+
+         API Token         
+
+         ❌ toàn quyền Cloudflare account         
+
+         thay bằng         
+
+         ✅ Images: Read
+         ✅ Images: Edit         
+
+      Đây là:         
+
+         Least Privilege = cấp ít quyền nhất đủ để hoàn thành công việc.         
+
+     * 8. Không log Secret                          <
+
+         Cực kỳ quan trọng.         
+
+      ❌:         
+
+         Log::info('Google API', [
+             'secret' => $secret,
+         ]);         
+
+         Log có thể thành:         
+
+         storage/logs/laravel.log         
+
+         GOOGLE_CLIENT_SECRET=ABCXYZ         
+
+         Secret lại bị lộ.         
+
+      Nên:         
+
+         Log::info('Google API request', [
+             'integration' => 'google',
+             'status' => 'success',
+         ]);         
+
+         Nếu buộc phải hiển thị credential:         
+
+         sk_live_••••••••789         
+
+         chứ không hiển thị toàn bộ.         
+
+     * 9. Secret trong Database                          <
+
+       Có trường hợp ERP cho admin cấu hình integration:         
+
+         Admin
+         ↓
+         nhập API Secret
+         ↓
+         Laravel
+         ↓
+         Encrypt
+         ↓
+         Database
+         x8Kj29... 🔒         
+
+       Model:         
+
+         protected function casts(): array
+         {
+             return [
+                 'api_secret' => 'encrypted',
+             ];
+         }         
+
+       Khi cần:         
+
+         DB ciphertext
+         ↓
+         Laravel decrypt
+         ↓
+         API Secret thật
+         ↓
+         HTTPS/TLS 🔒
+         ↓
+         Third-party API         
+
+       Ở đây bạn thấy 3 phần vừa học kết nối với nhau:         
+
+         Secrets Management
+                 │
+                 ├── bảo vệ API Secret
+                 │
+                 ↓
+         Encryption at Rest
+                 │
+                 │ DB lưu ciphertext 🔒
+                 ↓
+         Laravel decrypt khi cần
+                 │
+                 ↓
+         HTTPS/TLS 🔒
+                 │
+                 ↓
+         Encryption in Transit
+                 │
+                 ↓
+         Google / Cloudflare / API khác
+      Checklist Senior Laravel
+         7.15 Secrets Management         
+
+         ✅ Không hard-code secret
+         ✅ Không commit .env
+         ✅ .env.example không chứa secret thật
+         ✅ Production dùng secret store phù hợp
+         ✅ Encrypt secret nhạy cảm nếu lưu DB
+         ✅ Không log secret
+         ✅ Không trả secret qua API response
+         ✅ Mask secret trên UI
+         ✅ Least Privilege
+         ✅ Rotate secret
+         ✅ Revoke secret bị lộ/không còn dùng
+         ✅ Tách secret dev / staging / production
+         ✅ Giới hạn người/service được truy cập
+         ✅ Audit việc thay đổi credential         
+
+         Cách nhớ ngắn nhất:         
+
+         SECRET
+           ↓
+         Không hard-code
+           ↓
+         Không GitHub
+           ↓
+         .env / Secret Manager
+           ↓
+         Encrypt nếu lưu DB
+           ↓
+         Không log / không expose
+           ↓
+         Least Privilege
+           ↓
+         Rotate + Revoke         
+
+         Đó chính là Secrets Management.
 7.16 HTTPS / TLS                       <
 
  Học: 
