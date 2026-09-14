@@ -1714,7 +1714,21 @@ Repository
 Model
  ↓
 DB
- 
+-----------------------------------
+ ?
+ Eligible company users
+        ↓
+   ┌───────────────┐
+   │               │
+Direct Permission  Role
+                   ↓
+             Role Permission
+   │               │
+   └────── UNION ──┘
+          ↓
+       DISTINCT
+          ↓
+   Eligible actors 
  HEALTHY vẫn 25, SPARSE_BUT_VALID tăng 3 → 6 là hợp lý; một dự án thật chưa cần bị ép thành “healthy”.?
 Revenue/COGS by Cost Center vẫn NOT_ENOUGH_EVIDENCE.?
 Project Revenue vẫn NOT_IMPLEMENTED.?
@@ -2429,7 +2443,17 @@ Specific account → chọn account của bạn
 > .env : 
 CLOUDFLARE_ACCOUNT_ID=245c05f0b67c4ede11daf54bff2a076f             |     Account → vào Account Home > tìm : Account ID : 245c05f0b67c4ede11daf54bff2a076f
 CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
+0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
+  GHCR image
+   ↓
+  Blue deployment
+     ↓
+  health check
+     ↓
+  Green deployment / switch
+     ↓
+  rollback nếu lỗi
+0. DOCKERHUB               → chứa DOCKER IMAGE đã build
 1. Observer                php artisan module:make-observer AttendanceObserver Attendance
 2. Notification
 3. Mail                    composer require laravel/pail --dev      |    composer require symfony/mailer
@@ -11358,7 +11382,7 @@ Câu trả lời phỏng vấn:                                                 
         Cần key để decrypt               ❌	                   ✅
         Password	                     ✅                     ❌
         Dữ liệu cần đọc lại              ❌	                   ✅
-  2. Laravel Crypt                 <
+  2. Laravel Crypt  | có code mẫu v               <
     Laravel cung cấp:
         use Illuminate\Support\Facades\Crypt;
      Mã hóa:   
@@ -11395,9 +11419,9 @@ Câu trả lời phỏng vấn:                                                 
        →
 
        123456789
-  3. Key nằm ở đâu?                          <
+  3. Key nằm ở đâu? | Laravel tự tạo | php artisan key:generate | .env |  APP_KEY=base64:...   |  Kiểm tra Git có đang track .env không:  git ls-files .env | Không hiện gì:<không có output> → tốt. ✅Nếu nó hiện: .env → .env đã bị Git track. ❌    | Kiểm tra có APP_KEY chưa :  grep '^APP_KEY=' .env                    <
 
-         Laravel encryption dựa vào application encryption key, thường:         
+       Laravel encryption dựa vào application encryption key, thường:         
 
          APP_KEY=base64:...         
 
@@ -11409,7 +11433,7 @@ Câu trả lời phỏng vấn:                                                 
             ↓
          Encrypt / Decrypt         
 
-         Ví dụ:         
+       Ví dụ:         
 
                             APP_KEY
                               │
@@ -11417,12 +11441,12 @@ Câu trả lời phỏng vấn:                                                 
                    ↓                     ↓
                 Encrypt               Decrypt
                    ↓                     ↓
-         123456789 → ciphertext → 123456789
+              123456789 → ciphertext → 123456789
          Không được đưa APP_KEY lên Git         
 
          .env phải nằm ngoài source control.         
 
-        Không:         
+       Không:         
 
          GitHub
          └── .env
@@ -11436,7 +11460,7 @@ Câu trả lời phỏng vấn:                                                 
 
          thì dữ liệu application-encrypted có nguy cơ bị decrypt.         
 
-  4. Nếu mất APP_KEY thì sao?                          <
+  4. Nếu mất APP_KEY thì sao? | toang                         <
 
          Đây là vấn đề rất nghiêm trọng.         
 
@@ -11467,7 +11491,7 @@ Câu trả lời phỏng vấn:                                                 
 
          Key mới có thể khiến dữ liệu mã hóa bằng key cũ không còn decrypt theo cách cũ.         
 
-  5. Eloquent encrypted cast                          <
+  5. Eloquent encrypted cast  | cách code hoạt động                        <
 
          Laravel có cách tiện hơn khi lưu model.         
 
@@ -11502,7 +11526,7 @@ Câu trả lời phỏng vấn:                                                 
 
          echo $employee->bank_account;         
 
-         Laravel tự decrypt:         
+       Laravel tự decrypt:         
 
          DATABASE
          eyJpdiI6...
@@ -11514,7 +11538,7 @@ Câu trả lời phỏng vấn:                                                 
          Nên code nghiệp vụ nhìn rất sạch:         
 
          $employee->bank_account = $data['bank_account'];
-  6. Encrypt field nào?                          <
+  6. Encrypt field nào? | Mục đích sử dụng ở                         <
 
          Không phải cứ có dữ liệu là encrypt hết.         
 
@@ -11526,7 +11550,130 @@ Câu trả lời phỏng vấn:                                                 
          Một số thông tin payroll nhạy cảm
          MFA/TOTP secret
          Credential của integration         
+            | Dữ liệu                    | Luồng ngắn                                                                                                     |
+            | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+            | **Bank account**           | `123456789 → Encrypt → DB 🔒 → Decrypt → •••••6789 👁️ → bấm 👁️ → 123456789`                                  |
+            | **Tax identifier**         | `0312345678 → Encrypt → DB 🔒 → Decrypt → •••••5678 👁️ → có quyền → xem đầy đủ`                               |
+            | **Government identifier**CCCD  | `079123456789 → Encrypt → DB 🔒 → Decrypt → ••••••6789 👁️ → có quyền → xem đầy đủ`                            |
+            | **Payroll nhạy cảm**       | `Lương/khấu trừ... → Encrypt → DB 🔒 → Decrypt → người có quyền Payroll xem`                                   |
+            | **MFA/TOTP secret**        | `Laravel tạo Secret → Encrypt → DB 🔒 → QR Code lúc setup → Authenticator quét → sau đó không cần hiện Secret` |
+                                                       ( 1 )  Bật MFA / Setup(chỉ làm 1 lần)
+                                                                            Laravel tạo TOTP SECRET gốc
+                                                                                      ↓
+                                                                                    ABCXYZ
+                                                                                    /     \
+                                                                            > tạo  /       \
+                                                                                  ↓         ↓
+                                                          dùng secret gốc tạo QR Code     Encrypt
+                                                                                  ↓           ↓
+                                 Authenticator quét ABCXYZ và luu secret trên thiết bị        DB
+                                                                                  ↓           ↓
+                                     secret được lưu trong Authenticator (ABCXYZ ..)          x8Kj2... 🔒
+                                                                                  ↓ 
+                                        ( 2 ) Đăng nhập / Xác thực MFA ( mỗi lần login )
+                                                                ↓
+                                           1 >     1.Authenticator tự tạo mã OTP 
+                                                  Dùng secret đã lưu  (ABCXYZ ..) + thời gian hiện tại
+                                                  tính ra mã 6 số : 382 299 (1)
+                                                                ↓
+                                                  2.User nhập mã OTP vào ERP: 382 299 (1)
+                                                                 ↓
+                                           2 >     3.Laravel lấy secret từ DB và giải mã 
+                                                  decryptString  x8Kj2... 🔒 > secret gốc (ABCXYZ ..)
+                                                  Laravel tự tính ra OTP: 382 299 (2)
+                                                                 ↓
+                                                  4.Laravel tính OTP và so sánh:
+                                                  secret + thòi gian hiện tại(30s)
+                                                                 ↓
+                                                             tính OTP
+                                                                 ↓
+                                                               382 299
+                                                             (OTP dự kiến)
+                                                                 |
+                                          1=2  >          so sánh mã user nhập 
+                                                        382 299(1) == 382 299(2)
+                                                        MFA Thành công
+                                                        Hoàn tất đang nhập
+            | **Integration credential/ API Secret** xác thực với bên 3 > cần gọi đưa 3 >decryptString mở mã đưa 3| `API Secret → Encrypt → DB 🔒 → Laravel Decrypt → dùng để gọi API bên ngoài`                                   |
+                      API Secret: ••••••••••••
+                      Status: Connected ✅
 
+                      [Rotate Secret]
+                      >> Điểm khác với Bank Account là Laravel cần API secret để máy tự gọi API, không nhất thiết phải đưa secret lên màn hình.
+                ---------------------------------
+                 Integration Credential / API Secret thường là thông tin bí mật mà ERP của bạn dùng để xác thực với một hệ thống/dịch vụ bên thứ 3.                 
+
+             Ví dụ ERP tích hợp:                 
+
+                 ERP Laravel
+                 ├── Google APIs
+                 ├── Cloudflare
+                 ├── Stripe / cổng thanh toán
+                 ├── dịch vụ SMS
+                 ├── dịch vụ Email
+                 └── hệ thống ERP/API khác                 
+
+             Ví dụ một dịch vụ cấp cho ERP:                 
+
+                 API_KEY    = abc123
+                 API_SECRET = SECRET_XYZ                 
+
+             Laravel dùng:                 
+
+                 ERP Laravel
+                 ↓
+                 muốn gọi API bên thứ 3
+                 ↓
+                 lấy API Secret
+                 ↓
+                 xác thực với bên thứ 3
+                 ↓
+                 Bên thứ 3 kiểm tra
+                 ↓
+                 ✅ hợp lệ
+                 ↓
+                 cho phép sử dụng API                 
+
+             Nếu API Secret được lưu trong DB và Laravel cần lấy lại để gọi API, có thể:                 
+
+                API Secret gốc
+                 SECRET_XYZ
+                 ↓
+                 Encrypt
+                 ↓
+                 DB
+                 ↓
+                 x8Kj29... 🔒                 
+
+            Khi cần gọi:                 
+
+                 DB
+                 x8Kj29... 🔒
+                 ↓
+                 Decrypt
+                 ↓
+                 SECRET_XYZ
+                 ↓
+                 Laravel gửi credential/sign request
+                 ↓
+                 API bên thứ 3
+                 ↓
+                 ✅ xác thực                 
+
+                 Ví dụ với Google thì đúng về ý tưởng, nhưng Google có nhiều kiểu credential khác nhau như OAuth client secret, access token, refresh                  token, service-account credential; không phải tất cả đều đơn giản là một API_SECRET.                 
+
+             Cách nhớ:                 
+
+                 Password
+                 → User xác thực với ERP                 
+
+                 TOTP Secret
+                 → Authenticator + ERP tạo OTP                 
+
+                 Integration Credential/API Secret
+                 → ERP xác thực với dịch vụ bên thứ 3                 
+
+             Nói ngắn nhất: đúng, nó giống “chìa khóa” để Laravel của bạn làm việc với Google hoặc các dịch vụ/hệ thống bên ngoài khác.
         Nhưng:         
 
          name
@@ -11537,7 +11684,7 @@ Câu trả lời phỏng vấn:                                                 
 
          không nhất thiết phải application-encrypt.         
 
-  7. Tại sao không encrypt mọi column?                          <
+  7. Tại sao không encrypt mọi column?  | chỉ mã cần 2 chiều                        <
 
          Bởi vì encrypted data khó query trực tiếp.         
 
@@ -11572,7 +11719,7 @@ Câu trả lời phỏng vấn:                                                 
 
          Encryption phải được thiết kế theo threat model + nhu cầu query, không phải bật bừa trên toàn bộ DB.         
 
-  8. Encryption at Rest                          <
+  8. Encryption at Rest = đang nằm trong kho  = DB / File / Disk / Backup = mã hóa dữ liệu lưu trữ Encryption🔒 (V)                       <
 
        At Rest = dữ liệu đang nằm trong storage:         
 
@@ -11589,9 +11736,175 @@ Câu trả lời phỏng vấn:                                                 
          ↓
          Database         
 
-         hoặc infrastructure/database/disk cũng có thể có encryption at rest.         
+         hoặc infrastructure/database/disk cũng có thể có encryption at rest.                          
 
-  9. Encryption in Transit                          <
+          Encryption at Rest = mã hóa dữ liệu khi dữ liệu đang được lưu trữ.                 
+
+          At Rest hiểu đơn giản là:                 
+
+             Dữ liệu đang nằm yên trong:                 
+
+                 Database
+                 Ổ cứng
+                 File
+                 Backup
+                 Object Storage                 
+
+             Ví dụ số tài khoản:                 
+
+                 123456789
+                 ↓
+                 Encrypt
+                 ↓
+                 x8Kj29Ab... 🔒
+                 ↓
+                 DATABASE                 
+
+             Đây là Encryption at Rest vì DB không lưu trực tiếp:                 
+
+                 123456789 ❌                 
+
+             mà lưu:                 
+
+                 x8Kj29Ab... 🔒 ✅
+                 Trong Laravel                 
+
+             Ví dụ Model:                 
+
+                 protected function casts(): array
+                 {
+                     return [
+                         'bank_account' => 'encrypted',
+                     ];
+                 }                 
+
+             Khi:                 
+
+                 $employee->bank_account = '123456789';
+                 $employee->save();                 
+
+             luồng:                 
+
+                 123456789
+                 ↓
+                 Laravel
+                 ↓
+                 APP_KEY
+                 ↓
+                 Encrypt
+                 ↓
+                 x8Kj29Ab...
+                 ↓
+                 MySQL                 
+
+             Khi cần đọc:                 
+
+                 MySQL
+                 ↓
+                 x8Kj29Ab...
+                 ↓
+                 Laravel + APP_KEY
+                 ↓
+                 Decrypt
+                 ↓
+                 123456789                 
+
+             Đây chính là application-level encryption at rest.                 
+
+         Không chỉ Database                 
+
+             At Rest còn có thể là:                 
+
+                 DATABASE
+                 employees.bank_account
+                 ↓
+                 encrypted                 
+                 
+
+                 FILE STORAGE
+                 employee-contract.pdf
+                 ↓
+                 encrypted storage/disk                 
+                 
+
+                 BACKUP
+                 backup.sql
+                 ↓
+                 encrypted backup                 
+                 
+
+                 OBJECT STORAGE
+                 S3 / R2
+                 ↓
+                 storage encryption                 
+                 
+
+                 SERVER DISK
+                 SSD
+                 ↓
+                 disk encryption                 
+
+             Nên có nhiều tầng:                 
+
+                 Application-level encryption
+                         ↓
+                 Database encryption
+                         ↓
+                 Disk encryption
+                         ↓
+                 Encrypted backup                 
+
+                 Không phải tất cả đều do Laravel Crypt thực hiện.                 
+
+             At Rest khác Encryption in Transit                 
+
+             Đây là hai khái niệm rất quan trọng:                 
+
+                 AT REST
+                 ────────
+                 Dữ liệu đang lưu
+                 ↓
+                 DB / File / Disk / Backup
+                 ↓
+                 Encryption 🔒                 
+                 
+
+                 IN TRANSIT
+                 ──────────
+                 Dữ liệu đang truyền
+                 ↓
+                 Browser ↔ Laravel ↔ API
+                 ↓
+                 HTTPS / TLS 🔒                 
+
+             Ví dụ:                 
+
+                 Browser
+                    │
+                    │ HTTPS 🔒
+                    │  ← Encryption in Transit
+                    ↓
+                 Laravel
+                    │
+                    │ Encrypt
+                    ↓
+                 Database
+                 x8Kj29... 🔒
+                    ↑
+                 Encryption at Rest
+             Cách nhớ
+                 At Rest
+                 = đang nằm trong kho
+                 = DB / File / Disk / Backup
+                 = mã hóa dữ liệu lưu trữ                 
+
+                 In Transit
+                 = đang chạy trên đường
+                 = Client ↔ Server
+                 = HTTPS/TLS                 
+
+             Và bank_account, TOTP secret, integration credential mà chúng ta vừa nói là các ví dụ có thể áp dụng application-level encryption để                  bảo vệ dữ liệu at rest.
+  9. Encryption in Transit = đang chạy trên truyền dữ liệu mã hoá🔒 > Browser > HTTPS/TLS 🔒  >  Laravel  HTTPS/TLS 🔒 API bên thứ 3  (V)                        <
 
          In Transit = dữ liệu đang truyền qua mạng.         
 
@@ -11621,8 +11934,225 @@ Câu trả lời phỏng vấn:                                                 
          API request/response         
 
          trong quá trình truyền qua mạng.         
+           -------------------- 
+     At Rest khác Encryption in Transit
 
-  10. At Rest và In Transit cần cả hai                 <
+     Đây là hai khái niệm rất quan trọng:
+
+         AT REST
+         ────────
+         Dữ liệu đang lưu
+         ↓
+         DB / File / Disk / Backup
+         ↓
+         Encryption 🔒
+
+
+         IN TRANSIT
+         ──────────
+         Dữ liệu đang truyền
+         ↓
+         Browser ↔ Laravel ↔ API
+         ↓
+         HTTPS / TLS 🔒
+
+    * Ví dụ:
+
+         Browser
+            │
+            │ HTTPS 🔒
+            │  ← Encryption in Transit
+            ↓
+         Laravel
+            │
+            │ Encrypt
+            ↓
+         Database
+         x8Kj29... 🔒
+            ↑
+         Encryption at Rest
+    * Hiểu cực đơn giản thế này:                 <
+
+                 Encryption in Transit = mã hóa dữ liệu trong lúc dữ liệu đang được gửi từ máy này sang máy khác.                 
+
+             Ví dụ bạn đăng nhập ERP:                 
+
+             Bạn nhập:                 
+
+                 email: thanh@gmail.com
+                 password: Thanh@123
+                         ↓
+                       Browser
+                         ↓
+                      INTERNET
+                         ↓
+                       Laravel                 
+
+             Nếu website dùng HTTPS 🔒, dữ liệu trên đoạn đường:                 
+
+                 Browser
+                    │
+                    │  Internet
+                    │  🔒 dữ liệu được TLS mã hóa
+                    │
+                    ↓
+                 Laravel                 
+
+                 Đó chính là Encryption in Transit.                 
+
+                 Ví dụ dễ hình dung                 
+
+             Bạn gửi:                 
+
+                 password = Thanh@123                 
+
+             Về mặt khái niệm, HTTPS/TLS bảo vệ nó trên đường truyền:                 
+
+                 Browser                 
+
+                 Thanh@123
+                     ↓
+                 HTTPS/TLS mã hóa
+                     ↓
+                 🔒 dữ liệu mã hóa
+                     ↓
+                 ================ INTERNET ================
+                     ↓
+                 🔒 dữ liệu mã hóa
+                     ↓
+                 Laravel nhận qua kết nối TLS
+                     ↓
+                 Thanh@123                 
+
+             Người nghe lén đường truyền không nên đọc được trực tiếp:                 
+                    Thanh@123
+            Sau khi tới Laravel thì sao?                 
+             Đây là chỗ quan trọng:                 
+
+                 Browser
+                    │
+                    │ HTTPS 🔒
+                    │
+                    ↓
+                 Laravel
+                    │
+                    ↓
+                 Laravel xử lý dữ liệu                 
+
+             HTTPS chủ yếu bảo vệ đoạn dữ liệu đang di chuyển qua mạng.                 
+
+             Nó không có nghĩa:                 
+
+                 Laravel nhận được
+                 x8K2$@#... ❌                 
+
+             rồi Controller của bạn phải tự decrypt HTTPS.                 
+
+             TLS/HTTPS được tầng web server/network xử lý; Laravel nhận request để xử lý bình thường.                 
+
+             Ví dụ:                 
+
+                 $password = $request->input('password');                 
+
+                 Laravel vẫn lấy được password user nhập để kiểm tra.                 
+
+                 So với Encryption at Rest                 
+
+             Bạn chỉ cần nhớ hình này:                 
+
+                 USER
+                  │
+                  │ nhập bank_account = 123456789
+                  ↓
+                 BROWSER
+                  │
+                  │
+                  │ HTTPS 🔒
+                  │ ↑
+                  │ Encryption in Transit
+                  │
+                  ↓
+                 LARAVEL
+                  │
+                  │ Encrypt bằng APP_KEY
+                  ↓
+                 DATABASE
+                  │
+                  └── x8Kj29... 🔒
+                        ↑
+                        Encryption at Rest                 
+
+             Nói theo kiểu đời thường:                 
+
+                 Encryption in Transit
+                 = khóa hàng khi ĐANG VẬN CHUYỂN 🚚🔒                 
+
+                 Encryption at Rest
+                 = khóa hàng khi ĐÃ NẰM TRONG KHO 🏢🔒                 
+
+                 Vậy HTTPS chính là thứ bạn thường gặp nhất khi nói đến Encryption in Transit:                 
+
+                 Browser ───── HTTPS/TLS 🔒 ─────→ Laravel
+                               ↑
+                        Encryption in Transit                 
+
+             Còn:                 
+
+                 Laravel ── Encrypt ──→ Database
+                                        x8Kj... 🔒
+                                           ↑
+                                   Encryption at Rest                 
+
+                 Đây là hai lớp bảo vệ khác nhau.
+    * ví dụ 2:
+      Laravel còn gọi API bên thứ 3 thì cả hai đoạn đều có thể là Encryption in Transit:
+
+               Browser
+                  │
+                  │ HTTPS / TLS 🔒
+                  │
+                  ↓
+               Laravel
+                  │
+                  │ HTTPS / TLS 🔒
+                  │
+                  ↓
+               API bên thứ 3
+               (Google / Stripe / Cloudflare...)
+
+         Tức là:
+
+               Browser ──HTTPS/TLS🔒──> Laravel ──HTTPS/TLS🔒──> API
+                             ↑                         ↑
+                      Encryption in Transit     Encryption in Transit
+
+         Ví dụ:
+
+               React Web
+                  ↓ HTTPS 🔒
+               Laravel ERP
+                  ↓ HTTPS 🔒
+               Google API
+
+         Còn nếu Laravel lưu dữ liệu:
+
+               Browser
+                  │
+                  │ HTTPS/TLS 🔒
+                  │ ← Encryption in Transit
+                  ↓
+               Laravel
+                  │
+                  │ Encrypt
+                  ↓
+               Database
+                  │
+                  └── x8Kj29... 🔒
+                       ↑
+                       Encryption at Rest
+
+        Cách nhớ: đang truyền qua mạng → In Transit; đang nằm trong DB/File/Disk → At Rest.   
+  10. At Rest và In Transit cần cả hai  |  Truyền dữ liệu mã hoá bỏ vào DB               <
                              HTTPS/TLS
          Browser ─────────────────────────→ Laravel
                                               ↓
@@ -11648,7 +12178,7 @@ Câu trả lời phỏng vấn:                                                 
 
          Đó là hai lớp khác nhau.         
 
-  11. Encryption cho MFA Secret                          <
+  11. Encryption cho MFA Secret    (^)6                       <
 
        Ở phần MFA bạn vừa học:         
 
@@ -11694,7 +12224,7 @@ Câu trả lời phỏng vấn:                                                 
                  'totp_secret' => 'encrypted',
              ];
          }
-  12. Encryption cho API secret                          <
+  12. Encryption cho API secret    (^)6                       <
 
        Ví dụ ERP kết nối một hệ thống bên ngoài:         
 
@@ -11724,7 +12254,7 @@ Câu trả lời phỏng vấn:                                                 
          gọi API         
 
          Không nên hash nếu server cần lấy secret gốc để gửi cho provider.                
-  13. Encryption không thay Authorization                          <
+  13. Encryption không thay Authorization  | có phân quyền mới dc xem                        <
 
          Dữ liệu được encrypt không có nghĩa user nào cũng được xem.         
 
@@ -11766,7 +12296,7 @@ Câu trả lời phỏng vấn:                                                 
 
          không được decrypt/return dữ liệu đó.         
 
-  14. Encryption không thay Hash                          <
+  14. Encryption không thay Hash  |  Dữ liệu cần giải mã lại | PASSWORD                        <
 
        Đây là phần quan trọng nhất để không nhầm:         
 
