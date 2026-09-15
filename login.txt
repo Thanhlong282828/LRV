@@ -2432,7 +2432,7 @@ Playwright
  !   Integration Hub
  !    CÀI PLAYWRIGHT PACKAGE ONLY
 
- 27  CloudFlare images : https://dash.cloudflare.com/profile/api-tokens?utm_source=chatgpt.com
+27  CloudFlare images : https://dash.cloudflare.com/profile/api-tokens?utm_source=chatgpt.com
  Bấm Create Token > Chọn Create Custom Token 
  > Token name đặt:laraveldji-cloudflare-images 
  > Permissions chọn:Account | Cloudflare Images | Edit
@@ -2443,6 +2443,145 @@ Specific account → chọn account của bạn
 > .env : 
 CLOUDFLARE_ACCOUNT_ID=245c05f0b67c4ede11daf54bff2a076f             |     Account → vào Account Home > tìm : Account ID : 245c05f0b67c4ede11daf54bff2a076f
 CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+28  Kho lưu trữ Secrets Manager     |   bài 7.15 Secrets Management phần 5
+         AWS Secrets Manager 
+         Google Secret Manager
+         Azure Key Vault
+         HashiCorp Vault
+         Docker / Kubernetes Secrets
+         CI/CD Secret Store  
+
+0-1.    Google Cloud 
+* Compute Engine: 
+ Compute Engine > Create instance >
+     | Mục trên GCP            | Chọn                          |
+     | ----------------------- | ----------------------------- |
+     | **Name**                | `laravel-server`              |
+     | **Region**              | `asia-southeast1 (Singapore)` |
+     | **Zone**                | để mặc định trong region      |
+     | **Machine family**      | General purpose               |
+     | **Series**              | E2                            |
+     | **Machine type**        | `e2-micro` hoặc `e2-small`    |
+     | **Boot disk / OS**      | Ubuntu                        |
+     | **Version**             | Ubuntu 24.04 LTS              |
+     | **Boot disk size**      | 10–20 GB                      |
+     | **Allow HTTP traffic**  | ✅                             |
+     | **Allow HTTPS traffic** | ✅                             |
+> Google Cloud Console → Compute Engine → VM instances  >  Tìm: laravel-server > Ở bên phải VM sẽ có: SSH (bấm vào Google sẽ mở terminal của Debian trên trình duyệt.) > chạy: whoami | cat /etc/os-release | uname -a | 
+ sudo apt update
+ sudo apt upgrade -y | chờ tải 100% >chạy: 
+ sudo apt update
+ sudo apt upgrade > 
+> Cài Nginx: sudo apt install nginx -y | nginx -v | sudo systemctl status nginx > Nếu thấy:
+Active: active (running) là Nginx đã chạy. > Sau đó bấm: q   (thoát màn hình systemctl status.)  > sudo nginx -v > curl -I http://localhost > Nếu đúng sẽ thấy gần giống: HTTP/1.1 200 Ok Server: nginx/1.26.3 >|  sudo nginx -t | > Kỳ vọng:syntax is ok test is successful >
+> Sau đó mở HTTP trên Google Cloud:VM trước đó của bạn đang có HTTP traffic = Off và HTTPS traffic = Off. >VÀO: Google Cloud → Compute Engine → VM instances → laravel-server → Edit > Tìm Firewalls rồi bật: ✅ Allow HTTP traffic ✅ Allow HTTPS traffic ❌ Allow Load Balancer Health checks > SAVE
+( Allow Load Balancer Health checks chỉ cần khi sau này bạn đặt Google Cloud Load Balancer phía trước VM, ví dụ:    
+
+    Users
+       ↓
+    Google Cloud Load Balancer
+       ↓
+       ├── VM Laravel 1
+       ├── VM Laravel 2
+       └── VM Laravel 3 )
+> VM instances > laravel-server (Network interfaces :External IP address:34.124.205.110 )>nhập http://34.124.205.110 (hiện: Welcome to nginx! | là ok | nếu báo lỗi thì vào Edit xem SAVE : ✅ Allow HTTP traffic ✅ Allow HTTPS traffic chưa) > vào SSH >
+> Cài PHP + PHP-FPM + extension Laravel:
+  sudo apt install -y \
+  php \
+  php-fpm \
+  php-cli \
+  php-common \
+  php-mysql \
+  php-curl \
+  php-mbstring \
+  php-xml \
+  php-zip \
+  php-bcmath \
+  php-intl \
+  php-gd \
+  php-sqlite3 \
+  unzip \
+  git \
+  curl
+> Xong kiểm tra: php -v | systemctl list-units --type=service | grep php (Bạn cần thấy PHP và php*-fpm đang chạy.) >
+> Cài Composer
+ cd ~
+ curl -sS https://getcomposer.org/installer -o composer-setup.php
+> Kiểm tra installer rồi cài:
+ EXPECTED_CHECKSUM="$(curl -sS https://composer.github.io/installer.sig)"
+ ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+
+ if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+     echo "ERROR: Invalid Composer installer checksum"
+     rm composer-setup.php
+ else
+     sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+     rm composer-setup.php
+ fi
+> Kiểm tra: 
+ composer --version
+ git --version
+> Sau đó mới đưa project Laravel lên:
+Chưa git clone project ngay. Trước tiên gửi codex output của:
+> Kiểm tra Apache có chiếm port 80 không:
+ sudo ss -lntp | grep -E ':80|:443'
+ sudo systemctl status apache2 --no-pager
+> Nếu Apache đang chạy, dừng và disable:
+ sudo systemctl disable --now apache2
+> Sau đó đảm bảo Nginx vẫn chạy:
+ sudo systemctl restart nginx
+ sudo systemctl status nginx --no-pager
+> . Bây giờ đưa project Laravel của bạn lên GCP : 
+mẫu: 
+(cái tên cấu hình trong  Compute Engine )
+(<URL-REPOSITORY> URLgithub + /var/www(tên cấu hình) )
+ cd /var/www 
+ sudo git clone <URL-REPOSITORY> laravel 
+----------
+ sudo mkdir -p /var/www/laravel
+ sudo chown -R $USER:www-data /var/www/laravel
+ git clone https://github.com/Thanhlong282828/dji-admin.git /var/www/laravel
+> nhập name tài khoản Thanhlong282828
+> Sau đó terminal sẽ hỏi tiếp kiểu:
+Password for 'https://Thanhlong282828@github.com':    | Ở bước Password, không nhập mật khẩu GitHub thường. GitHub HTTPS hiện dùng Personal Access Token (PAT) hoặc bạn nên dùng SSH key.
+> Ctrl + C để hủy rồi cấu hình SSH key,
+> Nếu đã nhập Password : repo dji-admin của bạn đang không clone được bằng HTTPS với mật khẩu thường. GitHub đã bỏ password authentication cho Git từ lâu, nên dòng:    
+    remote: Invalid username or token.
+    Password authentication is not supported for Git operations.
+là bình thường.
+.Mình cũng vừa kiểm tra qua GitHub connector và repo Thanhlong282828/dji-admin trả về 404, khả năng cao repo đang private hoặc connector hiện tại chưa được cấp quyền thấy repo đó.
+> Cách tốt nhất trên VM GCP này là dùng SSH key. Chạy: 
+ ssh-keygen -t ed25519 -C "laravel-server"
+> Khi hỏi: 
+ Enter file in which to save the key (.../.ssh/id_ed25519):      |   bấm Enter.
+> Khi hỏi passphrase:
+ Enter passphrase:
+ Enter same passphrase again:
+để lab/deploy đơn giản, bạn có thể bấm Enter hai lần để không đặt passphrase.       |  passphrase ?
+> Sau đó chạy:
+ cat ~/.ssh/id_ed25519.pub                      < có đuôi .pub ✅
+Nó sẽ ra một dòng kiểu:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... laravel-server
+Copy toàn bộ dòng đó. 
+Tức là gồm cả 3 phần:
+   ssh-ed25519
+        +
+   AAAAC3NzaC1lZDI1NTE5AAAAIKVq+....
+        +
+   laravel-server 
+
+Trên GitHub vào:
+  Settings
+  → SSH and GPG keys
+  → New SSH key
+đặt:
+ Title: laravel-server-gcp
+ Key type: Authentication Key
+ Key: dán dòng ssh-ed25519...      |   copy hết 3 phần dán zo
+Lưu ý quan trọng: cái bạn copy phải là file:  cat ~/.ssh/id_ed25519.pub             < có đuôi .pub ✅
+Tuyệt đối không copy nội dung: ~/.ssh/id_ed25519            <  vì đó là private key, phải giữ bí mật.
+> Sau khi Add xong, quay lại GCP terminal chạy: 
+ ssh -T git@github.com
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
@@ -12378,7 +12517,7 @@ Câu trả lời phỏng vấn:                                                 
 
          // Eloquent sensitive field
          'bank_account' => 'encrypted';       
-7.15 Secrets Management                       <
+7.15 Secrets Management                        <
 
        Không hard-code: 
 
@@ -12611,7 +12750,7 @@ Câu trả lời phỏng vấn:                                                 
 
                DB_USERNAME = payroll_user
                DB_PASSWORD = Abc@123456
-               Bước 1 — Tạo secret               
+         Bước 1 — Tạo secret               
 
           Trong AWS:               
 
@@ -12813,11 +12952,21 @@ Câu trả lời phỏng vấn:                                                 
                │
                ├── Laravel ERP
                │
-               └── Vault
+               └── HashiCorp Vault
                      │
-                     ├── payroll/database
-                     ├── payroll/cloudflare
-                     └── payroll/mail               
+                     ├── erp/database
+                     │      └── DB_PASSWORD
+                     │
+                     ├── erp/payment
+                     │      └── API_SECRET
+                     │
+                     └── erp/cloudflare
+                            └── API_TOKEN                     
+
+                                ↑
+                                │ authenticate
+                                │
+                             Laravel              
 
           Ví dụ cài Vault rồi bật KV secrets engine:               
 
@@ -12911,7 +13060,7 @@ Câu trả lời phỏng vấn:                                                 
                environment:
                DB_PASSWORD
                      ↓
-               Laravel config               
+               Laravel config/database.php             
 
           Laravel vẫn có thể:               
 
@@ -13107,6 +13256,83 @@ Câu trả lời phỏng vấn:                                                 
          chỉ application/service được phép mới lấy được
          ↓
          sử dụng khi cần
+     * không nên đưa tài khoản Google, mật khẩu hay mã MFA cho Codex.             <
+
+             Nếu ý bạn là muốn Codex/agent tự tạo hạ tầng Google Cloud cho project Laravel, cách đúng là cấp quyền Google Cloud có giới hạn         hoặc      dùng CLI/IaC, không chia sẻ tài khoản cá nhân.             
+
+         Luồng nên là:             
+
+             Bạn
+             ↓
+             tự đăng nhập Google Cloud
+             ↓
+             tạo/chọn Project + Billing
+             ↓
+             cấp identity cho automation
+             chỉ những quyền cần thiết
+             ↓
+             Codex / automation
+             ↓
+             gcloud CLI / Terraform
+             ↓
+             Google Cloud
+             ├── Compute Engine VM
+             ├── Firewall
+             ├── Secret Manager
+             ├── Cloud SQL (nếu cần)
+             └── deploy Laravel             
+
+         Ví dụ Codex có thể tạo script/Terraform để thực hiện:             
+
+             1. Tạo VM Ubuntu
+             2. Cấu hình CPU/RAM/disk
+             3. Cấu hình firewall 80/443
+             4. Cài Nginx
+             5. Cài PHP
+             6. Cài Composer
+             7. Clone Laravel từ GitHub
+             8. Tạo Secret Manager secrets
+             9. Cấu hình Laravel
+             10. chạy migration
+             11. HTTPS/domain
+             12. deploy             
+
+         Nhưng một số bước thường vẫn cần bạn trực tiếp xác nhận, đặc biệt:             
+
+             Google login
+             Billing / phương thức thanh toán
+             IAM permissions
+             Domain/DNS nếu ở nhà cung cấp khác
+             các thao tác bảo mật nhạy cảm
+             Đừng làm kiểu này
+             Codex
+             ↓
+             Google email + password + OTP của bạn ❌
+             ↓
+             toàn quyền Google Account             
+
+          Nếu credential bị lộ thì ảnh hưởng không chỉ VPS mà có thể cả các tài nguyên Google khác.             
+
+             Làm kiểu này
+             Google Account của bạn
+                     ↓
+             Google Cloud IAM
+                     ↓
+             identity dành cho automation
+                     ↓
+             chỉ cấp quyền cần thiết
+                     ↓
+             Codex / deployment             
+
+             Sau khi hoàn tất còn có thể:             
+
+             revoke quyền
+             ↓
+             xóa/rotate credential tạm thời             
+
+        Nếu bạn dùng Codex trong ChatGPT và muốn nó trực tiếp thao tác giao diện Google Cloud, bạn cũng không nên gửi username/password         vào      chat. Với workflow cần đăng nhập và thao tác website nhiều bước, Work mode/Cloud Browser phù hợp hơn; bạn tự xử lý bước         đăng nhập/xác      nhận nhạy cảm.             
+
+        Nếu mục tiêu của bạn là “cho Codex dựng toàn bộ Google Cloud cho LaravelDji gần như tự động”, cách chuyên nghiệp nhất mình khuyên         là      Terraform + Google Cloud IAM, thay vì cho nó tài khoản Google.
      * 6. Secret Rotation              <
 
          Rotation = thay secret cũ bằng secret mới.         
@@ -13283,6 +13509,7 @@ Câu trả lời phỏng vấn:                                                 
          Rotate + Revoke         
 
          Đó chính là Secrets Management.
+    
 7.16 HTTPS / TLS                       <
 
  Học: 
