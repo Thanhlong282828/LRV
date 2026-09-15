@@ -2634,7 +2634,7 @@ Lệnh này không cài package, nó kiểm tra PHP 8.4.24 và các extension hi
 cd /var/www/laravel
 git pull
 
-> Ổn. Kết quả hiện tại cho thấy môi trường PHP của VM tương thích với project:
+>> Ổn. Kết quả hiện tại cho thấy môi trường PHP của VM tương thích với project:
     Project yêu cầu : PHP ^8.3
     VM hiện tại     : PHP 8.4.24       ✅
     Laravel yêu cầu : ^13.8             ✅
@@ -2689,6 +2689,68 @@ Không dùng composer update ở đây. install sẽ cài đúng các version đ
 Nếu thành công, kỳ vọng kiểu: 
    vendor/ ... 
    Laravel Framework 13.x.x 
+Thành công rồi. composer install đã hoàn tất không có lỗi, package:discover đều DONE, thư mục vendor đã có và Laravel chạy được:
+
+  Laravel Framework 13.21.1
+
+  Tức là luồng hiện tại đã tới đây:
+
+  GitHub private repo ✅
+        ↓ SSH
+  Compute Engine ✅
+        ↓
+  Debian 13
+        ↓
+  Nginx ✅
+  PHP 8.4 + PHP-FPM ✅
+  Composer ✅
+  Laravel 13.21.1 ✅
+  Swap 2 GB ✅
+
+> Bây giờ chưa cấu hình Nginx vào Laravel ngay. Trước tiên cần tạo môi trường .env. Project mới clone chỉ có .env.example, nên chạy:   
+ cd /var/www/laravel 
+
+ test -f .env && echo ".env EXISTS" || echo ".env MISSING" 
+
+ cp .env.example .env 
+
+ php artisan key:generate
+> Sau đó kiểm tra Laravel boot: 
+ php artisan about
+> Nhưng chưa chạy php artisan migrate. Database của project này chúng ta sẽ làm bằng GCP Cloud SQL, thay vì cài MySQL trực tiếp lên VM. Như vậy bạn sẽ học đúng kiến trúc mà JD PHP Laravel + GCP đang yêu cầu:
+ Internet
+   ↓
+ Compute Engine
+    ↓
+ Nginx
+    ↓
+ PHP-FPM
+    ↓
+ Laravel
+    ↓
+ Cloud SQL (MySQL) 
+> Sau khi php artisan about chạy xong, gửi output đó cho chatgpt. Nếu nó báo lỗi do .env/Redis/database/media driver thì mình xử lý đúng cấu hình project trước khi sang Cloud SQL. 
+> Đúng rồi, bước .env + APP_KEY đã thành công:
+   .env MISSING
+   INFO  Application key set successfully.
+Bây giờ .env đã được tạo từ .env.example, và php artisan key:generate đã ghi APP_KEY mới vào đó. Không chạy key:generate lần nữa cho deployment này.
+> Tiếp theo chỉ chạy: 
+cd /var/www/laravel 
+php artisan about 
+> Nếu chạy thành công, gửi mình toàn bộ output của php artisan about.
+Chưa chạy:
+ php artisan migrate
+vì database chưa được nối. Sau khi xác nhận Laravel boot bình thường, bước kế tiếp mình sẽ hướng dẫn bạn tạo Cloud SQL MySQL trên GCP rồi nối:
+ Compute Engine
+      ↓
+ Nginx
+      ↓
+ PHP-FPM
+      ↓
+ Laravel
+      ↓
+ Cloud SQL MySQL
+Đây cũng chính là phần Compute Engine + Cloud SQL bạn đang cần thực hành cho yêu cầu công việc GCP.
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
