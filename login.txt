@@ -2443,6 +2443,7 @@ Specific account → chọn account của bạn
 > .env : 
 CLOUDFLARE_ACCOUNT_ID=245c05f0b67c4ede11daf54bff2a076f             |     Account → vào Account Home > tìm : Account ID : 245c05f0b67c4ede11daf54bff2a076f
 CLOUDFLARE_IMAGES_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 28  Kho lưu trữ Secrets Manager     |   bài 7.15 Secrets Management phần 5
          AWS Secrets Manager 
          Google Secret Manager
@@ -2560,28 +2561,134 @@ là bình thường.
 để lab/deploy đơn giản, bạn có thể bấm Enter hai lần để không đặt passphrase.       |  passphrase ?
 > Sau đó chạy:
  cat ~/.ssh/id_ed25519.pub                      < có đuôi .pub ✅
-Nó sẽ ra một dòng kiểu:
+> Nó sẽ ra một dòng kiểu:
   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... laravel-server
-Copy toàn bộ dòng đó. 
-Tức là gồm cả 3 phần:
+> Copy toàn bộ dòng đó. 
+> Tức là gồm cả 3 phần:
    ssh-ed25519
         +
    AAAAC3NzaC1lZDI1NTE5AAAAIKVq+....
         +
    laravel-server 
 
-Trên GitHub vào:
+> Trên GitHub vào:
   Settings
   → SSH and GPG keys
   → New SSH key
-đặt:
+> đặt:
  Title: laravel-server-gcp
  Key type: Authentication Key
  Key: dán dòng ssh-ed25519...      |   copy hết 3 phần dán zo
-Lưu ý quan trọng: cái bạn copy phải là file:  cat ~/.ssh/id_ed25519.pub             < có đuôi .pub ✅
-Tuyệt đối không copy nội dung: ~/.ssh/id_ed25519            <  vì đó là private key, phải giữ bí mật.
+> Lưu ý quan trọng: cái bạn copy phải là file:  cat ~/.ssh/id_ed25519.pub             < có đuôi .pub ✅
+>Tuyệt đối không copy nội dung: ~/.ssh/id_ed25519            <  vì đó là private key, phải giữ bí mật.
 > Sau khi Add xong, quay lại GCP terminal chạy: 
  ssh -T git@github.com
+> Lần đầu sẽ hỏi: Are you sure you want to continue connecting (yes/no/[fingerprint])?
+> gõ: yes        |   copy chữ  ( yes ) nguyên văn mới chạy
+> Rồi clone bằng SSH:
+ git clone git@github.com:Thanhlong282828/dji-admin.git /var/www/laravel
+> Nếu /var/www/laravel đang tồn tại nhưng rỗng thì clone vẫn có thể bị vướng. Kiểm tra trước: 
+ ls -la /var/www/laravel
+>> Nếu chỉ có:
+   .
+   .. 
+> thì dùng:   
+ rmdir /var/www/laravel
+ git clone git@github.com:Thanhlong282828/dji-admin.git /var/www/laravel
+> Sau khi clone xong chạy: 
+ cd /var/www/laravel
+ git branch --show-current
+ git branch -a
+ git remote -v
+> đưa chatgpt all terminal  
+    Project đã clone thành công, nên đoạn rmdir lỗi phía sau không quan trọng. Bạn không cần clone lần nữa.
+
+   Hiện tại trạng thái là:
+
+   GitHub private repo
+           │ SSH ✅
+           ▼
+   /var/www/laravel
+           │
+           └── branch hiện tại:
+               codex/phase-3f-26-enterprise-forecasting
+> Bước tiếp theo: kiểm tra yêu cầu của project trước khi Composer install
+Vì VM của bạn chỉ có 1 GB RAM, chưa chạy composer install ngay. Chạy nguyên cụm :
+ cd /var/www/laravel  
+
+ php -r '
+ $j=json_decode(file_get_contents("composer.json"), true);
+ echo "PHP requirement: ".($j["require"]["php"] ?? "N/A").PHP_EOL;
+ echo "Laravel: ".($j["require"]["laravel/framework"] ?? "N/A").PHP_EOL;
+ '  
+
+ free -h
+ df -h /
+> Sau đó kiểm tra các extension mà Composer yêu cầu: 
+ composer check-platform-reqs --lock
+Lệnh này không cài package, nó kiểm tra PHP 8.4.24 và các extension hiện tại có đáp ứng composer.lock không.
+> Có một chi tiết trong output của bạn rất tốt:
+    Hi Thanhlong282828/dji-admin!
+    You've successfully authenticated...
+>>>> Điều này cho thấy SSH key bạn thêm là key có quyền truy cập repo dji-admin; việc clone private repo đã hoạt động. Sau này cập nhật code trên server chỉ cần:
+cd /var/www/laravel
+git pull
+
+> Ổn. Kết quả hiện tại cho thấy môi trường PHP của VM tương thích với project:
+    Project yêu cầu : PHP ^8.3
+    VM hiện tại     : PHP 8.4.24       ✅
+    Laravel yêu cầu : ^13.8             ✅
+    Extensions      : tất cả PASS       ✅
+    Git SSH         : hoạt động         ✅
+    git pull        : Already up to date ✅    
+
+    RAM             : 964 MiB
+    Available       : ~456 MiB
+    Swap            : 0 B              ⚠️
+    Disk còn        : 6.2 GB            ✅
+> Vấn đề cần xử lý trước composer install là RAM. Với VM khoảng 1 GB và chưa có swap, Composer hoặc sau này Laravel + PHP-FPM + queue có thể bị OOM. Mình khuyên tạo 2 GB swap trước.    
+> Bước tiếp theo — tạo 2 GB Swap  |  Chạy nguyên cụm:
+ sudo fallocate -l 2G /swapfile
+
+ sudo chmod 600 /swapfile
+
+ sudo mkswap /swapfile
+
+ sudo swapon /swapfile
+
+ free -h
+> Kết quả mong đợi sẽ gần như:
+                total    used    free
+Mem:           964Mi    ...
+Swap:          2.0Gi      0B    2.0Gi
+> Sau đó cho swap tự bật lại khi VM reboot:
+ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+> Kiểm tra:
+ swapon --show
+ grep swap /etc/fstab  
+> Chưa chạy composer install vội. Gửi mình output của:
+ free -h
+ swapon --show
+- Swap đã tạo và đang hoạt động đúng. Dòng này xác nhận: 
+   Swap:          2.0Gi          0B       2.0Gi
+- Còn:
+  -bash: swapon: command not found
+không có nghĩa swap lỗi. Trên Debian, swapon nằm trong /usr/sbin, mà PATH của user hiện tại không chứa /usr/sbin. Bạn có thể kiểm tra bằng:
+ sudo swapon --show
+/etc/fstab cũng đã có /swapfile none swap sw 0 0, nên reboot VM thì swap sẽ được bật lại. 
+> Giờ sang Composer:
+> Project có composer.lock và platform requirements đều pass, nên chạy:
+ cd /var/www/laravel
+
+ composer install --no-dev --optimize-autoloader
+Không dùng composer update ở đây. install sẽ cài đúng các version đã khóa trong composer.lock; update có thể thay đổi dependency/version của project.
+
+> Sau khi chạy xong, kiểm tra: 
+ ls -ld vendor
+ php artisan --version
+Nếu thành công, kỳ vọng kiểu: 
+   vendor/ ... 
+   Laravel Framework 13.x.x 
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
