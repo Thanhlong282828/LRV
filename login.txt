@@ -2955,7 +2955,7 @@ Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trá
 
 > Bạn sẽ thấy danh sách Principal.
 > Tìm service account đang được VM laravel-server sử dụng. Nếu chưa biết cái nào, cách chắc chắn nhất là:
-      Compute Engine → VM instances → laravel-server → Details
+      Compute Engine → VM instances → laravel-server → Details                 < thông tin service VM laravel-server Computer Engine
 > Tìm dòng:
       Service account
 > Nó sẽ có dạng:
@@ -2968,6 +2968,134 @@ Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trá
    project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql
 
  rồi cài Cloud SQL Auth Proxy trên Debian và test MySQL trước khi đụng tới .env.
+ ------------------
+> Đúng, thấy rồi. Service account của VM laravel-server là:  
+   379534698416-compute@developer.gserviceaccount.com  
+> Nhưng có một điểm quan trọng trong ảnh: Cloud SQL = Disabled và Cloud Platform = Disabled ở phần Cloud API access scopes. Vì vậy chỉ   cấp IAM Cloud SQL Client thôi chưa đủ cho cách dùng Cloud SQL Auth Proxy bằng service account của VM.                 <
+
+> Làm bước này trước  
+    Trong trang VM laravel-server, bấm Edit ở phía trên.                      <
+> Kéo xuống phần:  
+    API and identity management → Access scopes              <
+> Hiện tại máy đang là:  
+ Allow default access  
+> Hãy đổi sang:  
+ Allow full access to all Cloud APIs  
+> hoặc nếu giao diện hiện lựa chọn:  
+ Set access for each API  
+> thì có thể cấu hình riêng. Nhưng để học/deploy lab hiện tại, chọn Allow full access to all Cloud APIs đơn giản hơn.  
+  Điều này không có nghĩa VM tự nhiên có toàn quyền GCP. IAM vẫn quyết định service account được phép làm gì; access scope là một lớp   giới hạn bổ sung của VM.  
+> Sau đó Save. Google Cloud có thể yêu cầu Stop VM trước rồi mới sửa access scopes.
+>  Nếu nó không cho sửa, cứ ...Stop VM → Edit → đổi scope →   Save → Start.              <
+         Vì VM laravel-server đang chạy nên Google Cloud khóa phần Access scopes. Ngay trên ảnh có dòng:         
+             “You must stop the VM instance to edit its API access scopes”         
+         Bạn làm như sau:         
+           1 Bấm Cancel ở dưới để thoát trang Edit.
+           2 Vào Compute Engine → VM instances → laravel-server.
+           3 trên icon... Bấm Stop và chờ trạng thái thành Stopped/Terminated.
+           4 Mở laravel-server → Edit.
+           5 Kéo xuống Identity and API access → Access scopes.
+           6 Lúc này chọn được:
+            ● Allow full access to all Cloud APIs
+           7 Bấm Save, sau đó Start/Resume VM lại.         
+         Không cần đổi Service account, vẫn giữ:         
+           Compute Engine default service account
+           379534698416-compute@developer.gserviceaccount.com         
+         Sau đó ta cấp riêng IAM:         
+            Cloud SQL Client         
+         cho service account này. Như vậy mô hình quyền sẽ là Access Scope rộng + IAM giới hạn quyền thực tế, thay vì cấp bừa quyền Admin.         
+
+         Lưu ý: Stop/Start có thể làm External IP thay đổi vì VM của bạn đang dùng ephemeral IP. Sau khi Start lại, kiểm tra IP mới trước khi          SSH/truy cập web.
+> Sau đó cấp IAM                                   <
+> Vào:  
+ ☰ → IAM & Admin → IAM                                     <
+> nếu chưa có tài khoản  
+    Đúng, trong ảnh IAM hiện tại chưa thấy 379534698416-compute@developer.gserviceaccount.com. Bạn đang ở chế độ View by principals, nhưng     bảng hiện chỉ có tài khoản Gmail của bạn.    
+    Không sao. Cách dễ nhất là thêm service account đó vào IAM với role Cloud SQL Client.    
+  >  Ngay tại màn hình này, bấm Grant access ở phía trên bên trái bảng.    
+  >  Trong cửa sổ mở ra:    
+  >  New principals
+    379534698416-compute@developer.gserviceaccount.com             | là Service Account mặc định của Compute Engine ☰ → IAM & Admin → Service Accounts
+  > Ở Assign roles, chọn:    
+    Cloud SQL
+    → Cloud SQL Client    
+  > rồi bấm Save.    
+
+  > Sau đó quay lại IAM, bạn sẽ thấy thêm một dòng dạng:    
+    Principal
+    379534698416-compute@developer.gserviceaccount.com    
+    Role
+    Cloud SQL Client
+
+  > Vì sao lúc đầu không thấy?    
+
+  - Service account đã tồn tại và đang gắn với VM — ảnh trước của bạn đã hiển thị chính xác service account đó. Nhưng trang IAM View by     principals chỉ hiện các principal đang có role ở policy mà giao diện đang liệt kê; vì vậy việc chưa thấy nó ở đây không có nghĩa     service account không tồn tại.    
+
+  - Bạn cũng có thể kiểm tra trước bằng menu bên trái Service Accounts. Ở đó phải có Compute Engine default service account.    
+
+  - Quan trọng: đừng cấp Cloud SQL Admin. Với Laravel VM chỉ cần kết nối Cloud SQL qua Auth Proxy, chọn Cloud SQL Client là đúng hướng.    
+
+  - Sau khi bạn bấm Grant access, gửi ảnh cửa sổ hiện ra, tôi chỉ bạn chọn đúng từng ô.
+> nếu có tài khoản dưới thì Tìm:  
+ 379534698416-compute@developer.gserviceaccount.com           | là Service Account mặc định của Compute Engine ☰ → IAM & Admin → Service Accounts
+> Bấm biểu tượng Edit principal ✏️ → Add another role → tìm:  
+ Cloud SQL Client  
+> Chọn:  
+ Cloud SQL
+ └── Cloud SQL Client  
+> rồi Save. 
+> Kết quả chúng ta cần là:  
+
+ VM laravel-server
+ │
+ ├── Service Account
+ │   379534698416-compute@developer.gserviceaccount.com
+ │
+ ├── Access scope
+ │   Cloud Platform / full API access ✅
+ │
+ └── IAM
+     Cloud SQL Client ✅
+             │
+             ▼
+     Cloud SQL Auth Proxy
+             │
+             ▼
+     laravel-mysql  
+
+> Chưa cài Proxy và chưa sửa .env lúc này. Bạn làm xong 2 chỗ Access scope + Cloud SQL Client rồi gửi ảnh cho tôi; bước kế tiếp tôi cho   đúng lệnh cài Cloud SQL Auth Proxy trên VM.
+-------------------------------------------------------------------
+> Đúng rồi, bước IAM đã thành công. Trong ảnh hiện rõ: 
+ Principal:
+ 379534698416-compute@developer.gserviceaccount.com 
+ Name:
+ Compute Engine default service account 
+ Role:
+ Cloud SQL Client ✅ 
+
+- Tức là VM của bạn đã có danh tính được phép kết nối tới Cloud SQL. 
+- Bây giờ còn kiểm tra Access scopes. Nếu lúc nãy bạn đã Stop VM → Edit → chọn Allow full access to all Cloud APIs → Save → Start VM, thì  phần quyền coi như xong. 
+
+> Tiếp theo chúng ta sẽ sang VM để cài Cloud SQL Auth Proxy, rồi nối:                            <
+       Laravel
+          ↓
+       127.0.0.1:3306
+          ↓
+       Cloud SQL Auth Proxy
+          ↓ IAM: Cloud SQL Client
+       Cloud SQL laravel-mysql
+          ↓
+       Database: schema_admin
+       User: laravel_app 
+> Trước khi cài, vào lại SSH của laravel-server và chạy 2 lệnh này:                            <
+
+ curl -H "Metadata-Flavor: Google" \
+ http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email 
+
+ curl -H "Metadata-Flavor: Google" \
+ http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/scopes 
+
+> Gửi tôi output 2 lệnh này. Tôi sẽ kiểm tra VM đã nhận đúng service account + scope rồi mới cho bạn cài Cloud SQL Auth Proxy, tránh cấu  hình sai giữa chừng.
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
