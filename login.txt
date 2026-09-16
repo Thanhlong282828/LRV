@@ -3476,6 +3476,1599 @@ WantedBy=multi-user.target
 - Mục tiêu:
  CLOUD SQL SYSTEMD OK
 - Khi đạt dòng này thì bạn có thể đóng cả Terminal 1. Cloud SQL Proxy sẽ chạy nền và còn tự khởi động lại khi VM reboot. Sau đó ta chuyển   sang Redis + Session → Nginx → mở Laravel bằng IP VM.
+-------------------------------
+ Xong bước Cloud SQL Auth Proxy chạy như service rồi. Kết quả của bạn rất chuẩn:
+         Active: active (running)            ✅
+         enabled                             ✅
+         127.0.0.1:3306                      ✅
+         cloud-sql-proxy PID 6642            ✅
+         CLOUD SQL SYSTEMD OK                ✅
+  enabled nghĩa là sau này VM reboot, cloud-sql-proxy sẽ tự chạy. Bạn không cần giữ Terminal 1 nữa.
+- Bây giờ sang bước tiếp theo: Redis. Project của bạn đang cấu hình:                    <<<
+         QUEUE_CONNECTION=redis
+         CACHE_STORE=redis
+        
+         REDIS_CLIENT=phpredis
+         REDIS_HOST=127.0.0.1
+         REDIS_PORT=6379
+> Nhưng trước khi cài gì, kiểm tra xem Redis đã có trên VM chưa. Tại Terminal 2 Google Cloud, chạy:              < 
+ redis-server --version
+ redis-cli --version
+
+ sudo systemctl status redis-server --no-pager
+
+> Sau đó kiểm tra PHP Redis extension:                 <
+ php -m | grep -i redis
+> Và kiểm tra port:                <
+ sudo ss -lntp | grep ':6379' || echo "Redis 6379 chưa chạy"
+- Nếu Redis đã hoạt động, ta sẽ test:              <
+
+ Laravel
+  ├── Database/Session → Cloud SQL ✅
+  ├── Cache            → Redis
+  └── Queue            → Redis
+
+- Sau khi Redis xong mới cấu hình Nginx → PHP-FPM → /var/www/laravel/public, rồi mở Laravel thật trên trình duyệt bằng external IP của VM.
+-------------------------------
+- Đúng, kết quả xác nhận VM của bạn chưa có Redis và PHP cũng chưa có extension Redis:  
+  redis-server ❌
+  redis-cli    ❌
+  phpredis     ❌
+  Port 6379    ❌  
+> Vì .env Laravel đang dùng QUEUE_CONNECTION=redis, CACHE_STORE=redis và REDIS_CLIENT=phpredis, ta cài cả Redis Server và PHP Redis   extension. Chạy trên Terminal 2 Google Cloud:                     <<
+  sudo apt update
+  sudo apt install -y redis-server php8.4-redis  
+> Xong bật Redis tự khởi động cùng VM:                               <
+  sudo systemctl enable --now redis-server
+  sudo systemctl status redis-server --no-pager  
+> Kiểm tra:                                 <
+
+  redis-server --version
+  redis-cli --version
+  redis-cli ping
+  php -m | grep -i redis
+  sudo ss -lntp | grep ':6379'  
+>Kết quả quan trọng cần đạt là dạng:                                 <
+  PONG  
+
+  redis  
+
+  LISTEN ... 127.0.0.1:6379 ...  
+
+> Sau đó restart PHP-FPM để PHP web nhận extension mới:                                 <
+  sudo systemctl restart php8.4-fpm
+  sudo systemctl status php8.4-fpm --no-pager  
+> Cuối cùng test Laravel → Redis:                                 <
+  cd /var/www/laravel
+  php artisan config:clear  
+
+  php artisan tinker --execute="Cache::put('gcp_test', 'REDIS OK', 60); echo Cache::get('gcp_test').PHP_EOL;"  
+>Mục tiêu:                                 <
+  REDIS OK  
+- Lúc đó server của bạn sẽ thành:  
+  Compute Engine
+  ├── Nginx
+  ├── PHP 8.4-FPM
+  ├── Laravel 13
+  ├── Cloud SQL Proxy :3306 → Cloud SQL ✅
+  └── Redis :6379
+        ├── Laravel Cache
+        └── Laravel Queue  
+- Không cần mở firewall port 6379 ra Internet. Redis chỉ cần Laravel trên chính VM truy cập qua 127.0.0.1.  
+- Chạy đến lệnh test Cache::put(...) rồi gửi output; nếu ra REDIS OK, ta chuyển sang Nginx + Laravel public
+-------------------------------
+- Chuẩn, Redis đã hoàn tất 100%. Các kiểm tra quan trọng đều pass:
+           Redis Server 8.0.2            ✅
+           redis-server service          active (running) ✅
+           Redis tự khởi động            enabled ✅
+           127.0.0.1:6379                LISTEN ✅
+           PHP extension phpredis        redis ✅
+           redis-cli ping                PONG ✅
+           PHP-FPM 8.4                   active (running) ✅
+           Laravel Cache → Redis         REDIS OK ✅
+- Hiện VM của bạn đã có:
+           Compute Engine: laravel-server
+           │
+           ├── Nginx                    ✅
+           ├── PHP 8.4-FPM              ✅
+           ├── Laravel 13               ✅
+           │
+           ├── Redis 8
+           │   ├── Cache → Redis        ✅
+           │   └── Queue → Redis        ✅ cấu hình
+           │
+           └── Cloud SQL Auth Proxy     ✅ systemd
+                   ↓
+               Cloud SQL MySQL 8.4
+                   ↓
+               schema_admin
+- Có một điểm cần phân biệt: QUEUE_CONNECTION=redis mới xác nhận Laravel cấu hình queue dùng Redis; chúng ta chưa chạy queue worker, nên  chưa gọi phần xử lý job là hoàn chỉnh.
+
+> Bước tiếp theo: Nginx → Laravel
+> Trước khi sửa Nginx, kiểm tra chính xác PHP-FPM socket và cấu hình Nginx hiện tại. Chạy ở Terminal 2 Google Cloud:
+ ls -lah /run/php/
+
+ sudo nginx -t
+
+ ls -lah /etc/nginx/sites-enabled/
+
+ cat /etc/nginx/sites-enabled/default
+> Và kiểm tra Laravel public:
+ cd /var/www/laravel
+
+ ls -lah public/
+
+ test -f public/index.php && echo "Laravel public/index.php OK"
+- Gửi output các lệnh này cho tôi.
+- Sau đó tôi sẽ cho bạn cấu hình đúng:
+        Internet
+           ↓
+        GCP Firewall :80
+           ↓
+        Nginx :80
+           ↓
+        /var/www/laravel/public
+           ↓
+        PHP-FPM 8.4
+           ↓
+        Laravel
+           ├── Cloud SQL
+           └── Redis
+- Ta sẽ test nginx -t trước khi reload, nên không sửa mù file Nginx hiện tại.
+-------------------------------
+- Ổn. Kết quả cho thấy PHP-FPM socket chính xác là /run/php/php8.4-fpm.sock, Nginx config hiện tại hợp lệ, và Laravel có public/index. php. Bây giờ có thể chuyển Nginx từ trang mặc định /var/www/html sang Laravel.
+
+> Bước 1 — Tạo Nginx config riêng cho Laravel                            <<<
+> Chạy:
+ sudo nano /etc/nginx/sites-available/laravel
+
+> Dán nguyên:
+ server {
+     listen 80;
+     listen [::]:80;
+
+     server_name _;
+
+     root /var/www/laravel/public;
+     index index.php index.html;
+
+     location / {
+         try_files $uri $uri/ /index.php?$query_string;
+     }
+
+     location ~ \.php$ {
+         include snippets/fastcgi-php.conf;
+         fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+     }
+
+     location ~ /\.(?!well-known).* {
+         deny all;
+     }
+ }
+> Lưu bằng:
+ Ctrl + O
+ Enter
+ Ctrl + X
+> Bước 2 — Tắt default site và bật Laravel                            <
+ sudo rm /etc/nginx/sites-enabled/default
+ sudo ln -s /etc/nginx/sites-available/laravel \
+   /etc/nginx/sites-enabled/laravel
+> Kiểm tra:                            
+ ls -lah /etc/nginx/sites-enabled/
+- Bạn nên thấy:
+ laravel -> /etc/nginx/sites-available/laravel
+> Bước 3 — Kiểm tra trước khi reload                            <
+> Đây là bước rất quan trọng khi làm server:
+ sudo nginx -t
+- Phải ra:
+ syntax is ok
+ test is successful
+> Sau đó mới:
+ sudo systemctl reload nginx
+ sudo systemctl status nginx --no-pager
+> Bước 4 — Sửa quyền Laravel runtime                            <
+> Không cần chmod 777. Chỉ cho web server ghi vào những thư mục Laravel thực sự cần ghi:
+ cd /var/www/laravel
+
+ sudo chown -R www-data:www-data storage bootstrap/cache
+ sudo chmod -R 775 storage bootstrap/cache
+> Kiểm tra:
+ ls -ld storage bootstrap/cache
+> Bước 5 — Test Nginx → PHP-FPM → Laravel ngay trong VM                            <
+> Chạy:
+ curl -I http://127.0.0.1
+> Sau đó:
+ curl -sS http://127.0.0.1 | head -30
+> Nếu Laravel gặp lỗi 500, đừng sửa lung tung. Lấy lỗi bằng:
+ tail -n 50 storage/logs/laravel.log
+> Và:
+ sudo tail -n 50 /var/log/nginx/error.log
+- Hiện chúng ta đang xây đúng chuỗi:
+          Browser
+             ↓
+          GCP Firewall :80
+             ↓
+          Nginx :80
+             ↓
+          /var/www/laravel/public/index.php
+             ↓
+          PHP-FPM 8.4
+             ↓
+          Laravel 13
+             ├── Cloud SQL Proxy → Cloud SQL ✅
+             └── Redis 127.0.0.1:6379       ✅
+- Làm đến curl -I http://127.0.0.1 và curl -sS ... rồi gửi kết quả. Chưa cần chạy migration hay queue worker ở bước này; trước tiên ta  xác nhận request web đã đi xuyên qua Nginx → PHP-FPM → Laravel.
+-------------------------------
+- Nginx và PHP-FPM đã chạy đúng. 500 hiện tại đến từ Laravel, không phải Nginx.
+- Stack trace của bạn cho thấy lỗi xảy ra tại:
+ Illuminate\Session\DatabaseSessionHandler
+ → Query Builder
+ → database
+- Trong .env hiện có:
+ SESSION_DRIVER=database
+- Nghĩa là mỗi request Laravel đang cố đọc bảng sessions trong Cloud SQL. Khả năng cao database mới chưa có bảng đó/migrations chưa chạy.  Nhưng đoạn log bạn gửi chỉ có phần cuối stack trace, chưa có dòng exception gốc.
+> Trước tiên đừng chạy migrate vội. Ta xác định chính xác lỗi. Chạy:
+ cd /var/www/laravel
+ grep -nE "SQLSTATE|ERROR|Exception|sessions" storage/logs/laravel.log | tail -20
+> Sau đó kiểm tra migration:
+ php artisan migrate:status
+> Và kiểm tra trực tiếp Cloud SQL xem bảng sessions tồn tại chưa:
+ php artisan tinker --execute="
+ echo Schema::hasTable('sessions')
+     ? 'SESSIONS TABLE EXISTS'.PHP_EOL
+     : 'SESSIONS TABLE MISSING'.PHP_EOL;
+ "
+- Nếu kết quả là:
+ SESSIONS TABLE MISSING
+- thì ta đã tìm đúng nguyên nhân của HTTP 500.
+- Về mặt luồng, request hiện đã đi được rất xa:
+                 curl
+                  ↓
+                 Nginx :80                 ✅
+                  ↓
+                 PHP-FPM 8.4               ✅
+                  ↓
+                 public/index.php           ✅
+                  ↓
+                 Laravel                    ✅
+                  ↓
+                 StartSession
+                  ↓
+                 SESSION_DRIVER=database
+                  ↓
+                 Cloud SQL                  ✅ kết nối
+                  ↓
+                 sessions table             ❓
+- Đặc biệt /var/log/nginx/error.log không có lỗi FastCGI mới, trong khi Laravel trả trang 500 và có X-Request-ID; đó là thêm bằng chứng  Nginx → PHP-FPM → Laravel đang hoạt động.
+- Gửi tôi output của 3 lệnh trên. Nếu đúng là thiếu migration sessions, ta sẽ xử lý database/migration đúng cách thay vì đổi  SESSION_DRIVER=file chỉ để che lỗi.
+-------------------------------
+- Đúng, giờ đã xác định chính xác nguyên nhân 500:     
+     Table 'schema_admin.sessions' doesn't exist
+     Migration table not found
+     SESSIONS TABLE MISSING     
+- Cloud SQL không bị lỗi kết nối. Ngược lại, Laravel đã kết nối được Cloud SQL và chạy câu SQL: 
+     select * from `sessions` where `id` = ... 
+- nhưng database schema_admin hiện chưa được migrate. 
+- Tuy nhiên chưa chạy php artisan migrate ngay. Project ERP của bạn có rất nhiều migration/module, nên trước tiên kiểm tra migration nào  sẽ được đưa lên Cloud SQL. 
+> Chạy trên VM: 
+ cd /var/www/laravel 
+
+ find database/migrations Modules -type f -path '*migrations/*.php' 2>/dev/null | wc -l 
+
+ find database/migrations Modules -type f -path '*migrations/*.php' 2>/dev/null | sort | head -50 
+> Rồi kiểm tra riêng migration tạo sessions: 
+ grep -RniE "create.*sessions|Schema::create\(['\"]sessions['\"]" \
+     database/migrations Modules 2>/dev/null 
+> Cuối cùng chạy dry-run: 
+ php artisan migrate --pretend 
+- --pretend rất quan trọng ở đây: Laravel sẽ cho chúng ta xem SQL migration dự kiến chạy mà không thực sự thay đổi database. 
+- Nếu mục tiêu của Cloud SQL này là tạo một database mới hoàn toàn cho bản deploy này thì sau khi kiểm tra dry-run ổn, bước tiếp theo mới  là: 
+       Git migrations
+             ↓
+       php artisan migrate
+             ↓
+       Cloud SQL
+       ├── migrations
+       ├── sessions
+       ├── users
+       ├── companies
+       ├── payroll...
+       └── ... 
+- Không nên chỉ tự tạo thủ công bảng sessions, vì sau đó schema Cloud SQL có thể lệch khỏi schema mà source code Laravel quản lý. 
+- Gửi tôi output của wc -l, grep ...sessions và đặc biệt phần đầu/cuối của php artisan migrate --pretend; tôi sẽ kiểm tra trước khi cho  chạy migration thật.
+-------------------------------
+- Tôi đã kiểm tra output trong file bạn gửi. Kết quả khá rõ: dry-run migration đã đi hết chuỗi migration được hiển thị mà không có lỗi  SQL, từ migration đầu tiên cho tới các migration enterprise/audit ở cuối output. File cho thấy project có 63 migration, và migration  đầu tiên có tạo bảng sessions.
+- php artisan migrate --pretend cũng cho thấy Laravel dự kiến tạo users, password_reset_tokens, sessions, rồi cache/jobs và tiếp tục toàn  bộ schema ERP. Ở cuối dry-run, nó vẫn tiếp tục đến các migration audit và các thay đổi users, job_positions, employee_histories, tức  không thấy migration nào dừng giữa chừng trong output bạn cung cấp.
+> Vì schema_admin Cloud SQL của bạn hiện là database mới chưa có migration table, bây giờ có thể chạy migration thật. Trên VM:
+ cd /var/www/laravel
+
+ php artisan migrate --force
+- Tôi dùng --force vì đây là cách deploy quen thuộc trên server; hiện APP_ENV=local thì Laravel có thể không bắt buộc flag này, nhưng  command vẫn hợp lệ.
+> Chưa chạy seeder. Migration trước, kiểm tra schema trước.
+> Nếu migration hoàn thành, chạy:
+ php artisan migrate:status
+
+ php artisan tinker --execute="
+ echo Schema::hasTable('sessions')
+     ? 'SESSIONS TABLE EXISTS'.PHP_EOL
+     : 'SESSIONS TABLE MISSING'.PHP_EOL;
+"
+
+> Rồi test website:
+
+ curl -I http://127.0.0.1
+
+> Nếu muốn kiểm tra DB tổng quát:
+ php artisan tinker --execute="
+ echo 'TABLE COUNT: '.count(Schema::getTableListing()).PHP_EOL;
+"
+- Kỳ vọng lúc này:
+ Cloud SQL schema_admin
+        ↓
+ migrations     ✅
+ users          ✅
+ sessions       ✅
+ companies      ✅
+ employees      ✅
+ payroll...     ✅
+ audit...       ✅
+        ↓
+ SESSION_DRIVER=database
+        ↓
+ HTTP 500 do thiếu sessions → hết
+- Có một điểm đáng chú ý: migration tạo cache/cache_locks và jobs, nhưng .env hiện tại của bạn dùng Redis cho cache và queue, nên các  bảng đó tồn tại không có nghĩa Laravel đang dùng chúng cho cache/queue. sessions thì khác: bạn đang đặt SESSION_DRIVER=database, nên  Laravel thực sự cần bảng sessions.
+- Chạy php artisan migrate --force trước, rồi gửi output. Nếu 63 migration chạy sạch, chúng ta test web ngay; chưa cần đụng seeder.
+-------------------------------
+- Tôi đã kiểm tra output trong file bạn gửi. Kết quả khá rõ: dry-run migration đã đi hết chuỗi migration được hiển thị mà không có lỗi  SQL, từ migration đầu tiên cho tới các migration enterprise/audit ở cuối output. File cho thấy project có 63 migration, và migration  đầu tiên có tạo bảng sessions.
+- php artisan migrate --pretend cũng cho thấy Laravel dự kiến tạo users, password_reset_tokens, sessions, rồi cache/jobs và tiếp tục toàn  bộ schema ERP. Ở cuối dry-run, nó vẫn tiếp tục đến các migration audit và các thay đổi users, job_positions, employee_histories, tức  không thấy migration nào dừng giữa chừng trong output bạn cung cấp.
+> Vì schema_admin Cloud SQL của bạn hiện là database mới chưa có migration table, bây giờ có thể chạy migration thật. Trên VM:
+ cd /var/www/laravel
+
+ php artisan migrate --force
+
+- Tôi dùng --force vì đây là cách deploy quen thuộc trên server; hiện APP_ENV=local thì Laravel có thể không bắt buộc flag này, nhưng  command vẫn hợp lệ.
+> Chưa chạy seeder. Migration trước, kiểm tra schema trước.                   <
+> Nếu migration hoàn thành, chạy:                   <
+ php artisan migrate:status
+
+ php artisan tinker --execute="
+ echo Schema::hasTable('sessions')
+     ? 'SESSIONS TABLE EXISTS'.PHP_EOL
+     : 'SESSIONS TABLE MISSING'.PHP_EOL;
+ "
+> Rồi test website:                   <
+ curl -I http://127.0.0.1
+> Nếu muốn kiểm tra DB tổng quát:
+ php artisan tinker --execute="
+ echo 'TABLE COUNT: '.count(Schema::getTableListing()).PHP_EOL;
+ "
+- Kỳ vọng lúc này:
+ Cloud SQL schema_admin
+        ↓
+ migrations     ✅
+ users          ✅
+ sessions       ✅
+ companies      ✅
+ employees      ✅
+ payroll...     ✅
+ audit...       ✅
+        ↓
+ SESSION_DRIVER=database
+        ↓
+ HTTP 500 do thiếu sessions → hết
+- Có một điểm đáng chú ý: migration tạo cache/cache_locks và jobs, nhưng .env hiện tại của bạn dùng Redis cho cache và queue, nên các  bảng đó tồn tại không có nghĩa Laravel đang dùng chúng cho cache/queue. sessions thì khác: bạn đang đặt SESSION_DRIVER=database, nên  Laravel thực sự cần bảng sessions.
+- Chạy php artisan migrate --force trước, rồi gửi output. Nếu 63 migration chạy sạch, chúng ta test web ngay; chưa cần đụng seeder.
+-------------------------------
+- Xong phần migration rồi. Output lần này đẹp và đúng.
+- php artisan migrate --force đã chạy toàn bộ migration thành công; chạy lại lần hai trả Nothing to migrate, và migrate:status cho thấy  các migration đều ở trạng thái Ran.
+- Quan trọng nhất, lỗi cũ:
+   Table 'schema_admin.sessions' doesn't exist
+- đã được xử lý. Laravel xác nhận:
+   SESSIONS TABLE EXISTS
+- Và Nginx → PHP-FPM → Laravel → Cloud SQL hiện đã chạy được. curl trả:
+        HTTP/1.1 302 Found
+        Server: nginx
+        Location: http://127.0.0.1/login
+        Set-Cookie: XSRF-TOKEN=...
+        Set-Cookie: laravel-session=...       
+- 302 ở đây không phải lỗi. Route / đang redirect sang /login, đồng thời Laravel tạo được XSRF cookie và session cookie.
+- Database Cloud SQL hiện có 230 tables.
+- Kiến trúc bạn vừa dựng thực tế đã thành:        
+         Internet
+            ↓
+         GCP Firewall
+            ↓
+         Compute Engine (Debian)
+            ↓
+         Nginx :80
+            ↓
+         PHP-FPM 8.4
+            ↓
+         Laravel 13
+            ├── Session → Cloud SQL
+            ├── Database → Cloud SQL MySQL 8.4
+            ├── Cache → Redis
+            └── Queue → Redis        
+
+         Compute Engine
+            ↓
+         Cloud SQL Auth Proxy :3306
+            ↓
+         Cloud SQL
+            ↓
+         schema_admin (230 tables)
+> Bước tiếp theo: test từ Internet
+> Do VM của bạn dùng ephemeral external IP, trước tiên lấy IP hiện tại thay vì dùng IP cũ:
+ curl -H "Metadata-Flavor: Google" \
+ http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip
+
+ echo
+- Gửi tôi IP mà lệnh này trả về. Sau đó chúng ta chỉnh APP_URL và test /login trực tiếp từ Chrome bên ngoài VM. Đây cũng là đoạn quan  trọng để hoàn thiện phần Compute Engine deployment trước khi chuyển sang HTTPS/domain.
+-------------------------------
+- Đúng rồi. IP public hiện tại của Compute Engine là:
+     136.85.34.188
+- Giờ mình chuyển Laravel từ APP_URL=http://localhost sang IP public này.
+> Bước 1 — sửa .env                          <
+> Trên VM chạy:
+ cd /var/www/laravel
+
+ grep '^APP_URL=' .env
+> Sau đó:
+ sed -i 's|^APP_URL=.*|APP_URL=http://136.85.34.188|' .env
+
+ grep '^APP_URL=' .env
+- Kết quả cần là:
+ APP_URL=http://136.85.34.188
+> Bước 2 — clear config Laravel                          <
+ php artisan optimize:clear
+> Rồi kiểm tra Laravel đã nhận URL mới:
+ php artisan tinker --execute="echo config('app.url').PHP_EOL;"
+> Phải ra:
+ http://136.85.34.188
+> Bước 3 — test Nginx/Laravel bằng IP public ngay trên VM                          <
+ curl -I http://136.85.34.188
+- Nếu đúng, khả năng cao sẽ thấy:
+ HTTP/1.1 302 Found
+ Server: nginx
+ Location: http://136.85.34.188/login
+> Bước 4 — mở trên Mac                          <
+> Trên Chrome của Mac, truy cập:
+ http://136.85.34.188
+> Nó nên chuyển thành:
+ http://136.85.34.188/login
+- Nếu /login hiện giao diện Laravel thì coi như bạn đã hoàn thành luồng:
+       Mac/Internet
+             ↓
+       136.85.34.188:80
+             ↓
+       GCP Firewall
+             ↓
+       Compute Engine
+             ↓
+       Nginx
+             ↓
+       PHP-FPM
+             ↓
+       Laravel
+             ↓
+       Cloud SQL + Redis
+- Chưa cần HTTPS lúc này. Làm cho HTTP + /login chạy hoàn chỉnh trước. Bạn chạy 3 bước trên và đưa tôi output của optimize:clear, tinker  và curl -I http://136.85.34.188, tôi kiểm tra tiếp.
+-------------------------------
+- Ảnh này cho thấy request từ Internet đã đi được tới Laravel, nhưng riêng route /login phát sinh 500 Server Error. Vậy lỗi sessions  trước đó đã qua; giờ cần lấy exception mới nhất, không đoán.
+
+> Ngay sau khi bạn vừa mở /login và thấy 500, chạy trên VM:
+ cd /var/www/laravel
+
+ tail -120 storage/logs/laravel.log
+> Để lọc nhanh phần quan trọng:
+ grep -nE "local.ERROR|SQLSTATE|Exception|ERROR|Vite|manifest|Permission denied|Undefined|Redis|Connection refused" \
+ storage/logs/laravel.log | tail -30
+> Và test trực tiếp /login từ VM:
+ curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
+ http://127.0.0.1/login
+> Sau đó kiểm tra một nguyên nhân rất hay gặp khi deploy Laravel có Vite:
+ ls -lah public/build 2>&1
+ ls -lah public/build/manifest.json 2>&1
+- Nếu bạn thấy kiểu:
+    Could not open input...
+    Vite manifest not found...
+    public/build: No such file or directory
+- thì lúc đó mới xử lý Node/Vite.
+- Hiện tại không cần chỉnh Nginx, Cloud SQL hay firewall. Browser đã truy cập được 136.85.34.188/login, nên đường Internet → VM đang  thông. Trước đó / cũng đã trả 302 sang chính /login.
+- Gửi tôi output của 4 lệnh trên; tôi sẽ bắt đúng exception gây 500 ở /login.
+-------------------------------
+- Chạy nguyên block này một lần 
+
+> Block dưới sửa quyền theo mô hình tốt hơn: owner = user deploy lychieuthan35, group = www-data, để cả SSH CLI lẫn PHP-FPM đều ghi được. 
+
+ cd /var/www/laravel 
+
+ echo "========================================="
+ echo "1. FIX LARAVEL PERMISSIONS"
+ echo "=========================================" 
+
+ sudo chown -R lychieuthan35:www-data storage bootstrap/cache 
+
+ sudo find storage -type d -exec chmod 2775 {} \;
+ sudo find storage -type f -exec chmod 664 {} \; 
+
+ sudo find bootstrap/cache -type d -exec chmod 2775 {} \;
+ sudo find bootstrap/cache -type f -exec chmod 664 {} \; 
+
+ sudo chmod 2775 storage
+ sudo chmod 2775 storage/logs
+ sudo chmod 2775 storage/framework
+ sudo chmod 2775 bootstrap/cache 
+
+ echo "========================================="
+ echo "2. VERIFY WRITE PERMISSIONS"
+ echo "=========================================" 
+
+ touch storage/logs/permission-test.log
+ rm storage/logs/permission-test.log 
+
+ touch bootstrap/cache/permission-test
+ rm bootstrap/cache/permission-test 
+
+ echo "CLI WRITE = OK" 
+
+ echo "========================================="
+ echo "3. CLEAR OLD CACHE"
+ echo "=========================================" 
+
+ php artisan optimize:clear 
+
+ echo "========================================="
+ echo "4. CREATE LARAVEL CACHES"
+ echo "=========================================" 
+
+ php artisan config:cache
+ php artisan route:cache
+ php artisan view:cache 
+
+ echo "========================================="
+ echo "5. VERIFY VITE BUILD"
+ echo "=========================================" 
+
+ test -f public/build/manifest.json && \
+ echo "VITE MANIFEST = OK" || \
+ echo "VITE MANIFEST = MISSING" 
+
+ ls -lh public/build/manifest.json 
+
+ echo "========================================="
+ echo "6. VERIFY CLOUD SQL"
+ echo "=========================================" 
+
+ php artisan tinker --execute="
+ DB::connection()->getPdo();
+ echo 'CLOUD SQL = OK'.PHP_EOL;
+ " 
+
+ echo "========================================="
+ echo "7. VERIFY REDIS"
+ echo "=========================================" 
+
+ redis-cli ping 
+
+ php artisan tinker --execute="
+ Cache::put('deploy_test','REDIS = OK',60);
+ echo Cache::get('deploy_test').PHP_EOL;
+ " 
+
+ echo "========================================="
+ echo "8. RESTART SERVICES"
+ echo "=========================================" 
+
+ sudo systemctl restart php8.4-fpm
+ sudo systemctl restart nginx 
+
+ sudo nginx -t 
+
+ echo "PHP-FPM = $(systemctl is-active php8.4-fpm)"
+ echo "NGINX   = $(systemctl is-active nginx)"
+ echo "REDIS   = $(systemctl is-active redis-server)"
+ echo "SQLPROXY= $(systemctl is-active cloud-sql-proxy)" 
+
+ echo "========================================="
+ echo "9. TEST /LOGIN LOCALLY"
+ echo "=========================================" 
+
+ curl -sS -o /dev/null \
+ -w "LOCAL LOGIN = HTTP %{http_code}\n" \
+ http://127.0.0.1/login 
+
+ echo "========================================="
+ echo "10. TEST PUBLIC WEBSITE"
+ echo "=========================================" 
+
+ PUBLIC_IP=$(curl -s \
+ -H "Metadata-Flavor: Google" \
+ http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip) 
+
+ echo "PUBLIC IP = $PUBLIC_IP"
+ echo "LOGIN URL = http://$PUBLIC_IP/login" 
+
+ curl -sS -o /dev/null \
+ -w "PUBLIC LOGIN = HTTP %{http_code}\n" \
+ "http://$PUBLIC_IP/login" 
+
+ echo "========================================="
+ echo "DONE"
+ echo "=========================================" 
+
+- Lần này tôi cố tình không dùng set -e, nên nếu một lệnh lỗi terminal vẫn tiếp tục chạy và chúng ta sẽ thấy chính xác lỗi ở đâu. 
+
+- Kết quả đẹp nhất ở cuối sẽ là:     
+
+     CLI WRITE = OK     
+
+     Configuration cached successfully
+     Routes cached successfully
+     Blade templates cached successfully     
+
+     VITE MANIFEST = OK
+     CLOUD SQL = OK
+     PONG
+     REDIS = OK     
+
+     PHP-FPM = active
+     NGINX   = active
+     REDIS   = active
+     SQLPROXY= active     
+
+     LOCAL LOGIN = HTTP 200
+     PUBLIC LOGIN = HTTP 200     
+
+- Sau đó mở: 
+
+ http://136.85.34.188/login 
+
+- Và không chạy npm run build lại nữa. manifest.json 331 byte đã được tạo, nghĩa là vấn đề Vite trước đó đã được giải quyết. Lỗi hiện tại  chỉ là permissions.
+-------------------------------
+- Cụ thể block bạn vừa chạy đã hoàn thành/kiểm tra được:
+Laravel permissions      ✅
+storage + bootstrap/cache ✅
+Laravel optimize clear    ✅
+config cache              ✅
+route cache               ✅
+view cache                ✅
+Vite manifest/build       ✅
+Cloud SQL connection      ✅
+Redis connection/cache    ✅
+PHP-FPM                   ✅
+Nginx                     ✅
+Cloud SQL Auth Proxy      ✅
+Local /login              ✅ HTTP 200
+Public /login             ✅ HTTP 200
+- Nên đối với mục tiêu "đưa Laravel lên VM và truy cập website được" thì coi như xong.
+- Nhưng nếu hỏi production hoàn chỉnh, vẫn còn những phần quan trọng:
+Hiện tại
+────────────────────────────────────────
+Compute Engine              ✅
+Nginx                       ✅
+PHP-FPM                     ✅
+Laravel 13                  ✅
+Composer dependencies       ✅
+Vite production assets      ✅
+Cloud SQL                   ✅
+Cloud SQL Auth Proxy        ✅
+Redis                       ✅
+Migration                   ✅
+Session DB                  ✅
+Firewall HTTP               ✅
+Website HTTP 200            ✅
+
+Production tiếp theo
+────────────────────────────────────────
+Static External IP          ❌             <
+Domain → Static IP          ❌             <
+HTTPS / SSL                 ❌
+APP_ENV=production          ❌
+APP_DEBUG=false             cần xác nhận
+Queue Worker + systemd      ❌
+Queue auto restart          ❌
+Laravel Scheduler           ❌
+Reverb WebSocket            ❌
+Reverb systemd              ❌
+HTTPS WebSocket / WSS       ❌
+Nginx reverse proxy Reverb  ❌
+Log rotation                cần làm
+Cloud Logging/Monitoring    ❌
+DB least privilege          ❌
+Backup Cloud SQL            cần kiểm tra
+Secret Manager              ❌
+Deploy/update script        ❌
+Reboot survival test        ❌
+Security hardening          chưa hoàn chỉnh
+- Sau khi server ổn định, quy trình deploy phiên bản code mới thường sẽ gọn kiểu:         < 
+
+cd /var/www/laravel
+
+git pull
+
+composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction
+
+npm ci
+npm run build
+
+php artisan migrate --force
+
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+sudo systemctl restart php8.4-fpm
+sudo systemctl restart laravel-queue
+sudo systemctl restart laravel-reverb
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+- Tức là hiện tại bạn đã đi qua đoạn lớn:
+
+GitHub
+   ↓
+Compute Engine
+   ↓
+Nginx
+   ↓
+PHP-FPM
+   ↓
+Laravel
+ ┌───────┴────────┐
+ ↓                ↓
+Cloud SQL        Redis
+   ✅              ✅
+
+Browser → /login → HTTP 200 ✅
+- Giờ không cần chạy lại block cũ nữa.
+- Nếu mục tiêu của bạn là học đúng kiểu Middle Laravel + GCP để đi phỏng vấn, bước tiếp theo tôi khuyên làm một lượt:
+- Static IP → domain → HTTPS → Queue Worker → Scheduler → Reverb → production .env → systemd → reboot test → Logging/Monitoring.
+- Làm hết chuỗi đó thì project này mới trở thành một bài thực hành deployment GCP khá đầy đủ để bạn có thể giải thích trong phỏng vấn.
+-------------------------------
+❌ Nhưng phần này không nên nhét tất cả vào một block ngay, vì Static IP → Domain → HTTPS phải làm trước; HTTPS/WSS/Reverb phụ thuộc domain đó.
+> Giai đoạn tiếp theo: Static External IP → Domain → HTTPS                   <
+- Hiện VM laravel-server đang dùng IP 136.85.34.188, nhưng đó là ephemeral IP. Nếu VM stop/start, IP có thể đổi.
+- Trước tiên ta biến IP hiện tại thành Static External IP. Bạn không cần SSH cho bước này.
+> Vào Google Cloud Console:
+    VPC network → IP addresses                    <
+> hoặc tìm trên thanh Search:
+   IP addresses                      <
+> Bạn sẽ thấy dòng tương tự:                   <
+    136.85.34.188
+    External
+    Ephemeral
+    laravel-server
+> Ở dòng đó chọn:                   <
+   ⋮
+   → Promote to static IP address
+> Đặt:                   <
+   Name:
+   laravel-server-ip
+
+   Description:
+   Laravel production static IP
+> Region phải là:                   <
+   asia-southeast1
+> sau đó chọn Reserve.              <    Static External IP  ✅
+> Kết quả cần thành:
+    laravel-server-ip
+    136.85.34.188
+    External
+    Static
+    asia-southeast1
+    laravel-server
+> Đừng tạo IP mới nếu Console cho phép promote 136.85.34.188; ta muốn giữ nguyên IP đang chạy để website không bị gián đoạn.
+> Sau đó cần chọn domain
+> Bạn đang có các domain riêng, nhưng tôi không tự chọn domain nào để thay đổi DNS vì điều đó ảnh hưởng website/domain của bạn.
+> Bạn chỉ cần nói domain muốn dùng, ví dụ:
+  kayaga.one
+> hoặc:
+  thanhssr.cloud
+> hoặc:
+  thanhssr.xyz
+> Sau khi bạn chọn, tôi sẽ đưa nguyên một lượt đầy đủ cho phần còn lại:
+         Domain DNS
+            ↓
+         Static IP 136.85.34.188
+            ↓
+         HTTPS / Let's Encrypt
+            ↓
+         Nginx HTTPS
+            ↓
+         APP_ENV=production
+         APP_DEBUG=false
+         APP_URL=https://domain
+            ↓
+         Queue Worker systemd + auto restart
+            ↓
+         Laravel Scheduler
+            ↓
+         Reverb systemd
+            ↓
+         Nginx WebSocket proxy
+            ↓
+         WSS
+            ↓
+         Log rotation
+            ↓
+         Cloud Logging + Monitoring
+            ↓
+         Cloud SQL backup
+            ↓
+         DB least privilege
+            ↓
+         Secret Manager
+            ↓
+         Deploy script
+            ↓
+         Security hardening
+            ↓
+         Reboot survival test
+
+- Tức là không bỏ mục nào trong danh sách bạn vừa đưa. Trước mắt hãy Promote 136.85.34.188 thành Static rồi cho tôi biết domain nào bạn muốn trỏ vào VM.
+-------------------------------
+> vào Domain chỉnh DNS = VPC Network > IP addresses vd: 136.85.34.188 External
+| Type | Name/Host | Value           | TTL      |
+| ---- | --------- | --------------- | -------- |
+| `A`  | `@`       | `136.85.34.188` | Auto/300 |
+| `A`  | `www`     | `136.85.34.188` | Auto/300 |
+> Tiếp theo làm Domain → Nginx → Production ENV → HTTPS/SSL. DNS của kayaga.one đã đặt @ → 136.85.34.188, nên giờ SSH vào laravel-server và chạy block dưới.
+> Block này không đụng DB, không chạy migration, không build Vite lại. Nó kiểm tra DNS trước; nếu DNS chưa về đúng IP thì sẽ dừng trước khi cài SSL.
+cd /var/www/laravel
+
+DOMAIN="kayaga.one"
+WWW="www.kayaga.one"
+STATIC_IP="136.85.34.188"
+
+echo "========================================="
+echo "1. CHECK DNS"
+echo "========================================="
+
+sudo apt-get update
+sudo apt-get install -y dnsutils curl
+
+echo "kayaga.one:"
+dig +short A "$DOMAIN"
+
+echo "www.kayaga.one:"
+dig +short A "$WWW"
+
+if ! dig +short A "$DOMAIN" | grep -qx "$STATIC_IP"; then
+    echo "ERROR: kayaga.one CHUA TRO VE $STATIC_IP"
+    echo "Dung tai day. Cho DNS cap nhat roi chay lai block."
+    exit 1
+fi
+
+if ! dig +short A "$WWW" | grep -qx "$STATIC_IP"; then
+    echo "ERROR: www.kayaga.one CHUA TRO VE $STATIC_IP"
+    echo "Dung tai day. Cho DNS cap nhat roi chay lai block."
+    exit 1
+fi
+
+echo "DNS = OK"
+
+echo "========================================="
+echo "2. CONFIGURE NGINX DOMAIN"
+echo "========================================="
+
+sudo tee /etc/nginx/sites-available/laravel > /dev/null <<'NGINX'
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name kayaga.one www.kayaga.one;
+
+    root /var/www/laravel/public;
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+NGINX
+
+sudo ln -sfn \
+/etc/nginx/sites-available/laravel \
+/etc/nginx/sites-enabled/laravel
+
+sudo rm -f /etc/nginx/sites-enabled/default
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+echo "NGINX DOMAIN = OK"
+
+echo "========================================="
+echo "3. SET PRODUCTION ENVIRONMENT"
+echo "========================================="
+
+sudo cp .env ".env.backup.$(date +%Y%m%d-%H%M%S)"
+
+sudo sed -i 's/^APP_ENV=.*/APP_ENV=production/' .env
+sudo sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' .env
+sudo sed -i 's|^APP_URL=.*|APP_URL=https://kayaga.one|' .env
+
+grep -q '^APP_ENV=' .env || echo 'APP_ENV=production' | sudo tee -a .env
+grep -q '^APP_DEBUG=' .env || echo 'APP_DEBUG=false' | sudo tee -a .env
+grep -q '^APP_URL=' .env || echo 'APP_URL=https://kayaga.one' | sudo tee -a .env
+
+sudo chown lychieuthan35:www-data .env
+sudo chmod 640 .env
+
+php artisan optimize:clear
+
+echo "========================================="
+echo "4. VERIFY PRODUCTION ENV"
+echo "========================================="
+
+php artisan tinker --execute="
+echo 'ENV = '.app()->environment().PHP_EOL;
+echo 'DEBUG = '.(config('app.debug') ? 'true' : 'false').PHP_EOL;
+echo 'URL = '.config('app.url').PHP_EOL;
+"
+
+echo "========================================="
+echo "5. TEST DOMAIN OVER HTTP"
+echo "========================================="
+
+curl -sS -o /dev/null \
+-w "kayaga.one HTTP = %{http_code}\n" \
+http://kayaga.one/login
+
+curl -sS -o /dev/null \
+-w "www.kayaga.one HTTP = %{http_code}\n" \
+http://www.kayaga.one/login
+
+echo "========================================="
+echo "6. INSTALL CERTBOT"
+echo "========================================="
+
+sudo apt-get install -y certbot python3-certbot-nginx
+
+echo "========================================="
+echo "7. REQUEST LET'S ENCRYPT SSL"
+echo "========================================="
+
+sudo certbot \
+    --nginx \
+    -d kayaga.one \
+    -d www.kayaga.one \
+    --redirect
+
+echo "========================================="
+echo "8. VERIFY NGINX + HTTPS"
+echo "========================================="
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+curl -sS -o /dev/null \
+-w "HTTPS kayaga.one = %{http_code}\n" \
+https://kayaga.one/login
+
+curl -sS -o /dev/null \
+-w "HTTPS www.kayaga.one = %{http_code}\n" \
+https://www.kayaga.one/login
+
+echo "========================================="
+echo "9. TEST HTTP -> HTTPS REDIRECT"
+echo "========================================="
+
+curl -sSI http://kayaga.one/login | head -10
+
+echo "========================================="
+echo "10. TEST SSL AUTO RENEWAL"
+echo "========================================="
+
+sudo certbot renew --dry-run
+
+echo "========================================="
+echo "11. CACHE LARAVEL PRODUCTION CONFIG"
+echo "========================================="
+
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+echo "========================================="
+echo "12. FINAL STATUS"
+echo "========================================="
+
+echo "PHP-FPM = $(systemctl is-active php8.4-fpm)"
+echo "NGINX   = $(systemctl is-active nginx)"
+echo "REDIS   = $(systemctl is-active redis-server)"
+echo "SQLPROXY= $(systemctl is-active cloud-sql-proxy)"
+
+php artisan tinker --execute="
+echo 'ENV   = '.app()->environment().PHP_EOL;
+echo 'DEBUG = '.(config('app.debug') ? 'true' : 'false').PHP_EOL;
+echo 'URL   = '.config('app.url').PHP_EOL;
+DB::connection()->getPdo();
+echo 'CLOUD SQL = OK'.PHP_EOL;
+"
+
+echo
+echo "========================================="
+echo "DOMAIN + PRODUCTION + HTTPS DONE"
+echo "========================================="
+echo "Website: https://kayaga.one"
+echo "Login:   https://kayaga.one/login"
+echo "========================================="
+> Có một chỗ Certbot sẽ hỏi bạn
+> Ở bước 7, lần đầu sử dụng Let's Encrypt có thể hỏi:
+   Enter email address:
+> Nhập email của bạn để nhận cảnh báo chứng chỉ. Sau đó:
+Terms of Service
+(Y)es/(N)o:
+> nhập:
+Y
+> Nếu hỏi có muốn chia sẻ email với EFF hay không thì chọn Y hoặc N tùy bạn; không ảnh hưởng SSL.
+> Kết quả cuối chúng ta muốn là:
+DNS = OK
+
+ENV = production
+DEBUG = false
+URL = https://kayaga.one
+
+HTTPS kayaga.one = 200
+HTTPS www.kayaga.one = 200
+
+PHP-FPM = active
+NGINX   = active
+REDIS   = active
+SQLPROXY= active
+
+CLOUD SQL = OK
+- 200 có thể khác nếu route của ứng dụng chủ động redirect, ví dụ 302; điều quan trọng là không phải 500 và HTTPS hoạt động.
+
+Sau block này checklist sẽ tiến từ:
+
+Static External IP          ✅
+Domain → Static IP          ⏳
+HTTPS / SSL                 ❌
+APP_ENV=production          ❌
+APP_DEBUG=false             ❌
+
+thành:
+
+Static External IP          ✅
+Domain → Static IP          ✅
+HTTPS / SSL                 ✅
+HTTP → HTTPS                ✅
+APP_ENV=production          ✅
+APP_DEBUG=false             ✅
+SSL auto renewal            ✅
+
+- Sau đó ta làm tiếp Queue Worker + systemd + auto restart + Scheduler + Reverb + WSS thành một cụm, rồi mới tới Logging/Monitoring, Cloud SQL backup/least privilege, Secret Manager, deploy script và reboot/security test.
+-------------------------------
+- Đã rõ nguyên nhân. Domain + HTTPS của bạn thực ra đã thành công. Lỗi 500 hiện tại không phải Nginx, SSL, Cloud SQL Proxy hay DNS.
+- Lỗi duy nhất đang chặn Laravel là guard do chính project của bạn viết:
+   Unsafe production environment:
+   database schema_admin is reserved for Mac local or automation use.
+- Project đang có EnvironmentSafetyGuard.php quy định đại ý:
+    APP_ENV=production
+            +
+    DB_DATABASE=schema_admin
+            ↓
+    BỊ CẤM
+- Guard này hợp lý về mặt an toàn: schema_admin được project coi là DB local/automation, nên khi chuyển APP_ENV=production, Laravel cố tình từ chối boot.
+- Không nên xóa/bypass EnvironmentSafetyGuard. Ta nên tạo một database production riêng trên Cloud SQL, ví dụ:
+    schema_admin_production
+- rồi migrate production vào đó. Tuy nhiên có vấn đề quan trọng: DB schema_admin hiện tại có dữ liệu project của bạn. Nếu chỉ migrate DB mới thì sẽ có schema nhưng không có dữ liệu. Vì vậy trước khi quyết định copy hay tạo DB sạch, cần biết bạn muốn production chứa dữ liệu hiện tại hay bắt đầu sạch.
+> Tạm thời, để website hoạt động trở lại ngay mà không phá HTTPS, đổi environment về local trong lúc chuẩn bị DB production:
+
+cd /var/www/laravel
+
+sudo sed -i 's/^APP_ENV=.*/APP_ENV=local/' .env
+sudo sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' .env
+sudo sed -i 's|^APP_URL=.*|APP_URL=https://kayaga.one|' .env
+
+php artisan optimize:clear
+
+sudo systemctl restart php8.4-fpm
+sudo systemctl reload nginx
+
+echo "========================================="
+echo "VERIFY TEMPORARY STATE"
+echo "========================================="
+
+php artisan tinker --execute="
+echo 'ENV = '.app()->environment().PHP_EOL;
+echo 'DEBUG = '.(config('app.debug') ? 'true' : 'false').PHP_EOL;
+echo 'URL = '.config('app.url').PHP_EOL;
+DB::connection()->getPdo();
+echo 'CLOUD SQL = OK'.PHP_EOL;
+"
+
+curl -sS -o /dev/null \
+-w "HTTPS LOGIN = HTTP %{http_code}\n" \
+https://kayaga.one/login
+
+- Kỳ vọng:
+
+ENV = local
+DEBUG = false
+URL = https://kayaga.one
+CLOUD SQL = OK
+HTTPS LOGIN = HTTP 200
+
+- Đây chỉ là trạng thái chuyển tiếp; không đánh dấu APP_ENV=production hoàn thành.
+
+- Hiện checklist chính xác là:
+
+Static External IP          ✅
+Domain → Static IP          ✅
+Nginx domain                ✅
+HTTPS / SSL                 ✅
+HTTP → HTTPS                ✅
+SSL auto renewal            ✅
+APP_URL=https://kayaga.one  ✅
+APP_DEBUG=false             ✅
+APP_ENV=production          ❌ bị EnvironmentSafetyGuard chặn
+
+Queue Worker + systemd      ❌
+Queue auto restart          ❌
+Laravel Scheduler           ❌
+Reverb WebSocket            ❌
+Reverb systemd              ❌
+HTTPS WebSocket / WSS       ❌
+Nginx reverse proxy Reverb  ❌
+Log rotation                ❌
+Cloud Logging/Monitoring    ❌
+DB least privilege          ❌
+Backup Cloud SQL            ⏳
+Secret Manager              ❌
+Deploy/update script        ❌
+Reboot survival test        ❌
+Security hardening          ❌
+
+- Đặc biệt SSL của bạn đã rất ổn: certificate cho kayaga.one + www.kayaga.one đã cấp thành công, HTTP 301 → HTTPS hoạt động và certbot renew --dry-run cũng thành công.
+- Bước kế tiếp nên xử lý DB production + EnvironmentSafetyGuard trước Queue/Reverb, vì Queue, Scheduler và Reverb khi chạy với production cũng có thể bị chính guard này chặn. Sau khi DB production hoạt động, ta mới chuyển lại APP_ENV=production và tiếp tục toàn bộ systemd.
+-------------------------------
+- Đúng, trạng thái tạm thời đã ổn hoàn toàn:
+     ENV = local
+     DEBUG = false
+     URL = https://kayaga.one
+     CLOUD SQL = OK
+     HTTPS LOGIN = HTTP 200
+- Và HTTPS cũng đã xong: chứng chỉ được cấp cho kayaga.one + www.kayaga.one, HTTP → HTTPS 301, auto-renew dry-run thành công.
+Bây giờ chưa làm Queue/Reverb. Ta xử lý EnvironmentSafetyGuard đúng kiến trúc trước. Guard của project không cho production sử dụng DB tên schema_admin, nên cần DB production riêng. Tôi khuyên không sửa/xóa guard.
+- Có 2 hướng:                                         <<<<<<
+        HIỆN TẠI
+        Cloud SQL
+        └── schema_admin
+              ├── 230 tables
+              └── dữ liệu hiện tại
+        
+        HƯỚNG A — COPY DỮ LIỆU
+        schema_admin
+              ↓ clone/copy
+        schema_admin_production
+              ↓
+        APP_ENV=production
+        
+        HƯỚNG B — PRODUCTION SẠCH
+        schema_admin_production
+              ↓
+        php artisan migrate --force
+              ↓
+        APP_ENV=production        
+- Với project ERP hiện tại, nếu bạn muốn website kayaga.one giữ nguyên users, roles, permissions, company, payroll... đang có, chọn A. Nếu đây chỉ là môi trường production mới và muốn DB sạch hoàn toàn thì chọn B.
+- Tôi nghiêng về A cho lab deployment hiện tại, vì nó giúp chuyển nguyên trạng ứng dụng đang chạy sang production DB thay vì đột nhiên mất dữ liệu. Nhưng trước khi tôi đưa block SQL có thao tác tạo/copy database, cần bạn xác nhận một điều để tránh tự ý thay đổi dữ liệu:
+Bạn muốn schema_admin_production copy toàn bộ dữ liệu hiện tại từ schema_admin, hay tạo database production sạch?
+-------------------------------
+- Được. Ta sẽ copy nguyên database schema_admin → schema_admin_production trong cùng Cloud SQL, sau đó đổi Laravel sang DB mới và chỉ khi kiểm tra đầy đủ mới chuyển APP_ENV=production
+- Vì đây là dữ liệu thật, block dưới có nguyên tắc an toàn: không xóa schema_admin, tạo dump backup trước, import sang DB mới, so sánh số bảng, rồi mới đổi .env.
+> Chạy nguyên block này trên VM. Nó sẽ hỏi password MySQL của laravel_app vài lần; nhập password Cloud SQL của user đó.
+
+cd /var/www/laravel
+
+SOURCE_DB="schema_admin"
+TARGET_DB="schema_admin_production"
+DB_USER="laravel_app"
+DB_HOST="127.0.0.1"
+DB_PORT="3306"
+
+BACKUP_DIR="$HOME/db-backups"
+BACKUP_FILE="$BACKUP_DIR/schema_admin_$(date +%Y%m%d_%H%M%S).sql"
+
+echo "========================================="
+echo "1. PRE-FLIGHT"
+echo "========================================="
+
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+
+echo "Cloud SQL Proxy:"
+systemctl is-active cloud-sql-proxy
+
+echo
+echo "Disk:"
+df -h /
+
+echo
+echo "Current Laravel DB:"
+php artisan tinker --execute="
+echo config('database.connections.mysql.database').PHP_EOL;
+DB::connection()->getPdo();
+echo 'CLOUD SQL = OK'.PHP_EOL;
+"
+
+echo "========================================="
+echo "2. DUMP schema_admin"
+echo "========================================="
+
+mysqldump \
+  --disable-ssl \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  --single-transaction \
+  --quick \
+  --routines \
+  --triggers \
+  --events \
+  --hex-blob \
+  --default-character-set=utf8mb4 \
+  "$SOURCE_DB" > "$BACKUP_FILE"
+
+if [ ! -s "$BACKUP_FILE" ]; then
+    echo "ERROR: BACKUP FILE EMPTY"
+    exit 1
+fi
+
+echo "BACKUP = OK"
+ls -lh "$BACKUP_FILE"
+
+echo "========================================="
+echo "3. CREATE PRODUCTION DATABASE"
+echo "========================================="
+
+mysql \
+  --disable-ssl \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  -e "
+CREATE DATABASE IF NOT EXISTS \`$TARGET_DB\`
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+"
+
+echo "========================================="
+echo "4. VERIFY TARGET IS EMPTY"
+echo "========================================="
+
+TARGET_BEFORE=$(mysql \
+  --disable-ssl \
+  -N \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  -e "
+SELECT COUNT(*)
+FROM information_schema.tables
+WHERE table_schema='$TARGET_DB';
+")
+
+echo "TARGET TABLES BEFORE IMPORT = $TARGET_BEFORE"
+
+if [ "$TARGET_BEFORE" != "0" ]; then
+    echo "ERROR:"
+    echo "$TARGET_DB already contains tables."
+    echo "NOT overwriting existing production data."
+    exit 1
+fi
+
+echo "========================================="
+echo "5. IMPORT COPY"
+echo "========================================="
+
+mysql \
+  --disable-ssl \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  "$TARGET_DB" < "$BACKUP_FILE"
+
+echo "IMPORT = OK"
+
+echo "========================================="
+echo "6. COMPARE DATABASES"
+echo "========================================="
+
+SOURCE_TABLES=$(mysql \
+  --disable-ssl \
+  -N \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  -e "
+SELECT COUNT(*)
+FROM information_schema.tables
+WHERE table_schema='$SOURCE_DB';
+")
+
+TARGET_TABLES=$(mysql \
+  --disable-ssl \
+  -N \
+  -h "$DB_HOST" \
+  -P "$DB_PORT" \
+  -u "$DB_USER" \
+  -p \
+  -e "
+SELECT COUNT(*)
+FROM information_schema.tables
+WHERE table_schema='$TARGET_DB';
+")
+
+echo "SOURCE TABLES = $SOURCE_TABLES"
+echo "TARGET TABLES = $TARGET_TABLES"
+
+if [ "$SOURCE_TABLES" != "$TARGET_TABLES" ]; then
+    echo "ERROR: TABLE COUNTS DO NOT MATCH"
+    echo "Laravel .env has NOT been changed."
+    exit 1
+fi
+
+echo "TABLE COUNT = MATCH"
+
+echo "========================================="
+echo "7. BACKUP CURRENT .ENV"
+echo "========================================="
+
+cp .env "$HOME/.env.before-production.$(date +%Y%m%d_%H%M%S)"
+echo ".ENV BACKUP = OK"
+
+echo "========================================="
+echo "8. SWITCH LARAVEL TO PRODUCTION DB"
+echo "========================================="
+
+sudo sed -i \
+  's/^DB_DATABASE=.*/DB_DATABASE=schema_admin_production/' \
+  .env
+
+# Keep local temporarily while testing the new DB.
+sudo sed -i \
+  's/^APP_ENV=.*/APP_ENV=local/' \
+  .env
+
+sudo sed -i \
+  's/^APP_DEBUG=.*/APP_DEBUG=false/' \
+  .env
+
+sudo sed -i \
+  's|^APP_URL=.*|APP_URL=https://kayaga.one|' \
+  .env
+
+php artisan optimize:clear
+
+echo "========================================="
+echo "9. VERIFY LARAVEL USES NEW DATABASE"
+echo "========================================="
+
+php artisan tinker --execute="
+echo 'ENV = '.app()->environment().PHP_EOL;
+echo 'DATABASE = '.config('database.connections.mysql.database').PHP_EOL;
+
+DB::connection()->getPdo();
+
+echo 'CLOUD SQL PRODUCTION DB = OK'.PHP_EOL;
+echo 'TABLES = '.count(Schema::getTableListing()).PHP_EOL;
+"
+
+echo "========================================="
+echo "10. MIGRATION STATUS"
+echo "========================================="
+
+php artisan migrate:status
+
+echo "========================================="
+echo "11. TEST WEBSITE BEFORE PRODUCTION MODE"
+echo "========================================="
+
+curl -sS -o /dev/null \
+-w "HTTPS LOGIN BEFORE PRODUCTION = HTTP %{http_code}\n" \
+https://kayaga.one/login
+
+echo "========================================="
+echo "12. ENABLE PRODUCTION ENV"
+echo "========================================="
+
+sudo sed -i \
+  's/^APP_ENV=.*/APP_ENV=production/' \
+  .env
+
+sudo sed -i \
+  's/^APP_DEBUG=.*/APP_DEBUG=false/' \
+  .env
+
+php artisan optimize:clear
+
+echo "========================================="
+echo "13. TEST ENVIRONMENT SAFETY GUARD"
+echo "========================================="
+
+php artisan tinker --execute="
+echo 'ENV = '.app()->environment().PHP_EOL;
+echo 'DEBUG = '.(config('app.debug') ? 'true' : 'false').PHP_EOL;
+echo 'URL = '.config('app.url').PHP_EOL;
+echo 'DATABASE = '.config('database.connections.mysql.database').PHP_EOL;
+
+DB::connection()->getPdo();
+
+echo 'PRODUCTION BOOT = OK'.PHP_EOL;
+"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: PRODUCTION SAFETY GUARD STILL FAILED"
+    echo "Reverting APP_ENV to local..."
+    sudo sed -i 's/^APP_ENV=.*/APP_ENV=local/' .env
+    php artisan optimize:clear
+    exit 1
+fi
+
+echo "========================================="
+echo "14. CACHE PRODUCTION CONFIG"
+echo "========================================="
+
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+echo "========================================="
+echo "15. RESTART APPLICATION"
+echo "========================================="
+
+sudo systemctl restart php8.4-fpm
+sudo systemctl reload nginx
+
+echo "========================================="
+echo "16. FINAL HTTPS TEST"
+echo "========================================="
+
+curl -sS -o /dev/null \
+-w "HTTPS LOGIN = HTTP %{http_code}\n" \
+https://kayaga.one/login
+
+echo "========================================="
+echo "17. FINAL STATUS"
+echo "========================================="
+
+echo "PHP-FPM = $(systemctl is-active php8.4-fpm)"
+echo "NGINX = $(systemctl is-active nginx)"
+echo "REDIS = $(systemctl is-active redis-server)"
+echo "SQLPROXY = $(systemctl is-active cloud-sql-proxy)"
+
+php artisan tinker --execute="
+echo 'APP_ENV = '.app()->environment().PHP_EOL;
+echo 'APP_DEBUG = '.(config('app.debug') ? 'true' : 'false').PHP_EOL;
+echo 'APP_URL = '.config('app.url').PHP_EOL;
+echo 'DATABASE = '.config('database.connections.mysql.database').PHP_EOL;
+echo 'TABLES = '.count(Schema::getTableListing()).PHP_EOL;
+"
+
+echo
+echo "========================================="
+echo "DATABASE PRODUCTION MIGRATION DONE"
+echo "========================================="
+echo "SOURCE DATABASE IS UNCHANGED:"
+echo "  schema_admin"
+echo
+echo "PRODUCTION DATABASE:"
+echo "  schema_admin_production"
+echo
+echo "BACKUP:"
+echo "  $BACKUP_FILE"
+echo
+echo "WEBSITE:"
+echo "  https://kayaga.one"
+echo "========================================="
+> Có một điểm bạn cần chú ý
+> Bạn sẽ thấy hỏi:
+    Enter password:
+> nhiều lần. Đây là bình thường vì block gọi MySQL/mysqldump nhiều lần. Nhập password của:
+   laravel_app
+> Password sẽ không hiện ký tự nào khi gõ, cứ gõ xong Enter.
+- Block này cố tình không dùng DROP DATABASE. Vì vậy schema_admin gốc vẫn còn nguyên và còn có thêm file .sql backup.
+> Nếu mọi thứ thành công, trạng thái cuối phải gần như:
+     SOURCE TABLES = 230
+     TARGET TABLES = 230
+     TABLE COUNT = MATCH
+
+     ENV = production
+     DEBUG = false
+     URL = https://kayaga.one
+     DATABASE = schema_admin_production                            <
+     CLOUD SQL PRODUCTION DB = OK
+
+     PRODUCTION BOOT = OK
+     HTTPS LOGIN = HTTP 200
+
+     PHP-FPM = active
+     NGINX = active
+     REDIS = active
+     SQLPROXY = active
+>> Nếu nó dừng ở mysqldump vì quyền PROCESS, routines, events hoặc GTID của Cloud SQL, đừng xóa DB hay tự thêm quyền; gửi đoạn lỗi đó cho tôi, tôi sẽ điều chỉnh dump command cho Cloud SQL MySQL 8.4.
+- Sau khi block này hoàn tất, chúng ta mới chuyển sang cụm tiếp theo: Queue Worker + systemd + auto restart + Scheduler + Reverb + WSS.
+-------------------------------
+> Project trên GCP hiện tại không dùng DB test.
+> Theo chính output bạn vừa chạy, Laravel hiện đang dùng:
+   APP_ENV = production
+   DATABASE = schema_admin_production
+- Hiện bạn có: 
+   Cloud SQL: laravel-mysql
+   │
+   ├── schema_admin
+   │   └── DB cũ / nguồn ban đầu
+   │
+   └── schema_admin_production   ← Laravel kayaga.one ĐANG DÙNG
+> Vì sao trước đó nhìn giống DB test?
+
+> EnvironmentSafetyGuard của project bạn có quy tắc bảo vệ:
+
+         APP_ENV=local
+             ↓
+         chỉ cho DB local đã cấu hình
+             ↓
+         schema_admin
+
+         nên khi chúng ta thử:
+
+         APP_ENV=local
+         DB_DATABASE=schema_admin_production
+
+> nó báo:
+
+   Unsafe local environment:
+   database schema_admin_production is not the configured local main database.
+
+   Sau khi đổi đúng thành:
+
+   APP_ENV=production
+   APP_DEBUG=false
+
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=schema_admin_production
+   DB_USERNAME=laravel_app
+
+> thì guard cho phép:
+
+   PRODUCTION BOOT = OK
+   HTTPS LOGIN = HTTP 200
+
+> Vì vậy trạng thái hiện tại là:
+
+   Database	Vai trò
+   schema_admin_production	✅ Production của kayaga.one
+   schema_admin	Bản DB nguồn/cũ
+   schema_admin_testing	❌ Không phải DB website hiện tại
+
+> Nếu bạn sửa/thêm/xóa dữ liệu thông qua https://kayaga.one, dữ liệu sẽ đi vào schema_admin_production, không phải schema_admin_testing.
+-------------------------------
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
