@@ -2737,7 +2737,7 @@ Bây giờ .env đã được tạo từ .env.example, và php artisan key:gener
 > Tiếp theo chỉ chạy: 
 cd /var/www/laravel 
 php artisan about 
-> Nếu chạy thành công, gửi mình toàn bộ output của php artisan about.
+> Nếu chạy thành công, gửi chatgpt toàn bộ output của php artisan about.
 Chưa chạy:
  php artisan migrate
 vì database chưa được nối. Sau khi xác nhận Laravel boot bình thường, bước kế tiếp mình sẽ hướng dẫn bạn tạo Cloud SQL MySQL trên GCP rồi nối:
@@ -2751,6 +2751,223 @@ vì database chưa được nối. Sau khi xác nhận Laravel boot bình thư�
       ↓
  Cloud SQL MySQL
 Đây cũng chính là phần Compute Engine + Cloud SQL bạn đang cần thực hành cho yêu cầu công việc GCP.
+> chạy được 
+cd /var/www/laravel 
+php artisan about 
+> thì tới phần tiếp theo
+Tốt, php artisan about xác nhận Laravel đã boot được trên Compute Engine. Không có exception lúc khởi động.   
+
+Hiện stack của bạn đã tới đây:   
+
+ Internet
+     ↓
+ GCP Compute Engine
+     ↓
+ Debian 13
+     ↓
+ Nginx
+     ↓
+ PHP 8.4 / PHP-FPM
+     ↓
+ Laravel 13.21.1  ✅
+     ↓
+ MySQL             ⏳ chưa kết nối
+ Redis             ⏳ chưa cấu hình   
+Output cũng cho thấy project đang dùng:   
+ Database      mysql
+ Cache         redis
+ Queue         redis
+ Broadcasting  reverb
+ Session       database   
+Vì vậy chưa chạy php artisan migrate. Nếu chạy lúc này Laravel sẽ cố kết nối MySQL theo .env, trong khi Cloud SQL chưa được tạo/cấu    hình.   
+> Bước tiếp theo: Cloud SQL   
+Giờ chuyển sang phần thứ hai quan trọng của GCP: Cloud SQL.   
+>> Mở Google Cloud Console → tìm:   
+
+ Cloud SQL   
+
+hoặc vào menu:   
+
+ ☰
+ → Databases
+ → SQL   
+
+> Sau đó chọn:   
+
+ CREATE INSTANCE   
+
+> và chọn:   
+
+ Choose MySQL   
+
+> Đến màn hình Create a MySQL instance thì dừng lại, chụp màn hình gửi tôi. Tôi sẽ chỉ bạn chọn từng mục để tránh tạo cấu hình quá đắt.   
+> Mục tiêu cuối cùng của phần này là:   
+
+ Compute Engine: laravel-server
+         │
+         │ MySQL connection
+         ▼
+ ┌────────────────────────┐
+ │      Cloud SQL         │
+ │        MySQL           │
+ │                        │
+ │   schema_admin         │
+ └────────────────────────┘
+> Đúng màn hình rồi. Đừng bấm Create với cấu hình hiện tại — ảnh đang mặc định Enterprise Plus + Production + 8 vCPU + 64 GB RAM + 250 GB SSD + High Availability, quá lớn cho bài lab Laravel của mình.
+
+> Thiết lập phần đang thấy như sau:
+  1 Cloud SQL Edition: chọn Enterprise thay vì Enterprise Plus.
+  2 Edition preset: bấm dropdown   Production   . Nếu có   Development   hoặc   Sandbox , chọn cấu hình nhỏ nhất. Nếu chỉ có Production thì chụp   dropdown đó cho tôi xem.
+  3 Database version: giữ MySQL 8.4.
+  4 Instance ID: nhập:  (cái tên cấu hình trong Compute Engine )
+     laravel-mysql
+  5 Password: bấm Generate, rồi lưu password ở nơi an toàn. Không gửi password vào chat và không chọn No password.
+
+> Quan trọng nhất là Region. Compute Engine của bạn đang ở asia-southeast1-a, nên Cloud SQL nên đặt:
+   Region: asia-southeast1 (Singapore)
+
+để VM và database gần nhau:
+
+Compute Engine
+laravel-server
+asia-southeast1-a
+       │
+       │
+       ▼
+Cloud SQL MySQL
+asia-southeast1
+
+> Sau khi chọn Enterprise và preset nhỏ hơn, kéo xuống một chút đến phần Choose region and zonal availability / Machine configuration rồi chụp màn hình tiếp. Chưa Create nhé — tôi sẽ giúp bạn hạ CPU/RAM/storage và chọn  Single Zone  để chi phí lab thấp nhất.
+> Giờ đừng chỉnh Laravel .env ngay. Chờ Cloud SQL tạo xong và trạng thái instance chuyển sang dấu ✓ xanh / Running.
+
+  Sau đó bấm vào instance laravel-mysql vừa tạo. Tôi cần bạn vào trang Overview của nó rồi chụp màn hình gửi tôi. Bước tiếp theo chúng ta   sẽ làm theo luồng:
+        Cloud SQL MySQL đã tạo
+                ↓
+        Tạo database: schema_admin
+                ↓
+        Tạo user riêng cho Laravel
+                ↓
+        Cấu hình kết nối Compute Engine → Cloud SQL
+                ↓
+        Sửa Laravel .env
+                ↓
+        php artisan migrate
+                ↓
+        Kiểm tra Laravel kết nối DB
+  Một điểm quan trọng: không nên để Laravel sử dụng tài khoản root lâu dài. Ta sẽ tạo user ứng dụng riêng, ví dụ laravel_app, rồi mới đưa   thông tin đó vào .env.
+Nếu Cloud SQL hiện Running, gửi tôi ảnh trang Overview của instance đó, tôi chỉ tiếp từng bước.
+> Có một điểm: 2 vCPU / 8 GB RAM khá dư cho lab, nhưng vì bạn đã tạo rồi thì cứ học tiếp. Sau này ta có thể giảm cấu hình để tiết kiệm. 
+
+> Bước tiếp theo: tạo database                      <
+ Ở menu bên trái ảnh của bạn có mục Databases. 
+> Bấm: 
+ Databases → Create database             <   tạo database  
+> Database name nhập: 
+   schema_admin 
+ Character set/collation nếu giao diện cho chọn thì có thể để mặc định trước. 
+ Sau đó bấm Create. 
+> Tiếp theo vào: 
+> Users → Add user account               <  Tạo user
+> Tạo user riêng: 
+   Username:
+   laravel_app 
+
+   Password:
+   Generate hoặc tự đặt password mạnh    | 20ss-
+> Không gửi password cho tôi. 
+> Sau khi tạo xong database + user, chưa sửa .env và chưa chạy migrate. 
+> Bước kế tiếp mới là phần quan trọng nhất: thiết lập đường kết nối: 
+
+ Compute Engine
+ laravel-server
+       │
+       │ authenticated connection
+       ▼
+ Cloud SQL
+ laravel-mysql
+       │
+       ├── schema_admin
+       └── laravel_app 
+
+Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trái và gửi tôi ảnh màn hình đó. Tôi sẽ hướng dẫn cách nối VM →  Cloud SQL an toàn thay vì mở MySQL 3306 ra toàn Internet.   
+   Hai mục dưới:
+     Google Cloud IAM: chưa chọn. Đây là kiểu đăng nhập MySQL bằng danh tính IAM/Service Account của Google Cloud, nâng cao hơn.
+     Workforce Identity Federation: cũng không chọn. Chủ yếu dành cho danh tính người dùng/tổ chức bên ngoài Google Cloud.
+   -Vậy màn hình này giữ:      <
+         Authentication:
+         ● Built-in authentication
+         ○ Google Cloud IAM
+         ○ Workforce Identity Federation      
+
+         User name:
+         laravel_app      
+
+         Password:
+         ********      
+
+         Host name:
+         ● Allow any host (%)      
+
+      Nhưng có một điểm đáng chú ý trong ảnh: laravel_app đang được gán role:      
+
+         cloudsqlsuperuser      
+
+      Role này có quyền rất mạnh. Cho bài lab ban đầu có thể dùng để triển khai nhanh, nhưng về hướng production/least privilege thì sau khi       kết nối thành công chúng ta nên giới hạn quyền của   laravel_app   chỉ trên    database schema_admin.      
+
+      Hiện tại bạn có thể bấm   Add.      
+
+> Sau đó vào   Connections    bên trái và chụp màn hình gửi tôi. Phần đó chúng ta sẽ cấu hình đường:                  < màn hình thông tin tổng   
+
+            Laravel
+               ↓
+            Cloud SQL Auth Proxy / Connector
+               ↓
+            Cloud SQL MySQL      
+
+      thay vì mở MySQL 3306 cho toàn Internet.
+> Đúng rồi, màn hình này cho thấy Cloud SQL đã sẵn sàng:
+
+   Instance:        laravel-mysql
+   Region:          asia-southeast1
+   Private IP:      Disabled
+   Public IP:       Enabled
+   Public IP:       34.21.232.158
+   Port:            3306
+   Only SSL:        Enabled
+   Database:        schema_admin ✅
+   User:            laravel_app ✅
+
+> Và không cần mở 34.21.232.158:3306 trực tiếp cho Laravel. Ta sẽ dùng Cloud SQL Auth Proxy trên Compute Engine. Khi đó Laravel nhìn    database như đang chạy local:
+
+   Laravel
+      │ DB_HOST=127.0.0.1
+      │ DB_PORT=3306
+      ▼
+   Cloud SQL Auth Proxy
+      │ mã hóa + IAM
+      ▼
+   Cloud SQL: laravel-mysql
+> Bước tiếp theo: cấp quyền cho VM                                      < cấp quyền cho VM
+> Trước tiên chưa cài Proxy. VM cần quyền IAM Cloud SQL Client.
+> Trên Google Cloud Console, mở:                                      < danh sách user
+
+   IAM & Admin → IAM
+
+> Bạn sẽ thấy danh sách Principal.
+> Tìm service account đang được VM laravel-server sử dụng. Nếu chưa biết cái nào, cách chắc chắn nhất là:
+      Compute Engine → VM instances → laravel-server → Details
+> Tìm dòng:
+      Service account
+> Nó sẽ có dạng:
+   xxxxxxxxxxxx-compute@developer.gserviceaccount.com
+
+> Gửi tôi ảnh chỗ Service account đó. Sau đó tôi chỉ bạn cấp đúng Cloud SQL Client cho chính service account của VM, tránh cấp nhầm quyền    cho tài khoản cá nhân.
+
+ Sau khi xong IAM, chúng ta sẽ lấy Connection name mà ảnh của bạn đang hiển thị:
+
+   project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql
+
+ rồi cài Cloud SQL Auth Proxy trên Debian và test MySQL trước khi đụng tới .env.
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
