@@ -3386,6 +3386,96 @@ Cloud SQL MySQL 8.4
 > Mục tiêu:  
   CLOUD SQL CONNECTED  
 - Nếu ra dòng đó thì Laravel trên Compute Engine đã kết nối thành công với Cloud SQL. Gửi tôi output 2 lệnh cuối là được.  
+-------------------------------
+- Chuẩn, bước quan trọng này đã hoàn tất. Hai dòng cuối xác nhận: 
+   laravel_app
+   CLOUD SQL CONNECTED 
+- Nghĩa là hiện tại hệ thống của bạn đã đi được toàn bộ luồng: 
+                        Compute Engine: laravel-server
+                                ↓
+                        Laravel 13.21.1
+                                ↓ PDO MySQL
+                        127.0.0.1:3306
+                                ↓
+                        Cloud SQL Auth Proxy
+                                ↓
+                        Service Account
+                        379534698416-compute@developer.gserviceaccount.com
+                                ↓
+                        IAM: Cloud SQL Client
+                                ↓
+                        Cloud SQL MySQL 8.4.10
+                                ↓
+                        schema_admin
+                                ↓
+                        laravel_app 
+- Đây chính là phần Compute Engine + Cloud SQL rất sát với yêu cầu GCP mà bạn đang học. 
+> Bước tiếp theo: đừng để Proxy phụ thuộc Terminal 1                                      <<<<<<<
+- Hiện tại có một vấn đề: bạn đóng Terminal 1 hoặc nhấn Ctrl+C thì: 
+ Cloud SQL Proxy ❌ dừng
+         ↓
+ Laravel ❌ mất kết nối Cloud SQL 
+- Vì vậy bước tiếp theo nên biến cloud-sql-proxy thành systemd service để:            
+            VM khởi động
+                ↓
+            cloud-sql-proxy tự khởi động
+                ↓
+            Laravel luôn có 127.0.0.1:3306 
+> Trước khi làm, ở Terminal 2 Google Cloud chạy: 
+ which cloud-sql-proxy 
+> và: 
+ cloud-sql-proxy --version 
+> Gửi tôi 2 kết quả đó. Tôi sẽ dựa đúng đường dẫn binary trên máy bạn để tạo cloud-sql-proxy.service, không đoán đường dẫn.
+-------------------------------
+- Chuẩn. Binary của bạn là:
+ /usr/local/bin/cloud-sql-proxy
+ Version: 2.25.4
+- Bây giờ ta cho Proxy tự chạy cùng VM bằng systemd, để không cần giữ Terminal 1 nữa.
+> Ở Terminal 2 Google Cloud, chạy:
+ sudo nano /etc/systemd/system/cloud-sql-proxy.service
+> Dán nguyên nội dung này:
+[Unit]
+Description=Google Cloud SQL Auth Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lychieuthan35
+ExecStart=/usr/local/bin/cloud-sql-proxy \
+--address 127.0.0.1 \
+--port 3306 \
+project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+> Lưu:
+ Ctrl + O
+ Enter
+ Ctrl + X
+> Nhưng chưa start service, vì Terminal 1 hiện vẫn đang giữ port 3306. Trước tiên sang Terminal 1, nhấn:
+ Ctrl + C
+> Bạn sẽ thấy Proxy shutdown. Sau đó quay lại Terminal 2 chạy:
+ sudo systemctl daemon-reload
+ sudo systemctl enable cloud-sql-proxy
+ sudo systemctl start cloud-sql-proxy
+> Kiểm tra:
+ sudo systemctl status cloud-sql-proxy --no-pager
+> và:
+ sudo ss -lntp | grep ':3306'
+> Nếu đúng, status phải có:
+ Active: active (running)
+> và port:
+ 127.0.0.1:3306
+> Cuối cùng test lại Laravel:
+ cd /var/www/laravel
+
+ php artisan tinker --execute="DB::connection()->getPdo(); echo 'CLOUD SQL SYSTEMD OK'.PHP_EOL;"
+- Mục tiêu:
+ CLOUD SQL SYSTEMD OK
+- Khi đạt dòng này thì bạn có thể đóng cả Terminal 1. Cloud SQL Proxy sẽ chạy nền và còn tự khởi động lại khi VM reboot. Sau đó ta chuyển   sang Redis + Session → Nginx → mở Laravel bằng IP VM.
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
