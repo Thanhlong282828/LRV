@@ -2782,21 +2782,21 @@ Output cũng cho thấy project đang dùng:
 Vì vậy chưa chạy php artisan migrate. Nếu chạy lúc này Laravel sẽ cố kết nối MySQL theo .env, trong khi Cloud SQL chưa được tạo/cấu    hình.   
 > Bước tiếp theo: Cloud SQL   
 Giờ chuyển sang phần thứ hai quan trọng của GCP: Cloud SQL.   
->> Mở Google Cloud Console → tìm:   
+>> Mở Google Cloud Console → tìm:                                 <
 
  Cloud SQL   
 
-hoặc vào menu:   
+hoặc vào menu:                           <
 
  ☰
  → Databases
  → SQL   
 
-> Sau đó chọn:   
+> Sau đó chọn:                          <
 
  CREATE INSTANCE   
 
-> và chọn:   
+> và chọn:                              <
 
  Choose MySQL   
 
@@ -3095,7 +3095,220 @@ Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trá
  curl -H "Metadata-Flavor: Google" \
  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/scopes 
 
-> Gửi tôi output 2 lệnh này. Tôi sẽ kiểm tra VM đã nhận đúng service account + scope rồi mới cho bạn cài Cloud SQL Auth Proxy, tránh cấu  hình sai giữa chừng.
+> Gửi tôi output 2 lệnh này. Tôi sẽ kiểm tra VM đã nhận đúng service account + scope rồi mới cho bạn cài Cloud SQL Auth Proxy, tránh cấu  hình sai giữa chừng.  
+> Chuẩn rồi. Output xác nhận cả 2 phần đều đúng:  
+
+    Service Account:
+    379534698416-compute@developer.gserviceaccount.com     
+
+    Access Scope:
+    https://www.googleapis.com/auth/cloud-platform  
+
+ -Và bạn vừa cấp service account đó role Cloud SQL Client, nên phần IAM + access scope đã hoàn tất. Bây giờ sang Cloud SQL Auth Proxy.   Google hiện hướng dẫn bản v2.25.4 cho Linux 64-bit.  
+
+> 1. Cài Cloud SQL Auth Proxy                                        <<
+> Trên VM chạy:  
+
+ cd /tmp  
+
+ curl -o cloud-sql-proxy \
+ https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.25.4/cloud-sql-proxy.linux.amd64  
+
+ chmod +x cloud-sql-proxy  
+
+ sudo mv cloud-sql-proxy /usr/local/bin/cloud-sql-proxy  
+
+ cloud-sql-proxy --version  
+
+> Bạn phải nhận được đại loại:  
+    cloud-sql-proxy version 2.25.4  
+> 2. Connection name của Cloud SQL đã có  
+> Trong ảnh Cloud SQL trước của bạn, connection name là:  
+
+ project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql  
+
+ -Cloud SQL Auth Proxy sử dụng chính dạng project:region:instance này.  
+
+> 3. Chạy thử Proxy                                           <
+> Trước tiên kiểm tra port 3306 của VM có đang bị chương trình khác chiếm không:  
+ sudo ss -lntp | grep ':3306' || echo "Port 3306 free"  
+> Nếu hiện:  
+     Port 3306 free  
+> thì chạy:  
+ cloud-sql-proxy \
+ --address 127.0.0.1 \
+ --port 3306 \
+ project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql  
+
+- Proxy mặc định có thể cung cấp endpoint local cho ứng dụng, và bind 127.0.0.1 là lựa chọn an toàn hơn việc expose proxy ra 0.0.0.0.  
+- Nếu thành công bạn sẽ thấy kiểu:  
+     Listening on 127.0.0.1:3306
+     The proxy has started successfully and is ready for new connections!  
+
+> Đừng đóng terminal đó khi đang test. Khi Proxy chạy thì kiến trúc hiện tại là:                <<      
+      Laravel
+          │
+          │ MySQL 127.0.0.1:3306
+          ▼
+      Cloud SQL Auth Proxy
+          │
+          │ Service Account
+          │ + Cloud SQL Client
+          ▼
+      Cloud SQL
+      laravel-mysql
+          │
+          ├── Database: schema_admin
+          └── User: laravel_app  
+
+- Một điểm hay: với Auth Proxy, bạn không cần mở port MySQL 3306 của VM ra Internet, và khi Cloud SQL dùng public IP thì public IP đó   cũng không cần thêm VM vào Authorized Networks để Proxy hoạt động.  
+
+- Chạy đến lệnh cloud-sql-proxy ... rồi gửi output cho tôi. Sau đó ta sẽ test laravel_app → schema_admin, rồi mới sửa .env Laravel.
+-----------------------------------------------
+- Thành công rồi ✅ Cloud SQL Auth Proxy đang chạy đúng:
+    Authorizing with Application Default Credentials
+    Listening on 127.0.0.1:3306
+    The proxy has started successfully and is ready for new connections!
+- Điều này xác nhận luồng VM → Service Account → IAM Cloud SQL Client → Cloud SQL Auth Proxy đã hoạt động.
+
+>> Bây giờ giữ nguyên terminal này, đừng Ctrl+C. Mở một cửa sổ SSH thứ hai vào laravel-server.
+> Ở terminal thứ hai, cài MySQL client:                                     <<
+ sudo apt update
+ sudo apt install -y default-mysql-client
+> Sau đó kiểm tra:
+   mysql --version
+> Rồi kết nối qua Proxy:                           <<<
+ mysql \
+ -h 127.0.0.1 \
+ -P 3306 \
+ -u laravel_app \
+ -p
+
+> Nó sẽ hỏi:
+ Enter password:
+- Nhập password của laravel_app mà bạn đã tạo trên Cloud SQL. Khi gõ password Linux sẽ không hiện ký tự, đó là bình thường. Không gửi   password cho tôi.
+> Nếu báo lỗi:                                                <<<
+     Error 403
+     Cloud SQL Admin API ... is disabled
+     reason: SERVICE_DISABLED
+     service: sqladmin.googleapis.com
+- Tức là Cloud SQL Proxy nhận được kết nối từ Terminal 2, nhưng khi Proxy hỏi Google Cloud thông tin của laravel-mysql, project của bạn   chưa bật Cloud SQL Admin API.                      <
+>> Bạn làm như sau: vào Google Cloud Console → APIs & Services → Library → tìm Cloud SQL Admin API → mở nó → bấm Enable. Hoặc dùng ngay   trang kích hoạt mà Google trả về trong lỗi:                           <<<
+           Bật Cloud SQL Admin API cho project của bạn            <<<
+> Sau khi thấy trạng thái API enabled, chờ khoảng 1–3 phút. Sau đó Terminal 1 chạy lại:  
+  cloud-sql-proxy \
+    --address 127.0.0.1 \
+    --port 3306 \
+    project-06b7a0c7-35a4-4282-b81:asia-southeast1:laravel-mysql  
+> Bạn cần thấy:  
+     Listening on 127.0.0.1:3306
+     The proxy has started successfully and is ready for new connections!  
+> Giữ Terminal 1 như vậy. Sang Terminal 2 chạy lại:  
+  mysql -h 127.0.0.1 -P 3306 -u laravel_app -p  
+> Lúc này mới nhập password của laravel_app. 
+>>  Nếu báo lỗi thì : 
+ > Tốt, lỗi 403 đã hết. Log Terminal 1 mới nhất:
+      Accepted connection from 127.0.0.1:56216
+      client closed the connection
+ - nghĩa là Cloud SQL Admin API + IAM + Proxy đã qua được bước trước. Lỗi hiện tại là:
+      ERROR 2026 (HY000):
+      TLS/SSL error: SSL is required, but the server does not support it
+ - Nguyên nhân là bạn đang dùng MariaDB client 11.8.6 để kết nối tới Cloud SQL MySQL 8.4 qua Auth Proxy. Với Proxy, kết nối từ mysql   client → 127.0.0.1 proxy là local và không cần TLS; chính Proxy đã mã hóa kết nối từ Proxy → Cloud SQL bằng SSL/TLS.
+ - Nhưng có thêm một vấn đề: MySQL 8.4 mặc định dùng caching_sha2_password, và Google yêu cầu client TCP qua Proxy hỗ trợ   --get-server-public-key. MariaDB client của bạn không có option này — chính lệnh grep của bạn đã không trả kết quả. Google hướng dẫn   dùng MySQL Community client cho trường hợp này.
+ - Vì vậy đừng tắt SSL của Cloud SQL để chữa lỗi này. Cấu hình Cloud SQL của bạn đang yêu cầu SSL là tốt. Ta sửa client trên VM, không hạ   bảo mật database.
+ > Bước tiếp theo: kiểm tra package MySQL client chính chủ            <
+ > Terminal 1 cứ để Proxy chạy.
+ > Terminal 2 chạy:                
+  apt-cache search mysql-client | head -30
+ > và:
+  apt-cache policy mysql-client mysql-community-client default-mysql-client
+ > Gửi tôi output hai lệnh đó.
+ > Mục tiêu là chuyển từ:          <
+       Hiện tại
+       MariaDB Client 11.8
+             ↓
+       ❌ không có --get-server-public-key
+   > sang:
+
+    MySQL 8.x Community Client
+          ↓
+    --get-server-public-key
+          ↓
+    127.0.0.1:3306
+          ↓
+    Cloud SQL Auth Proxy
+          ↓  TLS tự động
+    Cloud SQL MySQL 8.4
+          ↓
+    laravel_app  
+ - Output xác nhận Debian 13 của bạn không cung cấp Oracle MySQL client trong repo mặc định:   
+       mysql-client             → Candidate: none
+       mysql-community-client   → không tìm thấy
+       default-mysql-client     → MariaDB 11.8.6   
+   Nhưng chưa cần thêm Oracle repository. Với MariaDB client hiện tại, hãy thử đúng cách dành cho kết nối local qua Cloud SQL Auth Proxy:     tắt TLS ở đoạn client → proxy. Kết nối proxy → Cloud SQL vẫn được mã hóa.
+ > Giữ Terminal 1 đang chạy Proxy. Terminal 2 chạy:               <
+    mysql \
+      --disable-ssl \
+      -h 127.0.0.1 \
+      -P 3306 \
+      -u laravel_app \
+      -p
+ > Nếu MariaDB 11.8 không nhận --disable-ssl, dùng:
+    mysql \
+      --ssl=OFF \
+      -h 127.0.0.1 \
+      -P 3306 \
+      -u laravel_app \
+      -p
+    Nhập password của laravel_app, không gửi password cho tôi.
+> Nếu thành công Terminal 1 sẽ có kiểu:  
+    Accepted connection from 127.0.0.1:xxxxx  
+- và Terminal 2 sẽ vào:  
+    Welcome to the MariaDB monitor...
+    mysql>  
+    MariaDB [(none)]>
+> Sau đó chạy:  
+    SHOW DATABASES;
+    SELECT VERSION();
+    SELECT USER(), CURRENT_USER();
+> Còn việc:    |  
+  mysql --help | grep -i "server-public-key\|public-key"  
+
+  không trả gì chưa cần xử lý. Lỗi hiện tại đã xác định chính xác là Cloud SQL Admin API = disabled; giải quyết cái này trước.     
+-------------
+> Sau đó:
+ EXIT;
+ Điểm quan trọng là:
+
+MariaDB client
+     │
+     │ TCP localhost
+     │ TLS OFF
+     ▼
+127.0.0.1:3306
+Cloud SQL Auth Proxy
+     │
+     │ kết nối được mã hóa + xác thực IAM
+     ▼
+Cloud SQL MySQL 8.4
+
+- Vì Proxy chỉ bind 127.0.0.1, việc không dùng TLS trên đoạn localhost không đồng nghĩa MySQL đang truyền plaintext qua Internet.
+
+- Nếu lệnh trên vẫn lỗi, đừng cài thêm gì nữa. Gửi cả lỗi Terminal 2 và những dòng mới xuất hiện ở Terminal 1; lúc đó ta sẽ biết còn vướng authentication plugin của MySQL 8.4 hay không.
+- Gửi tôi kết quả SHOW DATABASES; và SELECT VERSION();. Tôi sẽ xác định chính xác database nào dùng cho Laravel rồi chúng ta cấu hình .  env:
+
+ Laravel .env
+     ↓
+ DB_HOST=127.0.0.1
+ DB_PORT=3306
+     ↓
+ Cloud SQL Auth Proxy
+     ↓
+ Cloud SQL MySQL
+
+- Chưa chạy php artisan migrate lúc này. Ta xác nhận database trước rồi mới cho Laravel đụng vào DB.
+----------------------------------------
+
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
