@@ -3129,12 +3129,12 @@ Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trá
 
  -Cloud SQL Auth Proxy sử dụng chính dạng project:region:instance này.  
 
-> 3. Chạy thử Proxy                                           <
-> Trước tiên kiểm tra port 3306 của VM có đang bị chương trình khác chiếm không:  
+> 3. Chạy thử Proxy                                           <<<<
+> Trước tiên kiểm tra port 3306 của VM có đang bị chương trình khác chiếm không:            <
  sudo ss -lntp | grep ':3306' || echo "Port 3306 free"  
 > Nếu hiện:  
      Port 3306 free  
-> thì chạy:  
+> thì chạy:                              <<<<
  cloud-sql-proxy \
  --address 127.0.0.1 \
  --port 3306 \
@@ -3177,7 +3177,7 @@ Khi schema_admin và laravel_app đã tạo xong, vào Connections ở menu trá
  sudo apt install -y default-mysql-client
 > Sau đó kiểm tra:
    mysql --version
-> Rồi kết nối qua Proxy:                           <<<
+> Rồi kết nối qua Proxy:                           <<<<
  mysql \
  -h 127.0.0.1 \
  -P 3306 \
@@ -3308,7 +3308,84 @@ Cloud SQL MySQL 8.4
 
 - Chưa chạy php artisan migrate lúc này. Ta xác nhận database trước rồi mới cho Laravel đụng vào DB.
 ----------------------------------------
+- Đẹp rồi, kết nối Cloud SQL đã thành công hoàn toàn. 🎯  
+- Các kết quả quan trọng của bạn:  
+          Cloud SQL Auth Proxy     ✅
+          IAM Cloud SQL Client     ✅
+          Cloud SQL Admin API      ✅
+          MySQL authentication     ✅
+          Database                 schema_admin
+          MySQL Server             8.4.10-google
+          DB User                  laravel_app  
+- Đặc biệt:  
+           USER()
+           laravel_app@cloudsqlproxy~...  
 
+           CURRENT_USER()
+           laravel_app@%  
+- chứng minh kết nối thực sự đang đi qua Cloud SQL Auth Proxy, không phải MySQL local.  
+
+> Bây giờ chuyển sang Laravel → Cloud SQL. Trước tiên trong Terminal 2 thoát MySQL:  
+  EXIT;  
+> Sau đó:  
+  cd /var/www/laravel  
+
+  grep -E '^(DB_|CACHE_|CACHE_STORE|SESSION_|QUEUE_|REDIS_)' .env  
+
+> Gửi output lệnh grep đó cho tôi. Nếu có DB_PASSWORD=... thì trước khi gửi hãy xóa/che password, ví dụ:  
+  DB_PASSWORD=********  
+- Tôi cần xem tên biến .env thực tế của project trước khi bảo bạn sửa, vì project Laravel này còn đang dùng Redis/cache/queue/session và   ta không nên sửa .env một cách đoán mò.  
+
+- Sau đó chúng ta sẽ cấu hình đại khái thành:  
+
+  Laravel
+  /var/www/laravel
+         │
+         │ PDO MySQL
+         ▼
+  127.0.0.1:3306
+         │
+         ▼
+  Cloud SQL Auth Proxy
+         │
+         ▼
+  Cloud SQL MySQL 8.4
+         │
+         └── schema_admin
+              └── laravel_app  
+
+  Chưa chạy php artisan migrate nhé. Kết nối DB đã xong; bước kế tiếp là cấu hình Laravel an toàn, test connection, rồi mới quyết định   migration.
+ ---------------------------
+> Chạy ở Terminal 2 của Google Cloud VM laravel-server, không chạy Terminal Codex trên Mac.  
+> Hiện tại chia như này:  
+            Terminal 1 Google Cloud
+            └── Giữ Cloud SQL Proxy chạy
+                cloud-sql-proxy ...
+                ❗ Không gõ thêm lệnh ở đây  
+
+            Terminal 2 Google Cloud
+            └── Chạy lệnh Laravel
+                cd /var/www/laravel
+                nano .env
+                php artisan ...  
+> Ở Terminal 2, làm lần lượt:  
+  cd /var/www/laravel
+  nano .env  
+> Sửa:  
+  DB_USERNAME=laravel_app
+  DB_PASSWORD="mật_khẩu_của_bạn"  
+> Sau đó Ctrl + O → Enter → Ctrl + X.  
+> Rồi vẫn Terminal 2:  
+  php artisan config:clear  
+> Tiếp:  
+  php artisan tinker --execute="echo config('database.connections.mysql.username').PHP_EOL;"  
+> Phải ra:  
+  laravel_app  
+> Cuối cùng:  
+  php artisan tinker --execute="DB::connection()->getPdo(); echo 'CLOUD SQL CONNECTED'.PHP_EOL;"  
+> Mục tiêu:  
+  CLOUD SQL CONNECTED  
+- Nếu ra dòng đó thì Laravel trên Compute Engine đã kết nối thành công với Cloud SQL. Gửi tôi output 2 lệnh cuối là được.  
 0. GHCR                ci.yml    → chứa SOURCE CODE     GitHub Container Registry — kho lưu trữ Docker/container image của GitHub.   |  nên chọn thay DOCKERHUB
   GHCR image
    ↓
