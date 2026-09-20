@@ -1,0 +1,1483 @@
+149-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.1 XÁC NHẬN ĐÚNG VPS PRODUCTION ✅ | Chỉ đọc Compute API, không SSH mutation, không restart, không deploy.
+ - Instance thực tế đã xác nhận:
+
+      Instance               laravel-server
+      Zone                   asia-southeast1-a
+      Machine type           e2-micro
+      CPU                    2 shared vCPU
+      CPU platform           Intel Broadwell
+      RAM                    1024 MB
+      Boot disk              10 GB pd-balanced
+      Provisioning model     STANDARD
+      Preemptible            NO
+      Status                 RUNNING
+      vTPM                   ENABLED
+      Integrity monitoring   ENABLED
+      Secure Boot            DISABLED
+
+ - Đây là Google Compute Engine VM, không phải Cloud Run và không phải GKE.
+ - Chưa deploy code mới, chưa thay machine type, chưa sửa disk, chưa restart VM.
+
+150-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.2 AUDIT MÔ HÌNH SSH ✅ | Kết luận dùng METADATA SSH KEYS, không dùng OS Login.
+ - Audit read-only xác nhận:
+
+      OS Login project metadata          NOT ENABLED
+      OS Login instance metadata         NOT ENABLED
+      block-project-ssh-keys              NOT SET → mặc định FALSE
+      SSH model                           METADATA_SSH_KEYS
+      IAP tunnel                          REACHABLE
+      SSH server                          OpenSSH 10.0p2 Debian
+      Firewall broad port 22 change       0
+      IAM change                          0
+      SSH metadata change                 0
+
+ - Chú ý: oslogin.googleapis.com có thể đang ENABLED nhưng OS Login chỉ thật sự hoạt động khi metadata enable-oslogin=TRUE. Hiện metadata này không có, nên SSH vẫn theo project/instance metadata key.
+
+151-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.3 ĐỐI CHIẾU SSH KEY + ROOT CAUSE ✅ | Không in private key, không upload key mới.
+ - Project metadata có key cho username lahoathanh và fingerprint khớp đúng local key:
+
+      Local private key      ~/.ssh/google_compute_engine
+      Permission             600
+      Fingerprint            SHA256:xMxtkUC8aYLX+LtZQpY76HpwSA5hzngVOLbrVtC7uTc
+      Metadata source        PROJECT
+      Username               lahoathanh
+      Expiry                 NO EXPIRY
+
+ - SSH trace thực tế:
+
+      IAP tunnel                         ✅ CONNECTED
+      SSH server                         ✅ REACHED
+      Matching public key                ✅ SERVER ACCEPTED
+      Private key signing                ❌ CHƯA HOÀN TẤT
+      SSH agent identities               0
+      Kết quả                            Permission denied (publickey)
+
+ - Root cause:
+
+      Private key hiện có cần passphrase.
+      BatchMode không được phép hỏi passphrase.
+      SSH agent chưa load key nên không ký được challenge dù server đã accept public key.
+
+ - Đây KHÔNG phải lỗi fingerprint, username, firewall, IAM hay metadata propagation.
+
+152-------------------------------Mac Terminal | 5. COMPUTE ENGINE | 5.4 MỞ KHÓA KEY HIỆN CÓ — USER ACTION REQUIRED ⏸ | Không chạy trong Cloud Shell, không gửi passphrase vào chat.
+ - Chạy trên Terminal của Mac:
+
+ ssh-add ~/.ssh/google_compute_engine
+
+ - Terminal sẽ hỏi passphrase. Tự nhập trực tiếp, ký tự sẽ không hiện ra màn hình.
+ - Kiểm tra key đã nằm trong SSH agent:
+
+ ssh-add -l
+
+ - Kết quả cần chứa fingerprint:
+
+ SHA256:xMxtkUC8aYLX+LtZQpY76HpwSA5hzngVOLbrVtC7uTc
+
+ - Hành động này chỉ load key đang có vào local SSH agent:
+
+      Upload key lên GCP       NO
+      Sửa project metadata     NO
+      Sửa IAM                  NO
+      Sửa firewall             NO
+      Sửa VM                   NO
+      Deploy                   NO
+
+ - Muốn gỡ key khỏi SSH agent sau khi đo xong:
+
+ ssh-add -d ~/.ssh/google_compute_engine
+
+153-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5 PRODUCTION RUNTIME MEASUREMENT ⏸ BLOCKED BY LOCAL KEY PASSPHRASE |
+ - Sau khi mục 152 PASS mới tiếp tục kết nối IAP READ-ONLY để đo:
+
+      RAM / available / swap
+      disk / inode
+      docker ps / docker stats
+      PHP-FPM RSS + effective config
+      Queue RSS + command thực tế
+      Scheduler / Reverb
+      Redis INFO / maxmemory policy
+      MySQL RSS / buffer pool / connections
+      logs / Docker disk
+      OOMKilled / restart count
+
+ - Tuyệt đối không chạy:
+
+      docker restart / stop / rm / prune
+      docker compose up / down
+      queue:restart
+      reverb:restart
+      Redis FLUSHALL / FLUSHDB / CONFIG SET
+      MySQL UPDATE / DELETE / ALTER / OPTIMIZE
+      deploy / migrate / seed
+
+ - Trạng thái hiện tại:
+
+      GCP host metadata                ✅ VERIFIED
+      SSH authentication model        ✅ VERIFIED
+      SSH root cause                   ✅ VERIFIED
+      Guest runtime measurement        ⏸ CHƯA ĐO
+      E2-micro capacity conclusion     INSUFFICIENT_MEASUREMENT
+      Next decision                    MORE_MEASUREMENT_REQUIRED
+
+154-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6 GHI NHẬN INCIDENT TROUBLESHOOT API ⚠️ | Không chạy lại --troubleshoot.
+ - Lệnh gcloud compute ssh --troubleshoot trước đó đã ngoài dự kiến:
+
+      networkmanagement.googleapis.com     ENABLED
+      Connectivity Test                    CREATED
+
+ - Không tự động disable API.
+ - Không tự động xóa Connectivity Test.
+ - Không chạy --troubleshoot lần nữa.
+ - Phase SSH audit sau đó không enable/disable thêm API nào và không sửa VPS.
+
+155-------------------------------Google Cloud | 4 + 5 | CHECKPOINT TIẾP TỤC |
+ - Secret Manager:
+
+      4.1–4.2               ✅
+      4.3                   ⏸ chưa có secret thực tế
+
+ - Compute Engine / SSH:
+
+      5.1 VPS target        ✅
+      5.2 SSH model         ✅
+      5.3 Root cause        ✅
+      5.4 ssh-add           ← USER LÀM TIẾP
+      5.5 Runtime measure   ← SAU KHI ssh-add PASS
+
+ - Không tiếp tục Return-to-Vendor / Goods Receipt correction trong checkpoint này.
+ - Không commit, tag, push, deploy hoặc sửa production.
+
+156-------------------------------Mac Terminal | 5. COMPUTE ENGINE | 5.4A BLOCK LỆNH THỦ CÔNG MỞ KHÓA SSH KEY + TEST IAP ⏸ | Chạy trên Mac, KHÔNG chạy trong Cloud Shell. Block này không upload key, không sửa metadata/IAM/firewall/VM.
+ - Copy và chạy từng block dưới đây trong Terminal của Mac.
+
+ > BƯỚC 1 — MỞ KHÓA PRIVATE KEY HIỆN CÓ
+
+ ssh-add ~/.ssh/google_compute_engine
+
+ - Khi Terminal hỏi passphrase:
+
+      Enter passphrase for /Users/lahoathanh/.ssh/google_compute_engine:
+
+ - Tự nhập passphrase rồi Enter. Ký tự sẽ không hiện trên màn hình.
+ - Không gửi passphrase vào chat.
+
+ > BƯỚC 2 — KIỂM TRA ĐÚNG KEY ĐÃ NẰM TRONG SSH AGENT
+
+ EXPECTED_FINGERPRINT="SHA256:xMxtkUC8aYLX+LtZQpY76HpwSA5hzngVOLbrVtC7uTc"
+
+ if ssh-add -l | grep -Fq "$EXPECTED_FINGERPRINT"; then
+     echo "PASS: correct Google Compute SSH key is loaded"
+ else
+     echo "FAILED: expected Google Compute SSH key is not loaded"
+     exit 1
+ fi
+
+ - Kết quả cần có:
+
+      PASS: correct Google Compute SSH key is loaded
+
+ > BƯỚC 3 — XÁC NHẬN ĐÚNG PROJECT + INSTANCE, CHỈ ĐỌC
+
+ set -u
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"
+ ZONE="asia-southeast1-a"
+ INSTANCE="laravel-server"
+
+ echo "========================================="
+ echo "COMPUTE ENGINE 5.4A — SSH ACCESS CHECK"
+ echo "========================================="
+
+ CURRENT_PROJECT="$(gcloud config get-value project 2>/dev/null)"
+
+ echo "Current project = ${CURRENT_PROJECT}"
+
+ if [ "$CURRENT_PROJECT" != "$PROJECT_ID" ]; then
+     echo "FAILED: wrong Google Cloud project"
+     exit 1
+ fi
+
+ INSTANCE_STATUS="$(
+    gcloud compute instances describe "$INSTANCE" \
+      --project="$PROJECT_ID" \
+      --zone="$ZONE" \
+      --format='value(status)'
+ )"
+
+ echo "Instance status = ${INSTANCE_STATUS}"
+
+ if [ "$INSTANCE_STATUS" != "RUNNING" ]; then
+     echo "FAILED: production instance is not RUNNING"
+     exit 1
+ fi
+
+ echo "PASS: correct project and running instance"
+
+ > BƯỚC 4 — TEST SSH QUA IAP BẰNG PROJECT METADATA KEY ĐÃ CÓ
+
+ /usr/bin/ssh \
+   -i "$HOME/.ssh/google_compute_engine" \
+   -o IdentitiesOnly=yes \
+   -o BatchMode=yes \
+   -o ConnectTimeout=20 \
+   -o CheckHostIP=no \
+   -o HashKnownHosts=no \
+   -o HostKeyAlias=compute.549764252224027593 \
+   -o StrictHostKeyChecking=yes \
+   -o UserKnownHostsFile="$HOME/.ssh/google_compute_known_hosts" \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE" \
+   lahoathanh@compute.549764252224027593 \
+   'set -u; echo "PASS: SSH authenticated"; printf "Hostname = "; hostname; printf "User = "; id -un'
+
+ SSH_RESULT=$?
+
+ echo
+ echo "========================================="
+
+ if [ "$SSH_RESULT" -ne 0 ]; then
+     echo "COMPUTE ENGINE 5.4A = FAILED"
+     echo "Do not add another key and do not change firewall."
+     exit "$SSH_RESULT"
+ fi
+
+ echo "COMPUTE ENGINE 5.4A = PASS"
+ echo "SSH used the existing project metadata key."
+ echo "No SSH key was uploaded."
+ echo "No IAM, firewall, VM, container or database change was made."
+ echo "========================================="
+
+ - Nếu cuối output có:
+
+      PASS: SSH authenticated
+      Hostname = laravel-server
+      User = lahoathanh
+      COMPUTE ENGINE 5.4A = PASS
+
+ - thì gửi cho tôi output đó, nhưng không gửi passphrase.
+ - Sau đó mới chạy block 5.5A đo RAM / disk / Docker / PHP-FPM / Queue / Redis / MySQL ở bước tiếp theo.
+
+ - Nếu muốn gỡ key khỏi SSH agent sau khi hoàn tất toàn bộ audit:
+
+ ssh-add -d ~/.ssh/google_compute_engine
+
+157-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5A HOST RAM / CPU / DISK BASELINE ✅ READ-ONLY | Đã đo qua IAP bằng SSH key project metadata hiện có. Không restart, không deploy, không sửa VM.
+ - Kết quả thực tế ngày 19-09-2026:
+
+      Hostname                 laravel-server
+      OS                       Debian GNU/Linux 13 (trixie)
+      Kernel                   Linux 6.12.107+deb13-cloud-amd64
+      CPU                      2 vCPU
+      Uptime lúc đo            1 ngày 17–18 giờ
+      Load average mẫu đầu     0.27 / 0.46 / 0.60
+      RAM total                964 MiB usable
+      RAM used                 639–669 MiB
+      RAM available            294–324 MiB
+      Swap total               4.0 GiB
+      Swap used                127–138 MiB
+      Root disk                9.7 GiB
+      Root used                7.9 GiB
+      Root available           1.3 GiB
+      Root usage               86% = HIGH
+      Root inode usage         21% = HEALTHY
+
+ - Block lệnh thủ công, chạy trên Terminal Mac sau khi mục 156 PASS:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"
+ ZONE="asia-southeast1-a"
+ INSTANCE="laravel-server"
+
+ /usr/bin/ssh \
+   -i "$HOME/.ssh/google_compute_engine" \
+   -o IdentitiesOnly=yes \
+   -o BatchMode=yes \
+   -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'hostnamectl; uptime; nproc; lscpu; free -h; sed -n "1,30p" /proc/meminfo; cat /proc/swaps; df -h; df -i'
+
+ - Không dùng gcloud compute ssh --troubleshoot.
+ - Không chạy swapoff, drop_caches, resize disk hoặc đổi machine type.
+
+158-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5B PRODUCTION RUNTIME TOPOLOGY ✅ | Production KHÔNG chạy Docker/Compose trên VM hiện tại.
+ - Bằng chứng:
+
+      docker command           NOT FOUND
+      Process supervisor       systemd
+      Web                      nginx + PHP-FPM 8.4
+      Queue                    laravel-queue.service
+      Scheduler                cron → artisan schedule:run
+      WebSocket                laravel-reverb.service
+      Cache/Queue backend      Redis local 127.0.0.1
+      Database                 Cloud SQL qua cloud-sql-proxy
+      Cloud SQL instance       laravel-mysql
+
+ - Vì vậy Docker memory ceilings và Docker JSON log rotation trong compose.yml local KHÔNG phải cấu hình production đang chạy.
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'command -v docker || echo "docker = NOT FOUND"; systemctl list-units --type=service --state=running --no-pager; ps -eo pid,user,comm,rss,vsz,etimes,args --sort=-rss | head -n 60'
+
+159-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5C PROCESS MEMORY RSS / VSZ ✅ | RSS là RAM thực tế; VSZ không được tính như RAM đã dùng.
+ - Snapshot thực tế:
+
+      PHP-FPM master           RSS ~8 MiB
+      PHP-FPM workers          3 × ~30–34 MiB = ~93–102 MiB
+      Queue worker             RSS ~79–84 MiB
+      Scheduler schedule:run   RSS ~83–85 MiB khi đang chạy
+      Workflow outbox child    RSS ~75 MiB khi đang chạy
+      Reverb                   RSS ~54 MiB
+      Redis                    RSS ~9 MiB
+      Nginx master + workers   RSS ~16 MiB
+      Cloud SQL Proxy          RSS ~24 MiB
+      Google Ops collector     RSS ~81 MiB
+      Google Ops logging       RSS ~30 MiB
+
+ - Scheduler/outbox là workload ngắn hạn nhưng có thể trùng thời điểm với Queue/FPM, nên phải giữ headroom.
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'ps -eo pid,user,comm,rss,vsz,etimes,args | grep -E "php-fpm|artisan (queue:work|schedule:|reverb:start|notification:consume)|redis-server|nginx:|cloud-sql-proxy" | grep -v grep; free -h; cat /proc/pressure/memory; uptime'
+
+160-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5D PHP-FPM PRODUCTION CONFIG ⚠️ NOT HARDENED | Chỉ đọc config effective, chưa sửa service.
+ - Production hiện tại:
+
+      pm                       dynamic
+      pm.max_children          5
+      pm.start_servers         2
+      pm.min_spare_servers     1
+      pm.max_spare_servers     3
+      pm.max_requests          chưa cấu hình rõ → mặc định không recycle theo request
+      PHP memory_limit         128M
+      FPM cgroup peak          ~77.6 MiB
+      FPM swap current         ~42.5 MiB tại mẫu systemd
+
+ - Local hardening đã test nhưng CHƯA DEPLOY:
+
+      pm                       ondemand
+      pm.max_children          2
+      pm.process_idle_timeout  10s
+      pm.max_requests          300
+
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'grep -Eh "^[[:space:]]*pm(\\.|[[:space:]])" /etc/php/8.4/fpm/pool.d/www.conf; grep -Eh "^[[:space:]]*memory_limit[[:space:]]*=" /etc/php/8.4/fpm/php.ini; systemctl show php8.4-fpm.service -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemorySwapCurrent -p ActiveEnterTimestamp'
+
+161-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5E QUEUE WORKER PRODUCTION ⚠️ PARTIALLY BOUNDED | Queue không chạy Horizon.
+ - Command thực tế:
+
+ /usr/bin/php /var/www/laravel/artisan queue:work redis --queue=default --sleep=3 --tries=3 --timeout=300 --max-time=3600
+
+ - Kết quả:
+
+      Connection               redis
+      Queue depth              0
+      Failed jobs              1
+      Job batches              0
+      retry_after              360 giây
+      Queue RSS                ~79–84 MiB
+      --max-time               3600 ✅
+      --memory                 MISSING
+      --max-jobs               MISSING
+      Restart owner            systemd Restart=always
+      Restart counter          2297 tại thời điểm đo
+
+ - Mẫu gần nhất cho thấy worker exit sạch khi đủ 3600 giây rồi systemd khởi động lại. Tuy nhiên restart counter lịch sử rất cao, phải theo dõi thêm; không tự kết luận tất cả đều là crash.
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'systemctl cat laravel-queue.service; systemctl status laravel-queue.service --no-pager; systemctl show laravel-queue.service -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemorySwapCurrent; journalctl -u laravel-queue.service --since "2 hours ago" --no-pager -n 120; redis-cli LLEN queues:default'
+
+162-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5F REDIS ✅ LOW CURRENT USAGE | Không FLUSH và không CONFIG SET.
+ - Kết quả thực tế:
+
+      used_memory              1.91 MiB
+      used_memory_rss          8.97 MiB
+      used_memory_peak         1.97 MiB
+      connected_clients        7
+      evicted_keys             0
+      rejected_connections     0
+      maxmemory                0 = không hard cap
+      maxmemory-policy         noeviction
+      RDB last status          ok
+      AOF                      disabled
+      Keyspace                 db0=115 keys; db1=17 keys
+
+ - Fragmentation ratio cao do dataset rất nhỏ; RSS tuyệt đối chỉ khoảng 9 MiB nên chưa phải RAM risk chính.
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'redis-cli INFO memory; redis-cli INFO stats; redis-cli INFO clients; redis-cli INFO persistence; redis-cli INFO keyspace; redis-cli CONFIG GET maxmemory; redis-cli CONFIG GET maxmemory-policy'
+
+163-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5G MYSQL / CLOUD SQL ✅ READ-ONLY | MySQL không chạy trên RAM của e2-micro; VM chỉ chạy Cloud SQL Proxy.
+ - Kết quả:
+
+      Cloud SQL Proxy RSS              ~24 MiB
+      innodb_buffer_pool_size           4,563,402,752 bytes (~4.25 GiB)
+      max_connections                   4030
+      Threads_connected                 8
+      Threads_running                   2
+      tmp_table_size                    16 MiB
+      max_heap_table_size               16 MiB
+
+ - Đây là cấu hình Cloud SQL riêng, không phải container MySQL 2 GiB trong compose.yml local.
+ - Không in DB password/username và không ghi database.
+ - Block lệnh thủ công read-only:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'cd /var/www/laravel && php artisan tinker --execute='"'"'$queries=["SHOW VARIABLES LIKE \\"innodb_buffer_pool_size\\"","SHOW VARIABLES LIKE \\"max_connections\\"","SHOW VARIABLES LIKE \\"tmp_table_size\\"","SHOW VARIABLES LIKE \\"max_heap_table_size\\"","SHOW STATUS LIKE \\"Threads_connected\\"","SHOW STATUS LIKE \\"Threads_running\\""]; foreach($queries as $query){$row=DB::selectOne($query); echo $row->Variable_name."=".$row->Value.PHP_EOL;}'"'"''
+
+164-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5H DISK / RETENTION ⚠️ HIGH | Không xóa file, không prune, không auto-delete business evidence.
+ - Kết quả:
+
+      Root disk usage          86% = HIGH
+      Free                     ~1.3 GiB
+      Inodes                   21% = HEALTHY
+      Laravel storage          24 MiB
+      vendor                   171 MiB
+      node_modules             170 MiB
+      repository .git          5.2 MiB
+      systemd journal          152 MiB
+
+ - Phần đọc được chứng minh Laravel storage/DMS/media không phải nguyên nhân chính của 7.9 GiB đã dùng.
+ - Tài khoản hiện tại không đọc đủ mọi thư mục hệ thống và sudo -n không cung cấp số liệu; root-cause disk còn INSUFFICIENT_MEASUREMENT.
+ - Phân loại retention:
+
+      SAFE TO PRUNE            chỉ cache/temp/rotated logs đã chứng minh ownership
+      CONDITIONAL              exports/reports có lifecycle rõ
+      BUSINESS PROTECTED       DMS, media, accounting, inventory, payroll, procurement, HR
+      RECOVERY PROTECTED       backup/PITR/binlog/incident artifacts
+
+ - Block lệnh thủ công read-only hiện chạy được:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'df -h; df -i; du -sh /var/www/laravel/storage /var/www/laravel/vendor /var/www/laravel/node_modules /var/www/laravel/.git; journalctl --disk-usage; find /var/www/laravel/storage -xdev -type f -size +20M -printf "%s %TY-%Tm-%Td %p\\n" 2>/dev/null | sort -n'
+
+ - KHÔNG chạy: docker prune, rm -rf, journalctl --vacuum, truncate log, xóa DMS/media hoặc recovery artifact trong phase này.
+
+165-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5I OOM / RESTART / PRESSURE ✅ WITH LIMITATIONS |
+ - Kernel journal trong cửa sổ kiểm tra không có dòng OOM killer / killed process.
+ - systemd restart:
+
+      PHP-FPM                 0
+      Reverb                  0
+      Redis                   0
+      Nginx                   0
+      Queue                   2297 lịch sử; mẫu gần nhất exit sạch do max-time
+
+ - Pressure snapshot:
+
+      Memory PSI some avg10   0.21
+      Memory PSI full avg10   0.07
+      Swap used               127–138 MiB
+
+ - Kết luận: chưa thấy OOM, nhưng swap và headroom thấp chứng minh VM không dư RAM.
+ - Block lệnh thủ công:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'journalctl -k --since "2026-09-17" --no-pager | grep -Ei "out of memory|oom-killer|killed process" || true; systemctl show php8.4-fpm.service laravel-queue.service laravel-reverb.service redis-server.service nginx.service -p Id -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemorySwapCurrent; cat /proc/pressure/memory; cat /proc/pressure/io'
+
+166-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5J MEMORY BUDGET E2-MICRO ⚠️ | Không cộng Docker ceilings để gọi là actual RAM.
+ - Host usable RAM: 964 MiB.
+ - Observed used: 639–669 MiB.
+ - Observed available: 294–324 MiB.
+ - Swap used: 127–138 MiB.
+ - Các role ứng dụng chính có thể đồng thời dùng khoảng 330–450 MiB; Google agents + OS/kernel + filesystem cache dùng phần còn lại.
+ - Scheduler/outbox có spike khoảng 80 MiB mỗi process.
+ - Giữ tối thiểu khoảng 200–250 MiB available/headroom cho kernel, burst, file cache và job overlap.
+ - Production hiện không có container ceilings. Compose ceilings tổng ~5.25 GiB là không áp dụng được cho VM 1 GiB và không được deploy nguyên xi.
+ - Target hợp lý cần chuẩn bị cho topology systemd:
+
+      FPM                     ondemand, max_children=2, max_requests=300
+      Queue                   1 worker; max-time=3600; thêm memory/max-jobs sau review
+      Scheduler               giữ single cron invocation + overlap guards
+      Reverb                  1 process
+      Redis                   giữ noeviction; không FLUSH
+      Cloud SQL               external; chỉ proxy trên VM
+
+ - Chưa áp các target này lên production.
+
+167-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5K E2-MICRO ASSESSMENT ⚠️ |
+ - Memory classification:
+
+      MEMORY_HEADROOM_LOW
+
+ - E2-micro assessment:
+
+      SUFFICIENT_BUT_TIGHT
+
+ - Lý do:
+
+      Không có OOM evidence.
+      Tải mẫu không cao.
+      MemAvailable còn khoảng 294–324 MiB.
+      Nhưng swap đã dùng ~138 MiB.
+      FPM dynamic có thể tạo 5 child.
+      Scheduler/job có spike.
+      Disk đã 86% HIGH.
+
+ - Đây chưa phải bằng chứng đủ để tăng worker concurrency hoặc triển khai toàn bộ compose hardening.
+
+168-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.5L DEPLOYMENT GATE + 24H PLAN ⏸ STOP BEFORE MUTATION |
+ - Deployment decision:
+
+      MORE_MEASUREMENT_REQUIRED
+
+ - Blocker:
+
+      Root disk 86% HIGH, chưa định danh đủ phần 7.9 GiB đã dùng.
+      Production là systemd, local hardening/documentation đang giả định Docker Compose.
+      Production FPM/queue/log config khác target local.
+      Production working tree không clean:
+        M app/Support/EnvironmentSafetyGuard.php
+        ?? .env.backup.20260916-193649
+        ?? app/Support/EnvironmentSafetyGuard.php.backup.20260916_213141
+      Chưa có bằng chứng backup/checkpoint + rollback artifact phù hợp topology systemd.
+
+ - Production config hiện tại:
+
+      HEAD                     43e29de10e2812af86f3fb27171c0258c0022573
+      APP_ENV                  production
+      Queue                    redis
+      retry_after              360
+      Logging default          stack
+      stack channels           single
+      production channels      stderr,daily
+      Config cache             có tồn tại
+
+ - 24 giờ sau khi có deployment được phê duyệt riêng, đo tại T0 / T+15m / T+1h / T+6h / T+24h:
+
+      MemAvailable + swap + load
+      memory/io PSI
+      FPM/Queue/Reverb RSS
+      systemd NRestarts + MemoryPeak + MemorySwapCurrent
+      queue depth + failed jobs
+      Redis used_memory/RSS/evictions
+      disk + inode
+      kernel OOM evidence
+
+ - Đánh giá:
+
+      bounded sawtooth sau recycle            ACCEPTABLE
+      baseline RAM tăng liên tục qua recycle  INVESTIGATE
+      OOM / restart loop / disk >=95%          STOP + INCIDENT RESPONSE
+
+ - KHÔNG chạy trong checkpoint này:
+
+      docker compose up/down
+      systemctl restart
+      queue:restart
+      reverb:restart
+      sửa FPM
+      xóa log/file
+      migrate/seed
+      deploy
+
+169-------------------------------Google Cloud | 5. COMPUTE ENGINE | CHECKPOINT SAU RUNTIME MEASUREMENT ✅ WITH LIMITATIONS |
+ - Hoàn tất:
+
+      SSH existing key                   ✅
+      IAP authentication                 ✅
+      Host RAM/swap/load                 ✅
+      Disk/inode                         ✅
+      Runtime topology                   ✅ systemd + Cloud SQL
+      Process RSS/VSZ                    ✅
+      PHP-FPM                            ✅ measured
+      Queue                              ✅ measured
+      Redis                              ✅ measured
+      MySQL/Cloud SQL                    ✅ measured
+      Reverb                             ✅ measured
+      OOM evidence                       ✅ none observed
+
+ - Còn hạn chế:
+
+      Disk root-cause                    ⏸ insufficient permission/evidence
+      24h sample                         ⏸ not run
+      Backup/rollback gate               ⏸ not proven
+      Production hardening deployment    ⏸ NOT EXECUTED
+
+ - Safety:
+
+      Production DB writes              0
+      Business files deleted            0
+      Recovery files deleted            0
+      Containers restarted              0
+      VM changed                        0
+      IAM/firewall/API changed          0
+      Deployment                        0
+
+ - Final classification:
+
+      GCP_RUNTIME_MEASUREMENT_COMPLETE_WITH_LIMITATIONS
+
+ - Bước sau phải là AUDIT/PLAN cho systemd + disk ownership, rồi CHANGE GATE riêng. Không tự deploy.
+
+170-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6A ROOT DISK FORENSICS ✅ READ-ONLY | Đã xác định nguồn chính, không xóa file.
+ - Filesystem production:
+
+      Boot disk               laravel-server
+      Type                    pd-balanced
+      Capacity GCP            10 GB
+      Filesystem              ext4 /dev/sda1
+      Filesystem usable       9.7 GiB
+      Used                    7.9 GiB
+      Available               1.3 GiB
+      Usage                   86% = HIGH
+      Inodes                  21% = HEALTHY
+      /tmp                    tmpfs → không chiếm boot disk
+
+ - Nguồn disk lớn nhất:
+
+      /swapfile               4,294,967,296 bytes ≈ 4.0 GiB
+      Installed packages      ≈ 2.16 GiB theo dpkg Installed-Size
+      Laravel project         399 MiB
+      /var/log                292 MiB
+      APT cache               94 MiB
+      APT package lists       161 MiB
+
+ - Tổng giải thích xấp xỉ 7.1 GiB / 7.9 GiB. Khoảng 0.8 GiB còn lại gồm filesystem metadata, system state và path không đọc đủ quyền.
+ - Classification:
+
+      DISK_USAGE_MOSTLY_EXPLAINED
+
+ - Swapfile là thành phần bảo vệ runtime vì VM chỉ có 1 GiB RAM và swap đang dùng 127–138 MiB. KHÔNG xóa, thu nhỏ hoặc swapoff.
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'findmnt; lsblk -f; df -hT; df -i; cat /proc/swaps; stat -c "%n|size=%s|blocks=%b|mtime=%y|owner=%U:%G|mode=%a" /swapfile; dpkg-query -Wf='"'"'${Installed-Size}\\n'"'"' | awk '"'"'{s+=$1} END {printf "installed_packages_gib=%.2f\\n",s/1048576}'"'"''
+
+171-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6B LARGE FILE / DELETED-OPEN AUDIT ⚠️ WITH LIMITATIONS | Không truncate, move, chmod hoặc restart.
+ - Large files >50 MiB trong path liên quan đọc được:
+
+      /swapfile                                      4.0 GiB  SYSTEM PROTECTED
+      /var/log/journal/.../system.journal            120 MiB  RUNTIME LOG
+      /var/log/syslog.1                              112 MiB  ROTATED LOG
+
+ - `lsof` không được cài trên VM. `/proc/*/fd` theo quyền user không phát hiện deleted-open file có thể đọc được.
+ - Full visibility cho process khác user:
+
+      INSUFFICIENT_PERMISSION / TOOLING
+
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'for root in /var/www /home /tmp /var/log; do find "$root" -xdev -type f -size +50M -printf "%s|%TY-%Tm-%Td %TH:%TM|%u|%p\\n" 2>/dev/null; done | sort -t"|" -k1,1n; command -v lsof >/dev/null && lsof +L1 || echo "lsof unavailable"; find /proc/[0-9]*/fd -lname "* (deleted)" -printf "%p -> %l\\n" 2>/dev/null | head -n 100'
+
+172-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6C APPLICATION STORAGE / DMS / MEDIA ✅ PROTECTED | Không gọi file cũ là orphan nếu DB chưa chứng minh.
+ - Production storage:
+
+      storage total                    24 MiB
+      storage/logs                     22 MiB
+      storage/framework/views          2.6 MiB
+      storage/app                      24 KiB
+      enterprise_documents             3
+      enterprise_document_versions     3
+      enterprise DMS bytes             325 bytes, local_private
+      employee_documents               36
+      media_assets                     31
+      Cloudflare media                 4 assets / 4,199,271 bytes
+      Local media metadata             27 assets / 748,946 bytes
+
+ - Classification:
+
+      storage/framework/views          EPHEMERAL, nhỏ
+      storage/logs/laravel.log          CONDITIONAL RETENTION
+      enterprise DMS                    BUSINESS_RECORD / PROTECTED
+      employee documents                BUSINESS_RECORD / PROTECTED
+      media assets                      BUSINESS_RECORD / PROTECTED
+      accounting/inventory/payroll      BUSINESS_RECORD / PROTECTED
+      recovery/incident evidence        RECOVERY_PROTECTED
+
+ - Orphan cleanup:
+
+      NOT_SAFE_TO_AUTO_DELETE
+
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'cd /var/www/laravel; du -xhd4 storage 2>/dev/null | sort -n; find storage -xdev -type f -printf "%s|%TY-%Tm-%Td %TH:%TM|%u|%p\\n" 2>/dev/null | sort -t"|" -k1,1n | tail -n 80'
+
+173-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6D JOURNAL / LOG / CACHE PLAN ⚠️ NOT EXECUTED | Chỉ lập kế hoạch.
+ - Journald:
+
+      Current usage             152 MiB
+      SystemMaxUse              unset / system default
+      RuntimeMaxUse             unset / system default
+      MaxRetentionSec           0 / no explicit time limit
+      ForwardToSyslog           YES qua Debian drop-in
+
+ - Rsyslog files:
+
+      syslog current            ~19 MiB
+      syslog.1                  ~112 MiB
+      syslog.3.gz               ~5.4 MiB
+
+ - Laravel:
+
+      log_default               stack
+      stack channels            single
+      production channels       stderr,daily nhưng hiện không phải default
+      laravel.log               ~22 MiB, single file
+
+ - Có duplicated operational logging path: journald forward sang syslog; Laravel còn ghi single file thay vì production stderr-only target.
+ - Potential reclaim có thể đo:
+
+      APT cache                 ~94 MiB
+      Journald over future 100M target  tối đa khoảng 52 MiB nếu archived journal đủ điều kiện
+      Old rotated syslog        ~117 MiB theo retention policy, không xóa tay
+      Laravel log               ~22 MiB sau khi có rotation/channel policy
+
+ - Tổng cleanup thấp rủi ro chỉ vài trăm MiB, KHÔNG đủ đưa disk về <70%.
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'journalctl --disk-usage; systemd-analyze cat-config systemd/journald.conf; du -sh /var/log /var/cache/apt /var/lib/apt/lists /var/www/laravel/storage/logs 2>/dev/null; ls -lh --time-style=long-iso /var/log | head -n 80'
+
+174-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6E SYSTEMD TOPOLOGY ✅ READ-ONLY | Đây là production truth, không dùng Docker Compose.
+ - Units:
+
+      php8.4-fpm.service        package unit, Restart=on-failure
+      laravel-queue.service     custom unit, Restart=always
+      laravel-reverb.service    custom unit, Restart=always
+      laravel-scheduler.timer   every minute, Persistent=true
+      laravel-scheduler.service Type=oneshot → artisan schedule:run
+      redis-server.service      package unit, Restart=always
+      cloud-sql-proxy.service   custom unit, Restart=always
+      nginx.service             package unit
+
+ - Không có Docker và không có Horizon process.
+ - Không unit nào hiện có MemoryHigh/MemoryMax.
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'for unit in php8.4-fpm.service laravel-queue.service laravel-reverb.service laravel-scheduler.service laravel-scheduler.timer nginx.service redis-server.service cloud-sql-proxy.service; do systemctl cat "$unit"; systemctl show "$unit" -p Id -p ExecStart -p Restart -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemorySwapCurrent -p MemoryHigh -p MemoryMax -p ActiveState -p SubState; done; systemctl list-timers --all --no-pager'
+
+175-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6F QUEUE / SCHEDULER HARDENING DESIGN ⏸ NOT EXECUTED — FUTURE AUTHORIZATION REQUIRED |
+ - Queue current:
+
+      --sleep=3 --tries=3 --timeout=300 --max-time=3600
+      RSS snapshot             ~79–84 MiB
+      systemd current          ~48–58 MiB
+      systemd peak             ~60 MiB trong cửa sổ hiện tại
+      queue depth              0
+      failed jobs              1
+      retry_after              360
+
+ - Queue proposed stage 1, graceful Laravel recycle first:
+
+      --sleep=3
+      --tries=3
+      --timeout=300
+      --memory=192
+      --max-jobs=250
+      --max-time=3600
+
+ - Giữ timeout=300 vì job mẫu dài nhất quan sát khoảng 35 giây; không cần tăng lên 330 nếu chưa có evidence. retry_after=360 vẫn lớn hơn timeout.
+ - `--memory=192` là PHP worker self-recycle threshold, KHÔNG phải RAM reservation.
+ - systemd proposal sau soak test:
+
+      Restart=always
+      RestartSec=5
+      KillSignal=SIGTERM
+      TimeoutStopSec=360
+      MemoryHigh=224M          future soft pressure target
+      MemoryMax=256M           chỉ bật sau representative job test
+
+ - Scheduler:
+
+      Type=oneshot every minute
+      Current sample           ~94 MiB
+      Peak                     ~110 MiB
+      MemoryMax                chưa nên đặt trước khi đo payroll/export/scheduled heavy job
+
+ - Proposed unit diff — PLAN ONLY, không chạy:
+
+      ExecStart=/usr/bin/php /var/www/laravel/artisan queue:work redis --queue=default --sleep=3 --tries=3 --timeout=300 --memory=192 --max-jobs=250 --max-time=3600
+      MemoryHigh=224M
+      # MemoryMax=256M chỉ sau soak/representative-job PASS
+
+176-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6G FPM / REVERB / REDIS / PROXY TARGETS ⏸ PLAN ONLY |
+ - PHP-FPM current:
+
+      pm                       dynamic
+      max_children             5
+      FPM memory_limit         128M
+      Worker observed          ~30–34 MiB RSS mỗi worker
+      3 workers observed       ~93–102 MiB RSS
+      Service peak             ~77.6 MiB
+
+ - Proposed FPM:
+
+      pm = ondemand
+      pm.max_children = 2
+      pm.process_idle_timeout = 10s
+      pm.max_requests = 300
+
+ - Worst-case theo observed RSS: master ~8 MiB + 2 × 34 MiB ≈ 76 MiB, phù hợp hơn e2-micro và tránh 3 idle workers dư thừa. PHP memory_limit 128M vẫn là per-request ceiling, không phải actual RSS.
+ - Reverb:
+
+      Current                  ~46–54 MiB
+      Peak                     ~61 MiB
+      Uptime observed          >1 ngày 18 giờ
+      Restart                  0
+      Trend                    INSUFFICIENT_TREND_DATA cho 24h post-change
+
+ - Redis:
+
+      RSS                      ~9 MiB
+      Peak dataset             ~2 MiB
+      Persistence              RDB, AOF disabled
+      RDB disk                 ~4 KiB directory total
+      Evictions                0
+      Policy                   noeviction — GIỮ NGUYÊN
+
+ - Cloud SQL Proxy:
+
+      Current                  ~16–24 MiB cgroup/process sample
+      Peak                     ~38 MiB
+      Restart                  0
+
+ - Không đặt hard MemoryMax cho Redis/Reverb/Proxy ở bước đầu. Ưu tiên monitor + graceful lifecycle; hard-kill sai ngưỡng có thể làm mất queue/session/realtime availability.
+
+177-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6H ACTUAL MEMORY BUDGET ⚠️ TIGHT |
+ - Host usable RAM: 964 MiB.
+ - Current used: khoảng 639–669 MiB.
+ - MemAvailable: khoảng 294–324 MiB.
+ - Swap used: khoảng 127–138 MiB.
+ - App/systemd cgroups tại snapshot có scheduler active dùng khoảng 230–260 MiB physical memory; process RSS có shared-page double counting nên không cộng mù.
+ - Material process roles:
+
+      FPM                     observed 18–102 MiB tùy idle/shared/swap view
+      Queue                   ~50–84 MiB
+      Scheduler               ~94 MiB, peak ~110 MiB
+      Reverb                  ~46–54 MiB
+      Redis                   ~9 MiB
+      Cloud SQL Proxy         ~16–24 MiB
+      Nginx                   ~4–16 MiB
+      Google Ops agents       ~100+ MiB
+
+ - Required safety headroom: tối thiểu khoảng 200–250 MiB cho kernel, filesystem cache, request/job overlap và process spikes.
+ - Classification:
+
+      MEMORY_HEADROOM_LOW
+      E2-MICRO = SUFFICIENT_BUT_TIGHT
+
+ - Chưa có bằng chứng bắt buộc upsize RAM ngay; FPM/queue lifecycle hardening + 24h trend phải thực hiện trước quyết định machine-type.
+
+178-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6I PRODUCTION WORKING TREE RESIDUE ⚠️ PRESERVE |
+ - HEAD local và production đều:
+
+      43e29de10e2812af86f3fb27171c0258c0022573
+
+ - Production dirty state:
+
+      M  app/Support/EnvironmentSafetyGuard.php
+      ?? .env.backup.20260916-193649
+      ?? app/Support/EnvironmentSafetyGuard.php.backup.20260916_213141
+
+ - Classification:
+
+      EnvironmentSafetyGuard.php                 MANUAL_PRODUCTION_CHANGE, 3,355 bytes
+      .env.backup.20260916-193649                 BACKUP_ARTIFACT / SECRET-BEARING / PROTECTED, 2,435 bytes, mode 640 root
+      EnvironmentSafetyGuard.php.backup...        BACKUP_ARTIFACT, 1,730 bytes
+
+ - Guard change adds explicit production database allowlist through VPS_PRODUCTION_DATABASE and strengthens local/testing separation. Không overwrite trước khi hợp nhất/review vào source canonical.
+ - `.env.backup` content KHÔNG được đọc, in, hash bởi user hiện tại hoặc đưa vào Git.
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'cd /var/www/laravel; git -c safe.directory=/var/www/laravel rev-parse HEAD; git -c safe.directory=/var/www/laravel status --short; git -c safe.directory=/var/www/laravel diff --stat; git -c safe.directory=/var/www/laravel diff -- app/Support/EnvironmentSafetyGuard.php; stat -c "%n|%F|%s|%y|owner=%U:%G|mode=%a" app/Support/EnvironmentSafetyGuard.php .env.backup.20260916-193649 app/Support/EnvironmentSafetyGuard.php.backup.20260916_213141'
+
+179-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6J LOCAL HARDENING → SYSTEMD RECONCILIATION ⚠️ |
+ - Classification:
+
+      Queue lifecycle flags              PORTABLE_TO_SYSTEMD_PRODUCTION
+      retry_after=390 for timeout=330     PORTABLE nhưng current 300/360 đang consistent
+      FPM ondemand/2/max_requests=300     PORTABLE_TO_SYSTEMD_PRODUCTION
+      queue failed/batch pruning          PORTABLE qua Laravel scheduler
+      production stderr logging           NEEDS_SYSTEMD/JOURNAL EQUIVALENT
+      Docker JSON log rotation            DOCKER_ONLY
+      Compose memory ceilings             DOCKER_ONLY
+      Dockerfile FPM pool COPY            DOCKER_ONLY packaging
+      Horizon config                      NOT USED IN PRODUCTION
+      Redis compose AOF options            DOCKER_ONLY; production Redis RDB riêng
+
+ - Không xóa local hardening. Trước production deployment phải tạo systemd-native patch/runbook riêng thay vì chạy docker compose.
+
+180-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6K SAFE CLEANUP PLAN ⏸ NOT EXECUTED — FUTURE AUTHORIZATION REQUIRED |
+ - Candidate 1:
+
+      Category                  APT downloaded cache
+      Current                   ~94 MiB
+      Future command            sudo apt-get clean
+      Rollback                  packages có thể download lại
+      Risk                      LOW, nhưng cần authorization
+
+ - Candidate 2:
+
+      Category                  Journald retention
+      Current                   152 MiB
+      Proposed target           100 MiB
+      Future change             journald drop-in SystemMaxUse=100M
+      Future command            sudo journalctl --vacuum-size=100M
+      Expected reclaim          0–52 MiB tùy archived journals
+      Rollback                  deleted logs không phục hồi; chỉ làm sau approval
+
+ - Candidate 3:
+
+      Category                  rsyslog rotation
+      Current syslog.1          112 MiB
+      Plan                      review /etc/logrotate.d/rsyslog; giảm retention nếu policy cho phép
+      Direct rm                 NOT RECOMMENDED
+
+ - Candidate 4:
+
+      Category                  Laravel single log
+      Current                   ~22 MiB
+      Plan                      đổi production logging sang journald/stderr hoặc daily bounded policy, rồi rotate
+      Direct truncate           PROHIBITED
+
+ - Candidate 5:
+
+      storage/framework/views  2.6 MiB
+      Reclaim                   rất nhỏ; không đáng cleanup để chữa disk pressure
+
+ - Không candidate nào được chạy trong phase này. Không xóa DMS/media/accounting/inventory/payroll/procurement/HR/recovery.
+
+181-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6L DISK EXPANSION ASSESSMENT ✅ RECOMMENDED BEFORE DEPLOYMENT | Chưa resize.
+ - Vì cleanup an toàn tối đa chỉ vài trăm MiB, không thể đưa 86% xuống mục tiêu <70%.
+ - Swapfile 4 GiB cần giữ vì VM đang dùng swap.
+ - Recommendation:
+
+      Current disk             10 GB pd-balanced
+      Proposed disk            20 GB pd-balanced
+      Expected filesystem use  khoảng 40–45% nếu dữ liệu giữ nguyên
+      Downtime expectation     GCP persistent disk tăng size thường online; filesystem/partition expansion phải verify riêng
+      Cost implication         disk monthly cost tăng gần theo dung lượng, nhưng mức tuyệt đối vẫn nhỏ; cần owner xác nhận
+
+ - Snapshot hiện có READ-ONLY audit:
+
+      2026-09-15 READY
+      2026-09-16 READY
+      2026-09-17 READY
+      2026-09-18 READY
+
+ - Trước future resize phải tạo snapshot/checkpoint mới ngay tại change window.
+ - Block lệnh audit READ-ONLY:
+
+ gcloud compute disks describe laravel-server \
+   --project=project-06b7a0c7-35a4-4282-b81 \
+   --zone=asia-southeast1-a \
+   --format='yaml(name,sizeGb,type,status,users,lastAttachTimestamp)'
+
+ gcloud compute snapshots list \
+   --project=project-06b7a0c7-35a4-4282-b81 \
+   --filter='sourceDisk~laravel-server' \
+   --format='table(name,creationTimestamp,status,diskSizeGb,storageBytes)'
+
+ - Future mutation concept — NOT EXECUTED, FUTURE AUTHORIZATION REQUIRED:
+
+      1. Tạo fresh snapshot.
+      2. Resize pd-balanced từ 10 GB lên 20 GB.
+      3. Kiểm tra partition/filesystem.
+      4. Grow partition/ext4 bằng command phù hợp sau khi xác nhận device layout.
+      5. Verify df -hT, inode và health endpoints.
+
+ - Không copy-paste resize command trước CHANGE GATE để tránh nhầm project/disk/device.
+
+182-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6M HEALTH + ROLLBACK DESIGN ✅ PLAN ONLY |
+ - Health virtual host:
+
+      https://kayaga.one/health/live     200 / alive
+      https://kayaga.one/health/ready    200 / database=true, redis=true, queue=true
+      X-Release-Revision                 unidentified
+
+ - Rollback prerequisites trước future deployment:
+
+      fresh GCP disk snapshot
+      current HEAD recorded
+      dirty EnvironmentSafetyGuard preserved and merged/reviewed
+      secret-bearing .env backup preserved securely, never committed
+      current systemd unit files copied to protected rollback directory
+      current FPM pool config copied
+      current Nginx config tested/recorded
+      current Laravel config cache checksum recorded
+      versioned release directory or immutable artifact
+      migration delta confirmed 0 or separately approved
+      `/health/live` + `/health/ready` exact checks
+
+ - Do not deploy in-place over dirty `/var/www/laravel` until residue ownership is resolved.
+ - Block lệnh health READ-ONLY, không tạo temp file:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'for path in /health/live /health/ready; do echo "$path"; curl -sS -i --max-time 15 --resolve kayaga.one:443:127.0.0.1 "https://kayaga.one$path" | head -n 30; done'
+
+183-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.6N FINAL READ-ONLY CHECKPOINT ✅ WITH LIMITATIONS |
+ - Immediate next action:
+
+      DISK_EXPANSION_RECOMMENDED_BEFORE_DEPLOYMENT
+
+ - Sau khi user duyệt disk expansion riêng:
+
+      fresh snapshot
+      expand 10 GB → 20 GB
+      filesystem verification
+      health verification
+      24h disk/RAM observation
+      sau đó mới xin SYSTEMD_HARDENING_AUTHORIZATION
+
+ - Không recommend VM upsize ngay: chưa có OOM, load thấp, Redis nhỏ, Cloud SQL external. E2-micro vẫn SUFFICIENT_BUT_TIGHT; đánh giá lại sau FPM/queue hardening và 24h trend.
+ - Safety thực tế:
+
+      Production DB writes              0
+      Business/recovery files deleted   0
+      Persistent production files edit  0
+      Systemd/FPM config modified       0
+      Service/VM restarted              0
+      Disk resized                      0
+      VM type changed                   0
+      IAM/firewall/metadata/API change  0
+      Deployment                        0
+
+ - Audit note: một file probe task-owned trong `/tmp` tmpfs đã được tạo và xóa khi kiểm tra sai Host header lần đầu. Không có persistent/business file bị xóa; lần probe sau dùng streaming và trả health 200.
+ - ERP checkpoint giữ nguyên:
+
+      Return-to-Vendor                         PAUSED
+      GOODS_RECEIPT_CORRECTION_REQUIRES_MIGRATION
+
+ - Final classification:
+
+      DISK_EXPANSION_RECOMMENDED_BEFORE_DEPLOYMENT
+
+184-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7A DISK EXPANSION PRE-CHANGE GATE ✅ | Authorized change bắt đầu, chưa resize ở checkpoint này.
+ - Target đã xác nhận lại:
+
+      Project                  project-06b7a0c7-35a4-4282-b81
+      Zone                     asia-southeast1-a
+      Instance                 laravel-server
+      Disk                     laravel-server
+      Type                     pd-balanced
+      GCP status               READY
+      GCP size                 10 GB
+      Guest disk               /dev/sda = 10,737,418,240 bytes
+      Root partition           /dev/sda1 = 10,602,151,936 bytes
+      Filesystem               ext4 mounted /
+      Root                     7.9 GiB used / 1.3 GiB available / 86%
+      Inodes                   21%
+      Swap                     /swapfile 4 GiB ACTIVE, ~133 MiB used
+      /health/live             HTTP 200
+      /health/ready            HTTP 200; database/redis/queue=true
+
+ - SSH fingerprint gate:
+
+      SHA256:xMxtkUC8aYLX+LtZQpY76HpwSA5hzngVOLbrVtC7uTc ✅
+
+ - Block lệnh thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"; DISK="laravel-server"
+ ssh-add -l
+ gcloud compute disks describe "$DISK" --project="$PROJECT_ID" --zone="$ZONE" --format='yaml(name,sizeGb,type,status,users)'
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'date -u; hostname; uptime; lsblk -b -o NAME,KNAME,PATH,TYPE,SIZE,FSTYPE,MOUNTPOINTS; findmnt /; df -hT /; df -i /; cat /proc/swaps; free -h; for path in /health/live /health/ready; do curl -sS -i --max-time 15 --resolve kayaga.one:443:127.0.0.1 "https://kayaga.one$path" | head -n 30; done'
+
+185-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7B PRE-CHANGE SNAPSHOT ✅ READY | Giữ snapshot, không xóa snapshot cũ.
+ - Snapshot thực tế:
+
+      Name                     laravel-server-pre-disk-expand-20260919t173313z
+      Creation                 2026-09-19T10:33:17.862-07:00
+      Source                   asia-southeast1-a/disks/laravel-server
+      Source disk size         10 GB
+      Status                   READY
+      Storage bytes            591,391,488
+      Purpose                  rollback checkpoint trước 10→20 GB
+
+ - Attempt tên có chữ hoa T/Z trước đó bị API reject vì regex; không tạo resource và mutation count vẫn 0 tại attempt đó.
+ - Block lệnh thủ công dùng tên lowercase hợp lệ:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"
+ ZONE="asia-southeast1-a"
+ DISK="laravel-server"
+ SNAPSHOT_NAME="laravel-server-pre-disk-expand-$(date -u +%Y%m%dt%H%M%Sz | tr '[:upper:]' '[:lower:]')"
+
+ gcloud compute snapshots create "$SNAPSHOT_NAME" \
+   --project="$PROJECT_ID" \
+   --source-disk="$DISK" \
+   --source-disk-zone="$ZONE" \
+   --description='Pre-change snapshot before laravel-server boot disk expansion from 10GB to 20GB'
+
+ gcloud compute snapshots describe "$SNAPSHOT_NAME" \
+   --project="$PROJECT_ID" \
+   --format='yaml(name,creationTimestamp,status,diskSizeGb,storageBytes,sourceDisk,description)'
+
+ - Hard gate: chỉ resize khi status = READY.
+
+186-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7C GCP BOOT DISK RESIZE ✅ | Authorized mutation 10 GB → 20 GB đúng một lần.
+ - Before:
+
+      sizeGb                   10
+      status                   READY
+
+ - After:
+
+      sizeGb                   20
+      status                   READY
+      disk type                pd-balanced
+
+ - Exact command đã chạy:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; DISK="laravel-server"
+ CURRENT_SIZE="$(gcloud compute disks describe "$DISK" --project="$PROJECT_ID" --zone="$ZONE" --format='value(sizeGb)')"
+ CURRENT_STATUS="$(gcloud compute disks describe "$DISK" --project="$PROJECT_ID" --zone="$ZONE" --format='value(status)')"
+ test "$CURRENT_SIZE" = "10"
+ test "$CURRENT_STATUS" = "READY"
+ gcloud compute disks resize "$DISK" --project="$PROJECT_ID" --zone="$ZONE" --size=20GB
+ gcloud compute disks describe "$DISK" --project="$PROJECT_ID" --zone="$ZONE" --format='yaml(name,sizeGb,type,status,users)'
+
+ - Không shrink, recreate, format, đổi disk type hoặc detach disk.
+
+187-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7D ROOT PARTITION + EXT4 EXPANSION ✅ | Không reboot.
+ - Sau GCP resize:
+
+      /dev/sda                 21,474,836,480 bytes
+      /dev/sda1 before         10,602,151,936 bytes
+      ext4 before              9.7 GiB
+
+ - Partition layout đã xác minh:
+
+      sda14                    sectors 2048–8191, bios_grub
+      sda15                    sectors 8192–262143, EFI
+      sda1                     bắt đầu sector 262144
+      Free after old sda1      sectors 20969472–41943006
+
+ - GPT backup header được cập nhật tới cuối disk mới. Hai lần đầu `parted --script` không resize partition vì prompt GPT/partition-in-use; kiểm tra xác nhận partition vẫn nguyên trước khi chạy tiếp.
+ - Partition mutation required: YES.
+ - `/dev/sda1` after: 21,340,601,856 bytes, sectors 262144–41943006.
+ - Kernel nhận partition mới online bằng `partx`; reboot required: NO.
+ - ext4 vẫn 9.7 GiB sau partition expansion nên `resize2fs` required: YES.
+ - `resize2fs` online PASS:
+
+      old filesystem           9.7 GiB
+      new filesystem           5,210,107 blocks × 4 KiB
+      df size                  20 GiB
+
+ - Block lệnh thủ công có điều kiện:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'lsblk -b -o NAME,PATH,TYPE,SIZE,FSTYPE,MOUNTPOINTS; sudo -n /usr/sbin/parted --script /dev/sda unit s print free'
+
+ - Nếu GPT vẫn báo chưa dùng hết disk, sửa GPT header trước; nếu đã hết warning thì bỏ qua block này:
+
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'printf "Fix\n" | sudo -n env LC_ALL=C /usr/sbin/parted ---pretend-input-tty /dev/sda print'
+
+ - Chỉ khi sda=20 GB nhưng sda1 còn ~10 GB và free space liên tục ngay sau sda1:
+
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'set -e; printf "Yes\n" | sudo -n env LC_ALL=C /usr/sbin/parted ---pretend-input-tty /dev/sda resizepart 1 100%; sudo -n /usr/bin/partx --update --nr 1 /dev/sda; lsblk -b -o NAME,PATH,TYPE,SIZE,FSTYPE,MOUNTPOINTS'
+
+ - Chỉ khi partition đã lớn nhưng ext4 còn size cũ:
+
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'sudo -n /usr/sbin/resize2fs /dev/sda1; findmnt /; df -hT /; df -i /'
+
+188-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7E POST-CHANGE STORAGE / SWAP / HEALTH ✅ |
+ - Post-change result:
+
+      GCP disk                 20 GB READY
+      /dev/sda                 21,474,836,480 bytes
+      /dev/sda1                21,340,601,856 bytes
+      Root filesystem          ext4 20 GiB
+      Used                     7.9 GiB
+      Available                11 GiB
+      Usage                    43% = HEALTHY
+      Inodes                   11%
+      Swap                     /swapfile 4 GiB ACTIVE
+      Swap used sample         ~128 MiB
+      Reboot required          NO
+      Reboot executed          NO
+
+ - Services:
+
+      php8.4-fpm               active
+      laravel-queue            active
+      laravel-scheduler.timer  active
+      laravel-reverb           active
+      redis-server             active
+      nginx                    active
+      cloud-sql-proxy          active
+
+ - Health:
+
+      /health/live             HTTP 200 / alive
+      /health/ready            HTTP 200 / ready
+      database                 true
+      redis                    true
+      queue                    true
+
+ - Post-change full READ-ONLY verification block:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ gcloud compute disks describe laravel-server --project="$PROJECT_ID" --zone="$ZONE" --format='yaml(name,sizeGb,type,status,users)'
+ gcloud compute snapshots describe laravel-server-pre-disk-expand-20260919t173313z --project="$PROJECT_ID" --format='yaml(name,creationTimestamp,status,diskSizeGb,storageBytes,sourceDisk,description)'
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'date -u; uptime; lsblk -b -o NAME,KNAME,PATH,TYPE,SIZE,FSTYPE,MOUNTPOINTS; findmnt /; df -hT /; df -i /; cat /proc/swaps; free -h; for unit in php8.4-fpm.service laravel-queue.service laravel-scheduler.timer laravel-reverb.service redis-server.service nginx.service cloud-sql-proxy.service; do printf "%s=" "$unit"; systemctl is-active "$unit"; done; for path in /health/live /health/ready; do curl -sS -i --max-time 15 --resolve kayaga.one:443:127.0.0.1 "https://kayaga.one$path" | head -n 30; done'
+
+189-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.7F DISK EXPANSION MUTATION AUDIT + CHECKPOINT ✅ |
+ - Authorized mutations thực tế:
+
+      New snapshot created              1
+      GCP disk resize                   1
+      GPT backup header updated         YES, required by expanded disk
+      Root partition expanded           YES, partition 1 only
+      ext4 filesystem expanded          YES, online resize2fs
+      login.txt append                  YES, sections 184–189
+
+ - Không thực hiện:
+
+      Files deleted                     0
+      Old snapshots deleted             0
+      Business files changed            0
+      Recovery files changed            0
+      Database writes                   0
+      Services restarted                0
+      VM restarted                      0
+      Swap modified                     0
+      VM machine type changed           0
+      IAM/firewall/metadata/API changed 0
+      Source deployment                 0
+      ERP changes                       0
+
+ - Pre-change snapshot được GIỮ NGUYÊN:
+
+      laravel-server-pre-disk-expand-20260919t173313z = READY
+
+ - Next separate phase:
+
+      SYSTEMD_RUNTIME_HARDENING_PREDEPLOYMENT
+
+ - ERP checkpoint vẫn giữ:
+
+      Return-to-Vendor                         PAUSED
+      GOODS_RECEIPT_CORRECTION_REQUIRES_MIGRATION
+
+ - Final classification:
+
+      GCP_DISK_EXPANSION_COMPLETE
+
+190-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8A SYSTEMD RUNTIME BASELINE SAU DISK ✅ |
+ - Đã đo READ-ONLY lúc 2026-09-19 20:34 UTC, không restart service:
+
+      RAM usable               964 MiB
+      RAM used                 632 MiB
+      MemAvailable             332 MiB
+      Swap                     4 GiB ACTIVE / 134 MiB used
+      Memory PSI avg10         0.00
+      Memory PSI avg60         some 0.29 / full 0.23
+      Kernel OOM 24h           0
+      Root disk                ext4 20G / 43% used / 11G available
+      Health live/ready        HTTP 200 / HTTP 200
+      Classification           MEMORY_HEADROOM_LOW
+
+ - Lệnh kiểm tra thủ công READ-ONLY:
+
+ PROJECT_ID="project-06b7a0c7-35a4-4282-b81"; ZONE="asia-southeast1-a"; INSTANCE="laravel-server"
+ ssh-add -l
+ /usr/bin/ssh -i "$HOME/.ssh/google_compute_engine" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+   -o ProxyCommand="gcloud compute start-iap-tunnel $INSTANCE 22 --listen-on-stdin --project=$PROJECT_ID --zone=$ZONE --verbosity=error" \
+   lahoathanh@localhost \
+   'date -u; uptime; free -h; cat /proc/swaps; cat /proc/pressure/memory; cat /proc/pressure/io; df -hT /; df -i /; ps -eo pid,user,rss,vsz,etimes,comm,args --sort=-rss | head -n 35'
+
+ - Không dùng: gcloud compute ssh --troubleshoot
+
+191-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8B SYSTEMD PROCESS MEMORY + LIFECYCLE ✅ |
+ - Số liệu thực tế:
+
+      PHP-FPM workers          3 workers, khoảng 29–31 MiB RSS/worker
+      PHP-FPM cgroup peak      ~81 MiB; memory_limit=128M
+      Queue process            ~85 MiB RSS; cgroup peak ~60 MiB vòng hiện tại
+      Queue restart count      2301; log chứng minh clean max-time recycle
+      Scheduler                ~85 MiB RSS; cgroup peak ~113 MiB
+      Reverb                   ~55 MiB RSS; peak ~64 MiB; restart 0
+      Redis                    8.95 MiB RSS; evictions 0; noeviction
+      Cloud SQL Proxy          ~22 MiB RSS; peak ~40 MiB; restart 0
+      Google Ops Agent         collector ~69 MiB + logging agents ~30 MiB
+
+ - Queue production hiện tại:
+
+      queue:work redis --queue=default --sleep=3 --tries=3 --timeout=300 --max-time=3600
+
+ - Queue target đề xuất:
+
+      queue:work redis --queue=default --sleep=3 --tries=3 --timeout=330 --memory=192 --max-jobs=250 --max-time=3600
+
+ - `--memory=192` là recycle mềm sau job, KHÔNG phải RAM reservation và KHÔNG phải systemd MemoryMax.
+ - Chưa đặt MemoryHigh/MemoryMax vì chưa có representative heavy-job peak; không hard-kill Payroll/export.
+ - Reverb chưa có trend chứng minh leak nên không thêm periodic restart.
+
+192-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8C LOCAL SYSTEMD/FPM PACKAGE ✅ |
+ - Chỉ tạo CỤC BỘ trong source, chưa đưa lên production:
+
+      deploy/systemd/laravel-queue.service
+      deploy/systemd/laravel-scheduler.service
+      deploy/systemd/laravel-scheduler.timer
+      deploy/systemd/laravel-reverb.service
+      deploy/php-fpm/zz-runtime-pool.conf
+
+ - FPM target:
+
+      pm = ondemand
+      pm.max_children = 2
+      pm.process_idle_timeout = 10s
+      pm.max_requests = 300
+
+ - Scheduler giữ Type=oneshot + timer mỗi phút. systemd không tạo instance thứ hai khi service oneshot đang active.
+ - Laravel tasks quan trọng có withoutOverlapping; Attendance/Leave còn có onOneServer.
+ - Local pruning đã chuẩn bị đúng Laravel 13:
+
+      queue:prune-failed --hours=336
+      queue:prune-batches --hours=168 --unfinished=168 --cancelled=168
+
+193-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8D FUTURE DEPLOYMENT COMMANDS ⚠️ |
+ - NOT EXECUTED — FUTURE AUTHORIZATION REQUIRED.
+ - Block dưới chỉ chạy sau khi được duyệt riêng. Không copy `.env`, không reset/clean production tree.
+
+ PROJECT_DIR="/var/www/laravel"
+ BACKUP_DIR="/root/laravel-runtime-backup-$(date -u +%Y%m%dT%H%M%SZ)"
+
+ # 1) Preflight READ-ONLY
+ curl -sS -o /dev/null -w 'live=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/live
+ curl -sS -o /dev/null -w 'ready=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/ready
+ git -C "$PROJECT_DIR" -c safe.directory="$PROJECT_DIR" status --short
+ systemctl cat laravel-queue.service laravel-scheduler.service laravel-scheduler.timer laravel-reverb.service
+
+ # 2) BACKUP — FUTURE AUTHORIZATION REQUIRED
+ sudo install -d -m 0700 "$BACKUP_DIR"
+ sudo cp -a /etc/systemd/system/laravel-queue.service "$BACKUP_DIR/"
+ sudo cp -a /etc/systemd/system/laravel-scheduler.service "$BACKUP_DIR/"
+ sudo cp -a /etc/systemd/system/laravel-scheduler.timer "$BACKUP_DIR/"
+ sudo cp -a /etc/systemd/system/laravel-reverb.service "$BACKUP_DIR/"
+ sudo cp -a /etc/php/8.4/fpm/pool.d/www.conf "$BACKUP_DIR/"
+
+ # 3) STAGE + VALIDATE — source package phải được chuyển tới một staging path đã duyệt trước
+ STAGE_DIR="/tmp/laravel-runtime-hardening"
+ sudo systemd-analyze verify "$STAGE_DIR/laravel-queue.service" "$STAGE_DIR/laravel-scheduler.service" "$STAGE_DIR/laravel-reverb.service"
+ sudo php-fpm8.4 -t
+
+ # 4) INSTALL QUEUE/FPM ONLY — FUTURE AUTHORIZATION REQUIRED
+ sudo install -o root -g root -m 0644 "$STAGE_DIR/laravel-queue.service" /etc/systemd/system/laravel-queue.service
+ sudo install -o root -g root -m 0644 "$STAGE_DIR/zz-runtime-pool.conf" /etc/php/8.4/fpm/pool.d/zz-runtime-pool.conf
+ sudo systemd-analyze verify /etc/systemd/system/laravel-queue.service
+ sudo php-fpm8.4 -t
+ sudo systemctl daemon-reload
+ sudo systemctl reload php8.4-fpm.service
+ sudo systemctl restart laravel-queue.service
+
+ # 5) POST-CHECK
+ systemctl is-active php8.4-fpm.service laravel-queue.service laravel-scheduler.timer laravel-reverb.service redis-server.service nginx.service cloud-sql-proxy.service
+ systemctl show laravel-queue.service -p ExecStart -p MemoryCurrent -p MemoryPeak -p NRestarts
+ free -h
+ curl -sS -o /dev/null -w 'live=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/live
+ curl -sS -o /dev/null -w 'ready=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/ready
+
+194-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8E FUTURE ROLLBACK COMMANDS ⚠️ |
+ - NOT EXECUTED — FUTURE AUTHORIZATION REQUIRED.
+ - Dùng đúng BACKUP_DIR đã tạo ở mục 193, không dùng disk snapshot làm rollback cấu hình thông thường.
+
+ sudo cp -a "$BACKUP_DIR/laravel-queue.service" /etc/systemd/system/laravel-queue.service
+ sudo rm -f /etc/php/8.4/fpm/pool.d/zz-runtime-pool.conf
+ sudo systemd-analyze verify /etc/systemd/system/laravel-queue.service
+ sudo php-fpm8.4 -t
+ sudo systemctl daemon-reload
+ sudo systemctl reload php8.4-fpm.service
+ sudo systemctl restart laravel-queue.service
+ systemctl is-active php8.4-fpm.service laravel-queue.service laravel-scheduler.timer laravel-reverb.service redis-server.service nginx.service cloud-sql-proxy.service
+ curl -sS -o /dev/null -w 'live=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/live
+ curl -sS -o /dev/null -w 'ready=%{http_code}\n' --max-time 15 --resolve kayaga.one:443:127.0.0.1 https://kayaga.one/health/ready
+
+ - Lưu ý: nếu trước đó đã tồn tại `zz-runtime-pool.conf`, phải backup và restore chính file đó; không được xóa theo block mẫu.
+
+195-------------------------------Google Cloud | 5. COMPUTE ENGINE | 5.8F PREDEPLOYMENT CHECKPOINT ✅ |
+ - Production mutations trong phase này:
+
+      systemd edits             0
+      FPM edits                 0
+      Queue/Scheduler/Reverb    0
+      Redis/Nginx/Cloud SQL     0
+      Production source deploy 0
+      Service restarts          0
+      VM restart                0
+      Disk resize               0
+      Files deleted             0
+      Database writes           0
+
+ - Production dirty tree vẫn được bảo toàn nguyên trạng:
+
+      M  app/Support/EnvironmentSafetyGuard.php
+      ?? .env.backup.20260916-193649
+      ?? app/Support/EnvironmentSafetyGuard.php.backup.20260916_213141
+
+ - Logging còn cần quyết định owner retention (journald forward sang syslog + Laravel file 22M), nên chưa thay logging production.
+ - ERP vẫn PAUSED tại GOODS_RECEIPT_CORRECTION_REQUIRES_MIGRATION.
+ - Final classification:
+
+      READY_FOR_SYSTEMD_HARDENING_AUTHORIZATION
