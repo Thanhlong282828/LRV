@@ -37516,7 +37516,7 @@ Nếu nói 100 chi nhánh cùng sử dụng ERP Laravel của bạn, thì e2-mic
  Không cần ngay từ đầu tạo 10 server.
 
  Và DB của bạn hiện đã đi trước một bước rồi: MySQL không nằm chung trong VM Laravel nữa mà đã được đưa sang Cloud SQL laravel-mysql.
-
+  
 
 
 Không. Lệnh/prompt bạn vừa dán chủ yếu là đo và kiểm tra Google Cloud ở chế độ READ-ONLY, không phải tự chỉnh cấu hình Google Cloud.
@@ -41923,7 +41923,7 @@ Câu trả lời phỏng vấn:                                                 
 
   React xem Backend URL ở :                                                  <
        .env:
-         VITE_API_URL=https://api.example.com
+         VITE_API_URL=https://api.example.com  
        Code:
            const api = axios.create({
                baseURL: import.meta.env.VITE_API_URL,
@@ -48564,18 +48564,888 @@ Câu trả lời phỏng vấn:                                                 
 
          Đó chính là Secrets Management.
     
-7.16 HTTPS / TLS                       <
+7.16 HTTPS / TLS                       <  
 
  Học: 
 
  HTTPS
- TLS
+   http://kayaga.one
+          ↓
+   Browser
+          ↓
+   Internet
+          ↓
+   Laravel
+   Dữ liệu truyền qua mạng không được TLS bảo vệ.
+ TLS  |  VPS
+    https://kayaga.one
+            ↓
+    Browser
+            ↓
+    TLS 🔒                          Encryption in Transit (bài trên)(Mã hóa 2 chiều )
+
+            ↓
+    Internet
+            ↓
+    Server
+   
+  Ví dụ user gửi:     
+
+       email    = user@example.com
+       password = MyPassword123     
+
+  HTTPS/TLS bảo vệ dữ liệu trong lúc truyền qua mạng:    
+
+      Browser
+         │
+         │ HTTPS / TLS 🔒
+         │
+         ↓
+      Server
+
+  Đây chính là kiến thức trước đó:
+
+      Encryption in Transit
+  2. TLS là gì?     
+
+         TLS = Transport Layer Security.     
+
+         TLS là công nghệ bảo mật nằm phía dưới HTTPS.     
+
+    Bạn có thể nhớ:      
+
+          HTTP
+          +
+          TLS
+          =
+          HTTPS 🔒      
+
+    TLS chủ yếu cung cấp:      
+
+          TLS
+          ├── Encryption
+          │   └── mã hóa dữ liệu đang truyền
+          │
+          ├── Integrity
+          │   └── giúp phát hiện dữ liệu bị sửa trên đường truyền
+          │
+          └── Authentication
+              └── certificate giúp client xác minh server/domain      
+
+    Ví dụ:
+
+    Browser
+       │
+       │ "Tôi muốn kết nối kayaga.one"
+       ↓
+    Server
+       │
+       │ Certificate
+       ↓
+    Browser kiểm tra certificate
+       ↓
+    TLS handshake
+       ↓
+    thiết lập kết nối bảo mật
+       ↓
+    HTTPS request    
+    -------------------------------
+    Nếu deploy Laravel trên VPS Ubuntu/Debian + Nginx, bạn thường không “cài TLS vào Laravel”. Bạn cài TLS certificate ở Nginx, thường bằng Let's Encrypt + Certbot.       
+
+            Luồng:       
+
+            Browser
+               ↓
+            HTTPS / TLS 🔒
+               ↓
+            Nginx + Certificate
+               ↓
+            PHP-FPM
+               ↓
+            Laravel
+
+     Ví dụ domain của bạn là kayaga.one, trên VPS chạy:
+
+     sudo apt update
+
+     sudo apt install -y certbot python3-certbot-nginx
+
+     Trước đó DNS của domain phải trỏ đúng IP VPS và Nginx phải có site cho domain:      
+
+           server {
+               listen 80;
+               server_name kayaga.one www.kayaga.one;      
+
+               root /var/www/laravel/public;
+               index index.php;
+           }      
+
+     Kiểm tra:        
+
+             sudo nginx -t
+             sudo systemctl reload nginx        
+
+     Sau đó xin certificate:        
+
+             sudo certbot --nginx \
+               -d kayaga.one \
+               -d www.kayaga.one
+
+     Certbot sẽ hỏi email và điều khoản. Khi thành công, certificate thường nằm dưới:      
+
+           /etc/letsencrypt/live/kayaga.one/
+           ├── fullchain.pem
+           └── privkey.pem
+
+     Nginx sau đó sẽ có cấu hình HTTPS tương tự:
+
+           server {
+               listen 443 ssl;
+               server_name kayaga.one www.kayaga.one;
+
+               ssl_certificate /etc/letsencrypt/live/kayaga.one/fullchain.pem;
+               ssl_certificate_key /etc/letsencrypt/live/kayaga.one/privkey.pem;
+
+               root /var/www/laravel/public;
+
+               # ...
+           }
+
+     Và HTTP nên redirect sang HTTPS:      
+
+           server {
+               listen 80;
+               server_name kayaga.one www.kayaga.one;      
+
+               return 301 https://$host$request_uri;
+           }
+
+     Kết quả:
+       
+            http://kayaga.one
+                   ↓
+            301 Redirect
+                   ↓
+            https://kayaga.one
+                   ↓
+            TLS handshake
+                   ↓
+            Certificate được kiểm tra
+                   ↓
+            HTTPS/TLS 🔒
+                   ↓
+            Nginx
+                   ↓
+            Laravel
+
+     Sau đó Laravel production đặt:       
+
+            APP_URL=https://kayaga.one       
+
+            SESSION_SECURE_COOKIE=true
+            SESSION_HTTP_ONLY=true
+            SESSION_SAME_SITE=lax
+
+     rồi:     
+
+          php artisan optimize:clear
+          php artisan config:cache
+
+     Kiểm tra certificate tự gia hạn:
+
+          udo systemctl status certbot.timer
+
+     và thử:
+
+          sudo certbot renew --dry-run
+
+     Nếu pass thì Certbot có thể tự gia hạn certificate.
+
+     Quan trọng: đừng chạy certbot trước khi kayaga.one và www.kayaga.one đều trỏ đúng VPS. Nếu chỉ kayaga.one trỏ đúng mà www chưa đúng, chỉ xin certificate cho domain chính:
+
+          sudo certbot --nginx -d kayaga.one
+
+     Với kiến trúc của bạn, chỉ cần nhớ:
+
+     TLS không cài trong Controller Laravel.      
+
+           TLS
+           ↓
+           Nginx
+           ↓
+           Certificate Let's Encrypt
+           ↓
+           Laravel nhận request phía sau
+
+     Hướng dẫn Certbot cho Nginx
+
+     Nếu VPS kayaga.one của bạn đang chạy Nginx rồi, tôi có thể đưa bạn nguyên bộ lệnh kiểm tra DNS → Nginx → cài TLS → test HTTPS, để bạn copy chạy lần lượt.
  SSL certificate
- HSTS
- Secure Cookie
- HTTP → HTTPS redirect
- reverse proxy / trusted proxy
-7.17 Security Headers                       <
+  3. SSL Certificate là gì?
+
+     Tên thường gọi là SSL certificate, nhưng hệ thống hiện đại thực tế sử dụng TLS certificate.
+
+  Certificate giống như giấy chứng nhận:     
+
+       Browser
+       ↓
+       https://kayaga.one
+       ↓
+       Server đưa Certificate
+       ↓
+       Certificate chứng minh
+       "certificate này hợp lệ cho kayaga.one"
+       ↓
+       Browser xác minh
+       ↓
+       ✅
+       ↓
+       thiết lập TLS
+
+  Certificate thường có:      
+
+        Domain
+        Issuer
+        Public Key
+        Validity period
+        Digital signature
+        ...
+
+  Ví dụ bạn có thể dùng Let's Encrypt để cấp certificate miễn phí.
+
+  Nginx có thể được cấu hình kiểu:
+
+  server {
+      listen 443 ssl;
+      server_name kayaga.one;
+
+      ssl_certificate /etc/letsencrypt/live/kayaga.one/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/kayaga.one/privkey.pem;
+  }
+
+  Luồng:
+
+  Browser
+  ↓
+  HTTPS :443
+  ↓
+  Nginx
+  ├── certificate
+  └── private key
+  ↓
+  TLS
+  ↓
+  Laravel
+
+  Private key tuyệt đối không đưa lên GitHub.
+ HSTS |   Domain này phải được truy cập bằng HTTPS trong khoảng thời gian quy định.
+    6. HSTS   
+
+   HSTS = HTTP Strict Transport Security.   
+
+   Server trả header:   
+
+   Strict-Transport-Security: max-age=31536000   
+
+   Nó nói với browser:   
+
+   Domain này phải được truy cập bằng HTTPS trong khoảng thời gian quy định.   
+
+   Luồng ban đầu:   
+
+   Browser
+   ↓
+   HTTPS kayaga.one
+   ↓
+   Server
+   ↓
+   Strict-Transport-Security
+   ↓
+   Browser ghi nhớ   
+
+   Sau đó nếu user cố:   
+
+   http://kayaga.one   
+
+   browser đã biết:   
+
+   kayaga.one
+   → phải HTTPS   
+
+   và nâng kết nối lên HTTPS theo chính sách HSTS.   
+
+   Nginx   
+
+   Ví dụ:   
+
+   add_header Strict-Transport-Security "max-age=31536000" always;   
+
+   Nhưng đừng bật HSTS dài hạn/preload một cách tùy tiện khi HTTPS của domain/subdomain chưa được cấu hình chắc chắn. Cấu hình sai có thể khiến browser từ chối truy cập HTTP trong thời gian HSTS còn hiệu lực.
+ Secure Cookie 
+    5. Secure Cookie  
+
+   Bạn đã học Session/Cookie ở phần trước.  
+
+   Ví dụ:  
+
+        laravel_session=ABCXYZ  
+
+   Nếu cấu hình:  
+
+        SESSION_SECURE_COOKIE=true  
+
+   thì cookie được đánh dấu:  
+
+         Secure  
+
+   Browser chỉ gửi cookie đó qua kết nối HTTPS phù hợp.  
+    
+       HTTP
+      ↓
+       laravel_session
+       ❌ không gửi Secure cookie  
+    
+       HTTPS 🔒
+      ↓
+       laravel_session
+       ✅ gửi  
+    
+   Production thường:      
+
+       APP_ENV=production
+       APP_DEBUG=false      
+
+       SESSION_SECURE_COOKIE=true
+       SESSION_HTTP_ONLY=true
+       SESSION_SAME_SITE=lax  
+
+   Ba cái khác nhau:      
+
+       Secure
+       → chỉ gửi cookie qua HTTPS      
+
+       HttpOnly
+       → JavaScript không trực tiếp đọc cookie      
+
+       SameSite
+       → kiểm soát việc gửi cookie trong cross-site context
+ HTTP → HTTPS redirect  | chuyển đổi
+     4. HTTP → HTTPS Redirect
+
+    Bạn không muốn user truy cập:
+
+          http://kayaga.one
+
+    mà muốn tự chuyển sang:
+
+          https://kayaga.one
+
+    Nginx:
+
+          server {
+              listen 80;
+              server_name kayaga.one www.kayaga.one;
+
+              return 301 https://$host$request_uri;
+          }
+
+    Luồng:        
+
+            User
+            ↓
+            http://kayaga.one/login
+            ↓
+            Nginx :80
+            ↓
+            301 Redirect
+            ↓
+            https://kayaga.one/login
+            ↓
+            Nginx :443 🔒
+            ↓
+            Laravel
+    Port cần nhớ
+             HTTP
+             → port 80
+
+             HTTPS
+             → port 443  
+ reverse proxy / trusted proxy  | Reverse Proxy:  là  Những thành phần phía trước application đó có thể hoạt động như proxy/reverse proxy.     | Trusted Proxy : vd cấu hình bootstrap/app.php :    at: ['10.0.0.10'],    > Attacker IP: 8.8.8.8 > tự gửi: X-Forwarded-For: 127.0.0.1 > Laravel > 8.8.8.8 không phải Trusted Proxy > ❌ không được coi header giả đó như thông tin từ proxy tin cậy
+
+ 
+     7. Reverse Proxy là gì?    
+
+    Đây là phần rất quan trọng khi deploy Laravel.    
+
+    Ví dụ:         
+
+         Internet
+            ↓
+         Nginx
+            ↓
+         Laravel    
+
+    Nginx đứng phía trước Laravel.    
+
+    Nginx có thể:         
+
+         Nginx
+         ├── nhận HTTPS
+         ├── xử lý TLS certificate
+         ├── redirect HTTP → HTTPS
+         ├── serve static files
+         ├── security headers
+         ├── rate limiting
+         └── chuyển request vào application    
+
+    Một kiến trúc khác:          
+
+          Browser
+             ↓ HTTPS
+          Cloudflare
+             ↓ HTTPS
+          Nginx
+             ↓
+          Laravel          
+
+     Hoặc:          
+
+          Browser
+          ↓
+          Load Balancer
+          ↓
+          Nginx
+          ↓
+          Laravel    
+
+    Những thành phần phía trước application đó có thể hoạt động như proxy/reverse proxy.    
+
+    8. Trusted Proxy là gì?    
+
+    Đây là chỗ Laravel developer cần hiểu kỹ.    
+
+    Giả sử:         
+
+         Browser
+            │
+            │ HTTPS
+            ↓
+         Reverse Proxy
+            │
+            │ HTTP nội bộ
+            ↓
+         Laravel    
+
+    Laravel nhìn kết nối trực tiếp và có thể tưởng:    
+
+         HTTP    
+
+    trong khi request gốc của user thực tế là:    
+
+         HTTPS    
+
+    Proxy có thể gửi thông tin như:    
+     
+         X-Forwarded-Proto: https
+         X-Forwarded-For: 1.2.3.4
+         X-Forwarded-Host: example.com    
+
+    Luồng:         
+
+         Browser
+         ↓
+         HTTPS
+         ↓
+         Reverse Proxy
+         ↓
+         X-Forwarded-Proto: https
+         X-Forwarded-For: client-ip
+         ↓
+         Laravel    
+
+    Laravel cần biết proxy nào đáng tin để sử dụng các forwarded headers đó.    
+
+    Đó là Trusted Proxy.    
+
+    Nếu tin forwarded headers từ nguồn không phù hợp, attacker có thể giả mạo một số thông tin proxy-related. Vì vậy không nên hiểu đơn giản là:    
+
+          Tin tất cả header từ tất cả mọi người
+
+TLS/HTTPS
+    +
+Secure Cookie
+    +
+HttpOnly
+       1. Mở .env
+
+      Thêm hoặc kiểm tra:
+
+            SESSION_HTTP_ONLY=true
+
+      Production nên đi cùng:      
+
+            SESSION_SECURE_COOKIE=true
+            SESSION_HTTP_ONLY=true
+            SESSION_SAME_SITE=lax      
+
+      Ý nghĩa:       
+
+             SESSION_SECURE_COOKIE=true
+             → Cookie chỉ gửi qua HTTPS 🔒       
+
+             SESSION_HTTP_ONLY=true
+             → JavaScript không được đọc session cookie       
+
+             SESSION_SAME_SITE=lax
+             → hạn chế gửi cookie trong cross-site context
+      2. Kiểm tra config/session.php
+
+      Thông thường Laravel đã có cấu hình:
+
+             'http_only' => env('SESSION_HTTP_ONLY', true),
+
+      Tức là:      
+
+            .env
+            SESSION_HTTP_ONLY=true
+                    ↓
+            config/session.php
+                    ↓
+            'http_only' => true
+                    ↓
+            Laravel tạo session cookie
+                    ↓
+            HttpOnly
+      3. Xóa cache config
+
+      Sau khi sửa .env:
+
+           php artisan optimize:clear
+
+      Production sau đó có thể:
+
+           php artisan config:cache
+      4. Kiểm tra trên trình duyệt
+
+      Chrome:       
+
+             F12 / DevTools
+             ↓
+             Application
+             ↓
+             Storage
+             ↓
+             Cookies
+             ↓
+             https://kayaga.one
+             ↓
+             tìm laravel_session
+
+      Bạn sẽ thấy đại loại:       
+
+             Name              Secure    HttpOnly    SameSite
+             laravel_session   ✓         ✓           Lax
+
+      Nếu:
+
+            HttpOnly ✓
+
+      thì đã hoạt động.
+
+      5. HttpOnly bảo vệ cái gì?
+
+      Giả sử session:
+
+             laravel_session=ABCXYZ
+
+      Không có HttpOnly, JavaScript có khả năng đọc cookie không được bảo vệ bằng HttpOnly:
+
+             document.cookie
+
+      Có HttpOnly:       
+
+             JavaScript
+                 ↓
+             document.cookie
+                 ↓
+             ❌ không đọc được laravel_session       
+
+      Nhưng browser vẫn tự gửi cookie khi request phù hợp:       
+
+             Browser
+                │
+                │ Cookie: laravel_session=ABCXYZ
+                │ HTTPS 🔒
+                ↓
+             Laravel
+
+      Đây là điểm quan trọng:
+
+            HttpOnly không cấm browser sử dụng cookie. Nó ngăn JavaScript truy cập trực tiếp cookie đó.
+    +
+SameSite
+-------------------------------giải thích 2:  trusted proxy   ( projec hiên tại chưa có hãy thêm vào )
+          Trusted Proxy là gì?         
+
+         Trusted Proxy = khai báo cho Laravel biết proxy nào đứng phía trước là proxy đáng tin cậy.         
+
+         Nó quan trọng khi hệ thống không phải:                 
+
+                 Browser
+                    ↓
+                 Laravel         
+
+         mà là:                
+
+                Browser
+                   ↓
+                Cloudflare / Load Balancer / Reverse Proxy
+                   ↓
+                Nginx
+                   ↓
+                Laravel
+         1. Tại sao Laravel cần Trusted Proxy?         
+
+         Ví dụ người dùng truy cập:         
+
+               https://kayaga.one         
+
+         Nhưng kiến trúc server là:         
+           
+                    User
+                     │
+                     │ HTTPS
+                     ↓
+                    Reverse Proxy
+                     │
+                     │ HTTP nội bộ
+                     ↓
+                    Laravel         
+
+         Laravel chỉ nhìn kết nối gần nó nhất và có thể hiểu nhầm:               
+
+               Scheme = http
+               IP     = IP của Proxy
+               Host   = ...         
+
+         Trong khi thực tế:               
+
+               User dùng HTTPS
+               IP user = 1.2.3.4         
+
+         Proxy sẽ gửi các header kiểu:         
+      
+              X-Forwarded-For: 1.2.3.4
+              X-Forwarded-Proto: https
+              X-Forwarded-Host: kayaga.one         
+
+         Laravel có thể dùng chúng để hiểu request gốc.         
+
+         2. Trusted Proxy nói với Laravel điều gì?         
+
+         Nôm na:                 
+
+                 Laravel:
+                 "Tôi có được tin X-Forwarded-* này không?"
+                               ↓
+                         Trusted Proxy
+                               ↓
+                        Proxy đáng tin?
+                          /        \
+                        Có         Không
+                        ↓            ↓
+                    sử dụng       không tin                 
+
+         Ví dụ:                   
+
+                   Browser
+                   IP: 1.2.3.4
+                      │
+                      │ HTTPS
+                      ↓
+                   Proxy 10.0.0.10   ← Trusted Proxy
+                      │
+                      │ X-Forwarded-For: 1.2.3.4
+                      │ X-Forwarded-Proto: https
+                      ↓
+                   Laravel         
+
+         Laravel có thể xác định:                  
+
+                  $request->ip();
+                  // 1.2.3.4                  
+
+                  $request->secure();
+                  // true                  
+
+                  $request->getScheme();
+                  // https         
+
+         thay vì hiểu nhầm thông tin của proxy.         
+
+         3. Tại sao không tin tất cả mọi người?         
+
+         Attacker cũng có thể tự gửi header:               
+
+               X-Forwarded-For: 127.0.0.1
+               X-Forwarded-Proto: https         
+
+         Nếu ứng dụng tin forwarded headers sai cách:                 
+
+                 Attacker
+                    ↓
+                 tự tạo X-Forwarded-*
+                    ↓
+                 Laravel
+                    ↓
+                 ❌ tưởng thông tin đó đến từ proxy đáng tin         
+
+         Vì vậy mới có khái niệm:         
+
+                 Trusted Proxy = chỉ tin forwarded information khi request đi qua proxy mà hệ thống cho phép tin.         
+
+         4. Laravel cấu hình ở đâu?         
+
+         Ở Laravel hiện đại, middleware trusted proxy có thể được cấu hình trong bootstrap/app.php.         
+
+         Ví dụ khái niệm:                  
+
+                  use Illuminate\Http\Request;
+                  use Illuminate\Foundation\Configuration\Middleware;                  
+
+                  ->withMiddleware(function (Middleware $middleware) {
+                      $middleware->trustProxies(
+                          at: ['10.0.0.10'],
+                          headers: Request::HEADER_X_FORWARDED_FOR |
+                                   Request::HEADER_X_FORWARDED_HOST |
+                                   Request::HEADER_X_FORWARDED_PORT |
+                                   Request::HEADER_X_FORWARDED_PROTO
+                      );
+                  })         
+
+         Có nghĩa:                
+
+                10.0.0.10
+                   ↓
+                proxy của tôi
+                   ↓
+                Laravel tin forwarded headers từ proxy đó         
+
+         Cấu hình chính xác còn phụ thuộc bạn deploy trực tiếp Nginx, qua Cloudflare, load balancer, Docker hay nền tảng cloud.         
+
+         5. Reverse Proxy và Trusted Proxy khác nhau         
+
+         Đây là chỗ dễ nhầm:                 
+
+                 Reverse Proxy
+                 = SERVER đứng trước Laravel                 
+
+                 Trusted Proxy
+                 = CẤU HÌNH để Laravel biết proxy nào đáng tin         
+
+         Ví dụ:                   
+
+                   Internet
+                      ↓
+                   Cloudflare             ← Reverse Proxy
+                      ↓
+                   Nginx                   ← có thể là Reverse Proxy/Web server
+                      ↓
+                   Laravel         
+
+         Laravel:         
+         
+                  Trusted Proxy configuration
+                          ↓
+                  quyết định forwarded headers nào đáng tin
+         6. Nó liên quan HTTPS thế nào?         
+
+         Rất quan trọng nếu TLS kết thúc ở proxy:                
+
+                Browser
+                   │
+                   │ HTTPS 🔒
+                   ↓
+                Load Balancer
+                   │
+                   │ HTTP nội bộ
+                   ↓
+                Laravel         
+
+         Laravel có thể nhìn thấy HTTP ở hop cuối.         
+
+         Nhưng proxy gửi:         
+
+               X-Forwarded-Proto: https         
+
+         Trusted Proxy giúp Laravel hiểu:                  
+
+                  Request gốc
+                       ↓
+                  HTTPS ✅         
+
+         Điều này có thể ảnh hưởng đến việc Laravel nhận biết scheme và tạo URL đúng:         
+
+                   https://kayaga.one/login         
+
+         thay vì:         
+
+                   http://kayaga.one/login
+         7. Nếu VPS chỉ có Nginx + PHP-FPM thì sao?         
+
+         Ví dụ:         
+         
+                  Internet
+                     ↓ HTTPS
+                  Nginx
+                     ↓ FastCGI
+                  PHP-FPM
+                     ↓
+                  Laravel         
+
+         Đây không nhất thiết là tình huống bạn phải cấu hình Trusted Proxy giống mô hình:                
+
+                Internet         
+                  ↓
+                Cloudflare         
+                  ↓
+                Load Balancer         
+                  ↓
+                Nginx         
+                  ↓
+                Laravel         
+
+         Trusted Proxy đặc biệt cần chú ý khi có một proxy/CDN/load balancer thực sự chuyển tiếp request và X-Forwarded-* headers.         
+
+         Cách nhớ
+                       Reverse Proxy
+                       = ai đứng trước Laravel?         
+
+                       Trusted Proxy
+                       = Laravel tin proxy nào?         
+
+                       X-Forwarded-For
+                       = IP gốc là gì?         
+
+                       X-Forwarded-Proto
+                       = HTTP hay HTTPS gốc?         
+
+                       X-Forwarded-Host
+                       = host/domain gốc là gì?         
+
+         Ghép toàn bộ 7.16 của bạn:                
+
+                HTTPS       → HTTP chạy qua TLS
+                TLS         → bảo vệ đường truyền
+                Certificate → xác minh + phục vụ TLS
+                Redirect    → HTTP chuyển HTTPS
+                Secure      → cookie chỉ qua HTTPS
+                HttpOnly    → JS không đọc session cookie
+                HSTS        → browser ghi nhớ phải dùng HTTPS
+                Reverse Proxy → đứng trước Laravel
+                Trusted Proxy → Laravel biết proxy nào được tin
+
+7.17 Security Headers      5 header       | cấu hình ở 1 Nginx — phù hợp khi deploy VPS |  2. Laravel Middleware | ( projec hiên tại chưa có hãy thêm vào )         <
 
  Các header quan trọng: 
 
@@ -48584,7 +49454,654 @@ Câu trả lời phỏng vấn:                                                 
  X-Content-Type-Options
  Referrer-Policy
  Permissions-Policy
-7.18 CORS                       <
+ -------------------------------1. Content-Security-Policy  → kiểm soát nguồn tài nguyên/script | 2. Strict-Transport-Security → bắt buộc HTTPS | 3. X-Content-Type-Options   → không tự đoán MIME type | 4. Referrer-Policy   → kiểm soát thông tin Referer | 5. Permissions-Policy   → kiểm soát camera/mic/location...
+    7.17 — Security Headers   
+
+   Security Headers là các HTTP response header mà server gửi cho browser để nói cho browser biết phải áp dụng các quy tắc bảo mật nào khi hiển thị website.   
+
+   Luồng:           
+
+           Browser
+              ↓ Request
+           Nginx / Laravel
+              ↓ Response           
+
+           HTTP/2 200
+           Content-Security-Policy: ...
+           Strict-Transport-Security: ...
+           X-Content-Type-Options: nosniff
+           Referrer-Policy: ...
+           Permissions-Policy: ...           
+
+              ↓
+           Browser áp dụng các luật bảo mật   
+
+   Bạn đang học 5 header quan trọng:                  <    
+
+          1. Content-Security-Policy  → kiểm soát nguồn tài nguyên/script
+          2. Strict-Transport-Security → bắt buộc HTTPS
+          3. X-Content-Type-Options   → không tự đoán MIME type
+          4. Referrer-Policy          → kiểm soát thông tin Referer   |   → kiểm soát website khác biết user đến từ URL nào.
+          5. Permissions-Policy       → kiểm soát camera/mic/location...  | Có nghĩa là chính sách của trang không cho sử dụng: 
+   1. Content-Security-Policy — CSP               
+
+               Đây là header rất quan trọng để giảm rủi ro XSS và kiểm soát tài nguyên trang được phép tải từ đâu.               
+
+               Ví dụ attacker chèn:               
+
+                      <script src="https://evil.example/hack.js"></script>               
+
+               Nếu không có CSP phù hợp:                       
+
+                       Browser
+                       ↓
+                       thấy <script>
+                       ↓
+                       có thể tải evil.example/hack.js
+                       ↓
+                       ❌ chạy JavaScript độc hại               
+
+               Bạn có thể đặt CSP:               
+
+                        Content-Security-Policy: default-src 'self'               
+
+               'self' nghĩa là cùng origin.               
+
+               Ví dụ website:               
+
+                       https://kayaga.one               
+
+               thì:                            
+
+                            kayaga.one
+                               ↓
+                            CSS/JS/Image từ kayaga.one
+                               ↓
+                            ✅                            
+
+                            evil.example
+                               ↓
+                            ❌ CSP chặn                            
+
+               Nhưng thực tế project thường cần thêm nguồn bên ngoài, nên CSP phải được thiết kế theo tài nguyên thực tế.               
+
+               Ví dụ:                                     <
+
+                     Content-Security-Policy: default-src 'self'; img-src 'self' data:; object-src 'none'               
+
+               Ý nghĩa:                                    <
+
+                        default-src 'self'
+                        → mặc định chỉ tài nguyên cùng origin                        
+
+                        img-src 'self' data:
+                        → ảnh từ chính website hoặc data:                        
+
+                        object-src 'none'
+                        → không cho object/embed kiểu đó
+               Cẩn thận               
+
+               Không nên copy ngay CSP cực chặt vào production:               
+
+                      default-src 'self'               
+
+               nếu project đang dùng:                            
+
+                            Google Fonts
+                            Cloudflare Images
+                            CDN
+                            WebSocket
+                            Vite
+                            Google Maps
+                            ...               
+
+               vì CSP có thể chặn chúng.   
+
+   2. Strict-Transport-Security — HSTS                  
+
+                  Cái này bạn vừa học ở 7.16.                  
+
+                          Strict-Transport-Security: max-age=31536000                  
+
+                  Browser hiểu:                           
+
+                           kayaga.one
+                           ↓
+                           phải dùng HTTPS 🔒                  
+
+                  Ví dụ Nginx:                  
+
+                            add_header Strict-Transport-Security "max-age=31536000" always;                  
+
+                  Nhớ:                           
+
+                           HTTP → HTTPS redirect
+                           = Server chuyển HTTP sang HTTPS                           
+
+                           HSTS
+                           = Browser ghi nhớ website phải sử dụng HTTPS
+   3. X-Content-Type-Options   
+       
+          Thường cấu hình:   
+       
+                    X-Content-Type-Options: nosniff   
+       
+          nosniff nghĩa là:   
+       
+           Browser không nên tự suy đoán một kiểu nội dung khác với MIME type được khai báo trong những trường hợp header này áp dụng.   
+       
+          Ví dụ server trả file:   
+                 
+                    Content-Type: text/plain
+                    X-Content-Type-Options: nosniff   
+       
+          Browser không nên tự suy đoán:           
+       
+                  "Nhìn giống JavaScript đấy
+                  → để tôi chạy thử"   
+       
+          Mà tuân theo MIME type.   
+       
+          Điều này đặc biệt có ý nghĩa khi website xử lý nội dung/file do user upload.   
+       
+          Nginx:   
+       
+                  add_header X-Content-Type-Options "nosniff" always;   
+       
+          Cách nhớ:          
+       
+                 nosniff
+                 ↓
+                 Đừng tự "ngửi" để đoán Content-Type.
+   4. Referrer-Policy             
+
+             Khi user đang ở:             
+
+                   https://kayaga.one/employee/123             
+
+             rồi click sang website khác, browser có thể gửi thông tin Referer tùy chính sách.             
+
+             Ví dụ:             
+
+                   Referer: https://kayaga.one/employee/123             
+
+             Bạn có thể kiểm soát lượng thông tin được gửi bằng:             
+
+                   Referrer-Policy: strict-origin-when-cross-origin             
+
+             Nôm na:                     
+
+                     kayaga.one/page-a
+                             ↓
+                     kayaga.one/page-b                     
+
+                     same-origin
+                     → có thể gửi referrer chi tiết             
+
+             Còn khi đi cross-origin:                      
+
+                      kayaga.one/employee/123
+                              ↓
+                      other.example             
+
+             với policy trên, browser thường chỉ gửi origin phù hợp:             
+
+                       https://kayaga.one/             
+
+             thay vì toàn bộ:             
+
+                      https://kayaga.one/employee/123             
+ 
+             Nginx:             
+
+                      add_header Referrer-Policy "strict-origin-when-cross-origin" always;             
+
+             Cách nhớ:             
+
+                       Referrer-Policy
+                       → kiểm soát website khác biết user đến từ URL nào.
+   5. Permissions-Policy   
+          
+             Cái này kiểm soát quyền sử dụng một số tính năng browser.   
+          
+             Ví dụ:   
+          
+                      Permissions-Policy: camera=(), microphone=(), geolocation=()   
+          
+             Có nghĩa là chính sách của trang không cho sử dụng:             
+          
+                       Camera       ❌
+                       Microphone   ❌
+                       Geolocation  ❌   
+          
+             Rất hợp với ERP nếu website không cần những chức năng đó.   
+          
+             Ví dụ HRM của bạn cần lấy vị trí chấm công, thì không thể tùy tiện chặn:   
+          
+                        geolocation=()   
+          
+             Bạn có thể cần policy cho phép phù hợp, ví dụ chính origin:   
+          
+             Permissions-Policy: geolocation=(self), camera=(), microphone=()   
+          
+             Nôm na:              
+          
+                        HRM
+                        ├── Geolocation → ✅ website mình
+                        ├── Camera      → ❌
+                        └── Microphone  → ❌   
+          
+             Lưu ý: Permissions-Policy chỉ là một lớp policy; các API nhạy cảm như geolocation vẫn còn cơ chế permission/consent của browser.   
+          
+             Cấu hình Nginx   
+          
+             Ví dụ cơ bản:                
+          
+                          server {
+                              listen 443 ssl;
+                              server_name kayaga.one;                
+          
+                              # TLS
+                              ssl_certificate /etc/letsencrypt/live/kayaga.one/fullchain.pem;
+                              ssl_certificate_key /etc/letsencrypt/live/kayaga.one/privkey.pem;                
+          
+                              # Security Headers
+                              add_header Strict-Transport-Security "max-age=31536000" always;                
+          
+                              add_header X-Content-Type-Options "nosniff" always;                
+          
+                              add_header Referrer-Policy "strict-origin-when-cross-origin" always;                
+          
+                              add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;                
+          
+                              # CSP phải chỉnh theo tài nguyên thực tế của project.
+                              add_header Content-Security-Policy "default-src 'self'; object-src 'none';" always;                
+          
+                              # Laravel...
+                          }                
+          
+             Đừng copy nguyên CSP này vào project lớn của bạn ngay, vì Laravel ERP của bạn có thể sử dụng Vite, WebSocket/Reverb, Cloudflare Images hoặc dịch vụ ngoài và bị CSP chặn. CSP nên kiểm kê nguồn tài nguyên trước rồi cấu hình.   
+          
+             Laravel có thể đặt header không?   
+          
+             Có. Ví dụ middleware:             
+          
+                       <?php             
+          
+                       namespace App\Http\Middleware;             
+          
+                       use Closure;
+                       use Illuminate\Http\Request;
+                       use Symfony\Component\HttpFoundation\Response;             
+          
+                       final class SecurityHeaders
+                       {
+                           public function handle(Request $request, Closure $next): Response
+                           {
+                               $response = $next($request);             
+          
+                               $response->headers->set(
+                                   'X-Content-Type-Options',
+                                   'nosniff'
+                               );             
+          
+                               $response->headers->set(
+                                   'Referrer-Policy',
+                                   'strict-origin-when-cross-origin'
+                               );             
+          
+                               $response->headers->set(
+                                   'Permissions-Policy',
+                                   'camera=(), microphone=(), geolocation=(self)'
+                               );             
+          
+                               return $response;
+                           }
+                       }   
+          
+             Nhưng với:            
+          
+                         HSTS
+                         CSP
+                         X-Content-Type-Options
+                         Referrer-Policy
+                         Permissions-Policy   
+          
+             nếu chính sách áp dụng cho toàn website, thường có thể cấu hình ở Nginx/reverse proxy. Một số ứng dụng quản lý CSP ở application layer vì cần nonce/dynamic policy.   
+          
+             Kiểm tra website của bạn   
+          
+             Sau khi cấu hình:   
+          
+                        curl -I https://kayaga.one   
+          
+             Bạn muốn thấy kiểu:              
+          
+                        HTTP/2 200              
+          
+                        strict-transport-security: max-age=31536000
+                        x-content-type-options: nosniff
+                        referrer-policy: strict-origin-when-cross-origin
+                        permissions-policy: camera=(), microphone=(), geolocation=(self)
+                        content-security-policy: ...
+ Cách nhớ 7.17
+             Security Headers
+             │
+             ├── CSP
+             │   └── "Tài nguyên nào được phép chạy/tải?"
+             │
+             ├── HSTS
+             │   └── "Website này phải dùng HTTPS."
+             │
+             ├── X-Content-Type-Options
+             │   └── "Đừng tự đoán MIME type."
+             │
+             ├── Referrer-Policy
+             │   └── "Được tiết lộ bao nhiêu URL nguồn?"
+             │
+             └── Permissions-Policy
+                 └── "Trang được dùng camera/mic/location... thế nào?"   
+          
+             Trong 5 cái này, CSP là phần nên học kỹ nhất, vì nó liên hệ trực tiếp với phần XSS mà bạn đã học trước đó.
+ ------------------------------- có 2 cách cài : lệnh bên trong Nginx , đặt trong Middleware Laravel 
+  đúng. Website/Web App chính là nơi Security Headers được dùng rất nhiều. Các header này được server gửi kèm HTTP response về browser, chứ không phải đặt trong HTML theo kiểu thông thường.           
+
+           Chrome / Safari
+                 ↓ request
+           https://kayaga.one
+                 ↓
+           Nginx → Laravel
+                 ↓
+           HTTP Response
+           ├── Content-Security-Policy: ...
+           ├── Strict-Transport-Security: ...
+           ├── X-Content-Type-Options: nosniff
+           ├── Referrer-Policy: ...
+           └── Permissions-Policy: ...
+                 ↓
+           Browser đọc và áp dụng
+   Với Laravel của bạn, đặt ở đâu?   
+
+   Nếu production của bạn là:         
+
+         Internet
+            ↓
+         Nginx
+            ↓
+         PHP-FPM
+            ↓
+         Laravel         
+
+   thì các policy toàn website có thể đặt ngay trong Nginx, ví dụ file:   
+
+         /etc/nginx/sites-available/laravel   
+
+   Trong server { ... } HTTPS:               
+
+               server {
+                   listen 443 ssl;
+                   server_name kayaga.one www.kayaga.one;               
+
+                   # TLS
+                   ssl_certificate /etc/letsencrypt/live/kayaga.one/fullchain.pem;
+                   ssl_certificate_key /etc/letsencrypt/live/kayaga.one/privkey.pem;               
+
+                   # Security Headers
+                   add_header Strict-Transport-Security "max-age=31536000" always;               
+
+                   add_header X-Content-Type-Options "nosniff" always;               
+
+                   add_header Referrer-Policy "strict-origin-when-cross-origin" always;               
+
+                   add_header Permissions-Policy "camera=(), microphone=()" always;               
+
+                   # CSP phải thiết kế theo tài nguyên thật của website
+                   add_header Content-Security-Policy "default-src 'self'; object-src 'none';" always;               
+
+                   # ... cấu hình Laravel
+               }               
+
+   Sau đó:   
+
+        sudo nginx -t   
+
+   pass thì:   
+
+        sudo systemctl reload nginx   
+
+   Browser truy cập:   
+
+        https://kayaga.one   
+
+   Nginx sẽ trả:   
+      
+         HTTP Response
+         │
+         ├── HTML của Laravel
+         │
+         └── Headers
+             ├── HSTS
+             ├── CSP
+             ├── nosniff
+             ├── Referrer-Policy
+             └── Permissions-Policy
+   Laravel cũng đặt được   
+
+   Bạn cũng có thể tạo middleware:   
+        
+           Request
+           ↓
+           SecurityHeaders Middleware
+           ↓
+           Controller
+           ↓
+           Response
+           ↓
+           Middleware thêm headers
+           ↓
+           Browser   
+        
+   Ví dụ:   
+         
+            $response->headers->set(
+                'X-Content-Type-Options',
+                'nosniff'
+            );   
+         
+            $response->headers->set(
+                'Referrer-Policy',
+                'strict-origin-when-cross-origin'
+            );   
+         
+   Vì vậy có 2 chỗ phổ biến:   
+
+                               Security Headers
+                                     │
+                           ┌─────────┴─────────┐
+                           ↓                   ↓
+                         Nginx             Laravel Middleware
+                           │                   │
+                    toàn server/site       app kiểm soát   
+
+   Với project Laravel + Nginx của bạn, những header tĩnh áp dụng toàn site như HSTS, nosniff, Referrer-Policy rất hợp để đặt ở Nginx. CSP có thể đặt ở Nginx nếu policy cố định, nhưng nếu sau này bạn dùng CSP nonce/dynamic policy thì application middleware thường tiện hơn.   
+
+   Và đúng, website dùng chúng:                      
+
+                      Laravel website / ERP chạy Chrome
+                                   ↓
+                           Security Headers ✅                      
+
+                      React website
+                                   ↓
+                           Security Headers ✅                      
+
+                      Website bán hàng
+                                   ↓
+                           Security Headers ✅                      
+
+                      Admin dashboard
+                                   ↓
+                           Security Headers ✅   
+
+   Nói ngắn gọn: 7.17 này chủ yếu là bảo mật phía browser cho Web/Web App; server gửi luật, browser thực thi luật.
+ -------------------------------User mở https://kayaga.one > Browser gửi HTTP Request > Nginx nhận request > Laravel xử lý > Laravel/Nginx tạo HTTP Response > Nginx GẮN 5 SECURITY HEADERS vào Response > Response truyền qua HTTPS/TLS > Browser nhận HTTP Response > Browser áp dụng từng chính sách > Sau đó xử lý/render nội dung trang
+    À, ý bạn hỏi 5 Security Headers này đi từ đâu tới browser và browser đọc chúng ở bước nào.      
+
+   Luồng đầy đủ như này:               
+
+            1. User mở
+                https://kayaga.one
+                        ↓
+            2. Browser gửi HTTP Request
+                        ↓
+            3. Nginx nhận request
+                        ↓
+            4. Laravel xử lý
+                        ↓
+            5. Laravel/Nginx tạo HTTP Response
+                        ↓
+            6. Nginx GẮN 5 SECURITY HEADERS vào Response
+                        ↓
+            7. Response truyền qua HTTPS/TLS
+                        ↓
+            8. Browser nhận HTTP Response
+                        ↓
+            9. Browser đọc phần HEADERS trước
+                        ↓
+            10. Browser áp dụng từng chính sách
+                        ↓
+            11. Sau đó xử lý/render nội dung trang      
+
+   Ví dụ server trả về một HTTP response như:      
+
+             HTTP/2 200      
+
+             Content-Type: text/html
+             Content-Security-Policy: default-src 'self'
+             Strict-Transport-Security: max-age=31536000
+             X-Content-Type-Options: nosniff
+             Referrer-Policy: strict-origin-when-cross-origin
+             Permissions-Policy: camera=(), microphone=()      
+
+             <html>
+                 ...
+             </html>      
+
+   HTTP Response có thể hình dung thành 2 phần chính:              
+
+           HTTP RESPONSE
+           │
+           ├── HEADERS
+           │   │
+           │   ├── Content-Security-Policy
+           │   ├── Strict-Transport-Security
+           │   ├── X-Content-Type-Options
+           │   ├── Referrer-Policy
+           │   └── Permissions-Policy
+           │
+           └── BODY
+               │
+               └── HTML / JSON / file...      
+
+   Browser vốn được lập trình để hiểu các header tiêu chuẩn này. Không cần JavaScript của website tự đọc chúng.      
+
+   Ví dụ browser thấy:      
+
+            Content-Security-Policy: default-src 'self'      
+
+   thì engine của browser hiểu:               
+
+            "À, đây là CSP"
+                    ↓
+            chỉ cho phép tài nguyên theo policy
+                    ↓
+            <script src="https://evil.example/a.js">
+                    ↓
+            policy không cho
+                    ↓
+            ❌ chặn      
+
+   Browser thấy:      
+
+           Strict-Transport-Security: max-age=31536000      
+
+   thì:              
+
+           "Đây là HSTS"
+           ↓
+           ghi nhớ domain phải dùng HTTPS      
+
+   Browser thấy:      
+
+           X-Content-Type-Options: nosniff      
+
+   thì:      
+
+          "Không được MIME sniffing"      
+
+   Browser thấy:      
+
+           Referrer-Policy: strict-origin-when-cross-origin      
+
+   thì áp dụng policy khi gửi thông tin Referer.      
+
+   Browser thấy:      
+
+           Permissions-Policy: camera=(), microphone=()      
+
+   thì áp dụng hạn chế các tính năng tương ứng.      
+
+   Ví dụ với Nginx của bạn      
+
+   Bạn viết:      
+
+           add_header X-Content-Type-Options "nosniff" always;      
+
+   thì luồng chính xác là:           
+
+                     /etc/nginx/sites-available/laravel
+                             ↓
+                     Nginx đọc config
+                             ↓
+                     User request kayaga.one
+                             ↓
+                     Laravel tạo HTML
+                             ↓
+                     Nginx nhận response
+                             ↓
+                     Nginx thêm:           
+
+                     X-Content-Type-Options: nosniff           
+
+                             ↓
+                     HTTPS/TLS
+                             ↓
+                     Chrome nhận response
+                             ↓
+                     Chrome đọc header
+                             ↓
+                     Chrome áp dụng nosniff      
+
+   Nói ngắn gọn:                
+
+             Nginx/Laravel
+                     │
+                     │ tạo HTTP Response
+                     │
+                     ├── Security Headers = LUẬT
+                     │
+                     └── Body = DỮ LIỆU/TRANG WEB
+                     ↓
+             Browser
+                     │
+                     ├── đọc luật
+                     ├── áp dụng luật
+                     └── xử lý/render trang      
+
+   Server gửi luật → Browser tự đọc luật → Browser tự thực thi.      
+
+   Đó chính là cơ chế hoạt động của 5 Security Headers bạn đang học.
+7.18 CORS              12    chú thích ở cuối         <   
 
  Hiểu: 
 
@@ -48598,17 +50115,1222 @@ Câu trả lời phỏng vấn:                                                 
  React / React Native
          ↓
  Laravel API
+------------------------------- CORS rất quan trọng khi bạn có kiến trúc:
+                           React Web
+                              ↓
+                           Laravel API  
+
+                     Ví dụ:
+                            Frontend:
+                            https://app.kayaga.one  
+
+                            Backend:
+                            https://api.kayaga.one  
+
+                     Đây là 2 origin khác nhau, nên browser áp dụng CORS.
+  1. CORS là gì?
+                        CORS = Cross-Origin Resource Sharing.
+                        Nó quy định:
+                                 Browser có cho JavaScript từ origin A gửi request tới/đọc response từ origin B hay không.  
+
+                        Ví dụ:
+                                  React Web
+                                  https://app.kayaga.one
+                                          │
+                                          │ GET /api/employees
+                                          ↓
+                                  Laravel API
+                                  https://api.kayaga.one  
+
+                        Laravel trả:
+                                    Access-Control-Allow-Origin: https://app.kayaga.one  
+
+                        Browser thấy:
+                                     Origin hiện tại:
+                                     https://app.kayaga.one  
+
+                                             ↓  
+
+                                     Laravel cho phép:
+                                     https://app.kayaga.one  
+
+                                             ↓  
+
+                                     Khớp ✅  
+
+                                             ↓  
+
+                                     React được phép đọc response  
+
+  2. Origin là gì?
+                            Origin gồm:
+                                           Scheme + Host + Port  
+
+                            Ví dụ:
+                                       https://app.kayaga.one:443
+                                          │          │        │
+                                        scheme      host     port  
+
+                            Chỉ cần khác một thành phần có thể thành cross-origin.
+                            Ví dụ:
+                                       https://kayaga.one
+                                       https://api.kayaga.one  
+
+                            khác host → khác origin.
+                            Hoặc:
+                                      http://localhost:5173
+                                      http://localhost:8000  
+
+                            khác port:
+                                         5173 ≠ 8000  
+
+                            → khác origin.
+  3. Access-Control-Allow-Origin       |     Header này nói: Origin nào được phép truy cập/đọc response này theo CORS?  
+                    Header này nói:
+                                  Origin nào được phép truy cập/đọc response này theo CORS?  
+
+                    Laravel trả:
+                                   Access-Control-Allow-Origin: https://app.kayaga.one  
+
+                    Có nghĩa:
+                                  https://app.kayaga.one
+                                          ↓
+                                          ✅
+                                  Laravel API  
+
+                    Còn:
+                                  https://evil.example
+                                          ↓
+                                          ❌
+                                  Laravel API  
+
+                    Browser sẽ thực thi chính sách CORS tương ứng.
+                    Có thể gặp:
+                          Access-Control-Allow-Origin: *  
+
+                    * nghĩa là cho phép mọi origin trong trường hợp phù hợp.
+                    Với ERP production, thường bạn nên xác định frontend nào thực sự cần truy cập thay vì mở * không cần thiết.
+  4. Access-Control-Allow-Methods       |     Quy định HTTP method cross-origin được server cho phép: Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE  
+                      Quy định HTTP method cross-origin được server cho phép:
+                                   Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE  
+                    
+                      Ví dụ:
+                              React
+                               │
+                               ├── GET     /employees       ✅
+                               ├── POST    /employees       ✅
+                               ├── PUT     /employees/1     ✅
+                               ├── PATCH   /employees/1     ✅
+                               └── DELETE  /employees/1     ✅  
+                    
+                      Nếu policy chỉ cho:
+                                Access-Control-Allow-Methods: GET, POST  
+                    
+                      thì DELETE không nằm trong danh sách CORS cho phép.
+  5. Access-Control-Allow-Headers        |      Cái này nói request cross-origin được phép sử dụng những request header nào. 
+                     Cái này nói request cross-origin được phép sử dụng những request header nào.
+                     React có thể gửi:
+                               Authorization: Bearer ABCXYZ
+                               Content-Type: application/json
+                               X-Request-ID: 123  
+
+                     Server preflight có thể trả:
+                               Access-Control-Allow-Headers: Authorization, Content-Type, X-Request-ID  
+
+                     Browser:
+                                  React muốn gửi  
+
+                                  Authorization
+                                  Content-Type
+                                  X-Request-ID
+                                         ↓
+                                  CORS cho phép?
+                                         ↓
+                                        YES
+                                         ↓
+                                  gửi request  
+
+                     Đặc biệt API của bạn dùng:
+                                  Authorization: Bearer TOKEN  
+
+                     thì CORS policy cần cho phép header phù hợp.
+  6. Access-Control-Allow-Credentials  |   Cái này rất quan trọng nếu React Web sử dụng cookie/session cross-origin.     |  Access-Control-Allow-Credentials: true   |  Nó liên quan đến việc browser được phép thực hiện credentialed CORS request theo policy.
+                      Cái này rất quan trọng nếu React Web sử dụng cookie/session cross-origin.
+                      Server có thể trả:
+                                   Access-Control-Allow-Credentials: true  
+
+                      Nó liên quan đến việc browser được phép thực hiện credentialed CORS request theo policy.
+                      Ví dụ Sanctum SPA:
+                                     React Web
+                                     https://app.kayaga.one  
+
+                                             ↓
+                                     session cookie  
+
+                                     Laravel
+                                     https://api.kayaga.one  
+
+                      Client cũng phải gửi request theo chế độ credentials phù hợp, ví dụ Axios:
+                                      axios.defaults.withCredentials = true;  
+
+                      và server cần cấu hình CORS tương ứng.
+                      Một điểm quan trọng:
+                                      Credentials = true
+                                      +
+                                      Access-Control-Allow-Origin: *  
+
+                      không phải cách hợp lệ cho credentialed CORS response trong browser.
+                      Bạn cần origin cụ thể, ví dụ:
+                                       Access-Control-Allow-Origin: https://app.kayaga.one
+                                       Access-Control-Allow-Credentials: true  
+
+  7. Preflight OPTIONS là gì?               là lệnh chứa nhiều header trên
+                      Đây là phần cực kỳ quan trọng của CORS.
+                      Giả sử React muốn:
+                                      DELETE /api/employees/10
+                                      Authorization: Bearer ABC  
+
+                      Browser có thể chưa gửi DELETE ngay.
+                      Nó hỏi server trước bằng:
+                                      OPTIONS /api/employees/10  
+
+                      Nôm na:
+                                  Browser:  
+
+                                  "Tôi là:
+                                  https://app.kayaga.one  
+
+                                  Tôi muốn:
+                                  DELETE  
+
+                                  Tôi muốn gửi:
+                                  Authorization  
+
+                                  Cho không?"  
+
+                      Server trả policy CORS:
+                                 Access-Control-Allow-Origin: https://app.kayaga.one
+                                 Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE
+                                 Access-Control-Allow-Headers: Authorization, Content-Type  
+
+                      Browser kiểm tra:
+                                     Origin        ✅
+                                     DELETE        ✅
+                                     Authorization ✅  
+
+                                            ↓  
+
+                                     Preflight PASS  
+
+                                            ↓  
+
+                                     DELETE /api/employees/10
+                                     Authorization: Bearer ABC  
+
+                      Luồng:
+                                     React
+                                       │
+                                       │ OPTIONS
+                                       ↓
+                                     Laravel
+                                       │
+                                       │ CORS headers
+                                       ↓
+                                     Browser kiểm tra
+                                       │
+                                       │ PASS
+                                       ↓
+                                     React
+                                       │
+                                       │ DELETE thật
+                                       ↓
+                                     Laravel API  
+
+  8. Laravel cấu hình ở đâu?
+                     Thông thường bạn sẽ quan tâm tới:
+                                   config/cors.php  
+
+                     Ví dụ về mặt ý tưởng:
+                                 return [              
+
+                                     'paths' => [
+                                         'api/*',
+                                         'sanctum/csrf-cookie',
+                                     ],              
+
+                                     'allowed_methods' => ['*'],              
+
+                                     'allowed_origins' => [
+                                         'https://app.kayaga.one',
+                                     ],              
+
+                                     'allowed_headers' => ['*'],              
+
+                                     'exposed_headers' => [],              
+
+                                     'max_age' => 0,              
+
+                                     'supports_credentials' => true,              
+
+                                 ];  
+
+                     Nó tương ứng đại khái:
+                                    allowed_origins
+                                           ↓
+                                    Access-Control-Allow-Origin                 
+                                    
+
+                                    allowed_methods
+                                           ↓
+                                    Access-Control-Allow-Methods                 
+                                    
+
+                                    allowed_headers
+                                           ↓
+                                    Access-Control-Allow-Headers                 
+                                    
+
+                                    supports_credentials
+                                           ↓
+                                    Access-Control-Allow-Credentials  
+
+  9. React Web + Laravel API
+                       Ví dụ bạn dùng React Web:
+                                         React
+                                         https://app.kayaga.one
+                                                 │
+                                                 │ Authorization: Bearer TOKEN
+                                                 ↓
+                                         Laravel API
+                                         https://api.kayaga.one  
+
+                       Có CORS vì:
+                                           app.kayaga.one
+                                                  ≠
+                                           api.kayaga.one  
+
+                       Browser chính là thành phần thực thi CORS.
+                         ---------------------------------------------------------
+                     Có. Với OAuth2 / Laravel Passport, Access-Control-Allow-Headers vẫn hoạt động cùng nguyên tắc.
+                      Passport thường nhận OAuth2 access token qua header Authorization:
+                                Authorization: Bearer ACCESS_TOKEN                      
+
+                      Luồng React Web → Passport:
+                                   React Web
+                                      ↓
+                                   muốn gọi Laravel API
+                                      ↓
+                                   Authorization: Bearer ACCESS_TOKEN
+                                      ↓
+                                   Browser kiểm tra CORS
+                                      ↓
+                                   Access-Control-Allow-Headers
+                                      ↓
+                                   có cho Authorization không?
+                                      ↓ YES
+                                   Browser gửi request thật
+                                      ↓
+                                   Laravel Passport
+                                      ↓
+                                   kiểm tra Access Token
+                                      ↓
+                                   Controller                      
+
+                      Ví dụ CORS:
+                               'allowed_headers' => [
+                                   'Content-Type',
+                                   'Authorization',
+                                   'Accept',
+                               ],                      
+
+                      Sau đó request:
+                               GET /api/employees
+                               Authorization: Bearer eyJ...
+                               Accept: application/json                      
+
+                      thì phải phân biệt 2 lớp:
+                               CORS
+                               │
+                               └── Authorization có phải header được phép gửi?
+                                        ↓
+                                       YES
+                                        ↓
+                               Passport / OAuth2
+                               │
+                               └── Bearer ACCESS_TOKEN có hợp lệ không?
+                                        ↓
+                                       YES
+                                        ↓
+                               Authenticated User                      
+
+                      Ví dụ token sai:
+                                Authorization header
+                                        ↓
+                                CORS cho Authorization ✅
+                                        ↓
+                                Browser gửi request
+                                        ↓
+                                Passport kiểm tra token
+                                        ↓
+                                Token sai/hết hạn ❌
+                                        ↓
+                                401 Unauthorized                      
+
+                      Nên Access-Control-Allow-Headers: Authorization không có nghĩa token được chấp nhận. Nó chỉ cho browser biết header Authorization được phép sử dụng trong cross-origin request.
+                      Sanctum và Passport ở điểm này gần giống nhau
+                                Sanctum
+                                Authorization: Bearer SANCTUM_TOKEN
+                                              ↓
+                                        auth:sanctum                      
+                                
+
+                                Passport / OAuth2
+                                Authorization: Bearer OAUTH_ACCESS_TOKEN
+                                              ↓
+                                        auth:api / Passport                      
+
+                      Cả hai đều có thể cần CORS cho:
+                                 Access-Control-Allow-Headers: Authorization                      
+
+                      nếu caller là React Web chạy trong browser và cross-origin.
+                      Còn React Native:
+                                 React Native
+                                      ↓
+                                 Authorization: Bearer ACCESS_TOKEN
+                                      ↓
+                                 HTTPS
+                                      ↓
+                                 Laravel Passport                      
+
+                      không chịu browser CORS theo cách React Web chịu, vì nó không chạy như một web page trong browser.
+                      Cách nhớ:
+                                  Access-Control-Allow-Headers
+                                  → cho phép TÊN header Authorization                      
+
+                                  OAuth2 / Passport
+                                  → kiểm tra GIÁ TRỊ Bearer access token
+  10. React Native thì khác
+                      Đây là điểm bạn cần nhớ vì mục tiêu của bạn là React Native.
+                                        React Native
+                                             ↓
+                                        Laravel API  
+
+                      Native React Native app không phải một trang web chạy trong browser, nên không chịu browser CORS theo cách React Web chịu.
+                      Ví dụ:
+                                         React Web
+                                            ↓
+                                         Browser
+                                            ↓
+                                         CORS enforcement
+                                            ↓
+                                         Laravel API  
+
+                      Trong khi:
+                                       React Native App
+                                          ↓
+                                       HTTPS
+                                          ↓
+                                       Laravel API  
+
+                      Không nên hiểu:
+                                     React Native cần CORS giống React Web.  
+
+                      API vẫn cần những lớp bảo mật khác:
+                                       React Native
+                                            ↓
+                                       HTTPS/TLS
+                                            ↓
+                                       Authorization: Bearer TOKEN
+                                            ↓
+                                       Laravel
+                                            ↓
+                                       auth:sanctum
+                                            ↓
+                                       Policy / Permission
+                                            ↓
+                                       Validation
+                                            ↓
+                                       Rate Limit
+                                            ↓
+                                       Handler  
+                   -------------------------------
+                   Đúng. Phần CORS + Access-Control-Allow-* phía trên tôi đang giải thích chủ yếu cho Web App chạy trong browser, ví dụ React Web.
+                            React Web
+                            https://app.kayaga.one
+                                    ↓
+                                  Browser
+                                    ↓
+                                 CORS kiểm tra
+                                    ↓
+                            Laravel API
+                            https://api.kayaga.one                            
+
+                            Ví dụ React Web muốn gửi:
+                            Authorization: Bearer ACCESS_TOKEN
+                            Content-Type: application/json                            
+
+                            Browser sẽ quan tâm CORS:
+                            Access-Control-Allow-Origin
+                            Access-Control-Allow-Methods
+                            Access-Control-Allow-Headers
+                            Access-Control-Allow-Credentials                            
+
+                            Còn React Native Mobile App thì khác:
+                            React Native
+                                 ↓
+                            HTTPS
+                                 ↓
+                            Authorization: Bearer TOKEN
+                                 ↓
+                            Laravel API
+                                 ↓
+                            Sanctum / Passport                            
+
+                            React Native native app không bị browser CORS kiểm soát như React Web.
+                            Vì vậy trong phần 7.18 CORS, bạn nên nhớ:
+                                          CORS
+                                           │
+                                   chủ yếu liên quan
+                                           ↓
+                                     WEB BROWSER
+                                           │
+                                 ┌─────────┴─────────┐
+                                 ↓                   ↓
+                             React Web ✅       React Native ❌
+                             cần CORS           không theo browser CORS                            
+
+                            Còn Sanctum/Passport/OAuth2 là Authentication API; chúng có thể dùng cho Web hoặc Mobile. Chỉ khi Web browser gọi cross-origin API thì CORS mới chen vào luồng.
+  11. CORS KHÔNG phải Authorization
+                    Đây là chỗ rất hay nhầm.
+                    Giả sử:
+                                   Access-Control-Allow-Origin: https://app.kayaga.one  
+
+                    không có nghĩa:
+                    User này được xem bảng lương.  
+
+                    Nó chỉ là CORS policy cho browser.
+                    Bạn vẫn cần:
+                                   CORS
+                                   ↓
+                                   Browser có được thực hiện/đọc cross-origin response?  
+
+                                   Authentication
+                                   ↓
+                                   Bạn là ai?  
+
+                                   Authorization
+                                   ↓
+                                   Bạn được làm gì?  
+
+                                   Tenant/Policy
+                                   ↓
+                                   Bạn được truy cập dữ liệu công ty nào?  
+
+                    Ví dụ:
+                              React Web
+                                 ↓
+                              CORS ✅
+                                 ↓
+                              Laravel
+                                 ↓
+                              Sanctum authentication ✅
+                                 ↓
+                              payroll.view permission ❌
+                                 ↓
+                              403 Forbidden  
+
+                    CORS pass nhưng user vẫn 403 hoàn toàn bình thường.
+  12. CORS cũng không phải CSRF
+           Hai cái bạn đã học:
+                     CORS
+                     → browser có cho cross-origin interaction/read theo policy không?  
+                     
+
+                     CSRF
+                     → chống việc lợi dụng credential tự động như cookie/session
+                        để thực hiện request ngoài ý muốn  
+
+           Ví dụ Sanctum SPA cookie:
+                         React Web
+                           ↓
+                         CORS
+                           ↓
+                         CSRF protection
+                           ↓
+                         Session authentication
+                           ↓
+                         Authorization
+                           ↓
+                         Laravel  
+
+           Còn React Native + Bearer:
+                         React Native
+                              ↓
+                         HTTPS
+                              ↓
+                         Bearer token
+                              ↓
+                         auth:sanctum
+                              ↓
+                         Authorization
+                              ↓
+                         Laravel API  
+
+           Cách nhớ 4 header CORS
+                        Access-Control-Allow-Origin
+                        → AI được gọi?
+                        → Origin nào?                
+
+                        Access-Control-Allow-Methods
+                        → Được LÀM KIỂU request nào?
+                        → GET/POST/PUT/DELETE...                
+
+                        Access-Control-Allow-Headers
+                        → Được GỬI header nào?
+                        → Authorization/Content-Type...                
+
+                        Access-Control-Allow-Credentials
+                        → Credentialed cross-origin request có được cho phép?  
+
+ Và toàn bộ 7.18 bạn chỉ cần nhớ dễ hiểu trước tiên:        xem lại : 7.6 CSRF        mục 9                <
+      React Web
+           ↓
+      Browser
+           ↓
+      CORS kiểm tra
+           ↓
+      Laravel API  
+      
+
+      React Native
+           ↓
+      HTTPS/Bearer
+           ↓
+      Laravel API  
+
+  CORS chủ yếu là cơ chế bảo mật do browser thực thi cho cross-origin web requests.
+      | Client                         | Cách thường dùng        | Bearer? |
+      |---|---|---:|
+      | Laravel Blade Web              | Session + Cookie        | ❌ thường không |
+      | React Web SPA + Sanctum        | Session + Cookie + CSRF | ❌ thường không |
+      | React Web gọi API bằng token   | Bearer token            | ✅ |
+      | React Native + Sanctum         | API token               | ✅ |
+      | React Native + Passport/OAuth2 | OAuth access token      | ✅ |
+      | Server → Server API            | API/OAuth token         | ✅ thường dùng |
+  Gần đúng, nhưng bạn đang trộn “cách xác thực” với “gọi API”.❌
+  ✅Cả hai trường hợp đều có thể gọi API khi user bấm nút/thực hiện hành động trên Web. Khác nhau chủ yếu ở Laravel xác thực request bằng cái gì.
+        Trường hợp 1 — React Web SPA + Sanctum Cookie
+                                 Ví dụ user bấm nút “Xem nhân viên”:
+                                          React Web
+                                             ↓
+                                          User bấm "Xem nhân viên"
+                                             ↓
+                                          JavaScript gọi:
+                                          GET /api/employees
+                                             ↓
+                                          Browser tự gửi Session Cookie
+                                             ↓
+                                          Laravel Sanctum
+                                             ↓
+                                          xác thực Session
+                                             ↓
+                                          API trả JSON
+                                             ↓
+                                          React hiển thị danh sách            
+
+                                 Request có thể giống:
+                                           GET /api/employees
+                                           Cookie: laravel_session=XYZ...            
+
+                                 Ở đây credential chính là:
+                                            Session Cookie            
+
+        Trường hợp 2 — React Web gọi API bằng Bearer Token
+                                User cũng bấm “Xem nhân viên”:
+                                               React Web
+                                                  ↓
+                                               User bấm "Xem nhân viên"
+                                                  ↓
+                                               JavaScript gọi:
+                                               GET /api/employees
+                                                  ↓
+                                               đính kèm:
+                                               Authorization: Bearer ABC123
+                                                  ↓
+                                               Laravel
+                                                  ↓
+                                               kiểm tra token
+                                                  ↓
+                                               API trả JSON
+                                                  ↓
+                                               React hiển thị            
+
+                                Request:
+                                               GET /api/employees
+                                               Authorization: Bearer ABC123            
+
+                                Vậy không phải:
+                                               SPA + Sanctum
+                                               = bảo mật            
+
+                                               Bearer
+                                               = bấm URL gọi API            
+
+                                Mà chính xác là:
+                                                                React Web
+                                                                    ↓
+                                                                 gọi API
+                                                                    ↓
+                                                         GET /api/employees
+                                                                    ↓
+                                                       ┌────────────┴────────────┐
+                                                       ↓                         ↓
+                                               Session/Cookie              Bearer Token
+                                                       ↓                         ↓
+                                               xác thực bằng Session       xác thực bằng Token            
+
+         “Bấm URL” thì sao?
+                     Nếu ý bạn là user bấm:
+                                https://api.example.com/api/employees            
+
+                     trực tiếp trên thanh địa chỉ Chrome thì không phải cách React thường gửi Bearer token.
+                     React thường dùng JavaScript:
+                                 axios.get('/api/employees', {
+                                     headers: {
+                                         Authorization: `Bearer ${token}`
+                                     }
+                                 });            
+
+                     User chỉ cần:
+                                       Bấm nút
+                                          ↓
+                                       onClick()
+                                          ↓
+                                       Axios / fetch
+                                          ↓
+                                       API URL
+                                          ↓
+                                       Bearer Token
+                                          ↓
+                                       Laravel            
+
+                     Ví dụ thực tế ERP của bạn
+                     User bấm:
+                                    [ Xem bảng lương ]            
+
+                     React chạy:
+                                       axios.get('https://api.example.com/api/payroll', {
+                                           headers: {
+                                               Authorization: `Bearer ${token}`
+                                           }
+                                       });            
+
+                     Laravel nhận:
+                                       GET /api/payroll
+                                       Authorization: Bearer ABC123            
+
+                     Sau đó:
+                                        Laravel
+                                        ↓
+                                        Token hợp lệ?
+                                        ↓ YES
+                                        User là ai?
+                                        ↓
+                                        Có payroll.view?
+                                        ↓ YES
+                                        Company đúng?
+                                        ↓ YES
+                                        Lấy Payroll
+                                        ↓
+                                        JSON
+                                        ↓
+                                        React
+                                        ↓
+                                        hiển thị bảng lương            
+
+            Cách nhớ: cả Cookie và Bearer đều có thể dùng để xác thực khi React gọi API; khác nhau là Cookie được browser quản lý/gửi theo quy tắc cookie, còn Bearer token thường được client code chủ động đặt vào Authorization header.
 7.19 Database Security                      <
- DB user permissions
- không dùng root cho application
- encrypted connection
- backup
- encrypted backup
- sensitive-column protection
- audit
- tenant isolation
- transaction
- unique constraint
+ Phần này chuyển từ bảo mật Browser/API sang bảo vệ Database.
+ Với Laravel ERP của bạn, luồng tổng thể:
+   React / Browser / Mobile
+             ↓
+          HTTPS
+             ↓
+          Laravel
+             ↓
+    Repository / Eloquent
+             ↓
+         MySQL User
+             ↓
+           MySQL
+             ↓
+      Data + Backup   
+
+   Mục tiêu là: kể cả Laravel kết nối được MySQL, Laravel cũng chỉ có đúng quyền nó cần.
+ 1. DB User Permissions
+    MySQL có các user và mỗi user có quyền riêng.
+    Ví dụ:
+         root
+         ├── CREATE DATABASE
+         ├── DROP DATABASE
+         ├── CREATE USER
+         ├── GRANT
+         ├── SELECT
+         ├── INSERT
+         ├── UPDATE
+         ├── DELETE
+         └── ... 
+        
+         laravel_app
+         ├── SELECT
+         ├── INSERT
+         ├── UPDATE
+         └── DELETE 
+   
+    Application production không nhất thiết cần toàn bộ quyền quản trị MySQL.
+    Ví dụ tạo user:
+         CREATE USER 'laravel_app'@'localhost'
+         IDENTIFIED BY 'STRONG_RANDOM_PASSWORD'; 
+   
+    Cấp quyền cho database:
+          GRANT SELECT, INSERT, UPDATE, DELETE
+          ON schema_admin.*
+          TO 'laravel_app'@'localhost'; 
+   
+    Kiểm tra:
+          SHOW GRANTS FOR 'laravel_app'@'localhost'; 
+   
+    Đây là nguyên tắc:
+           Least Privilege — chỉ cấp quyền thực sự cần thiết. 
+   
+    Lưu ý migration/deployment cần CREATE, ALTER, INDEX... thì có thể thiết kế credential/quyền riêng cho deployment thay vì cấp dư quyền cho runtime app. 
+ 2. Không dùng root cho Application
+      Đây là lỗi rất phổ biến.
+      Không nên production:
+           DB_USERNAME=root
+           DB_PASSWORD=...  
+     
+      Vì nếu Laravel bị khai thác và credential DB bị lộ:
+              Attacker
+                  ↓
+              Laravel compromised
+                  ↓
+              lấy DB credentials
+                  ↓
+              root ❌
+                  ↓
+              quyền MySQL rất lớn  
+     
+      Tốt hơn:
+              DB_USERNAME=laravel_app
+              DB_PASSWORD=LONG_RANDOM_SECRET  
+     
+      Luồng:
+              Laravel
+                  ↓
+              laravel_app
+                  ↓
+              chỉ có quyền cần thiết
+                  ↓
+              schema_admin  
+             
+      Nếu credential bị lộ thì blast radius nhỏ hơn so với root.
+ 3. Encrypted Connection
+    Bạn đã học:
+         Encryption in Transit  
+   
+    Không chỉ:
+         Browser ← HTTPS → Laravel  
+   
+    Database connection cũng có thể cần mã hóa:
+         Laravel
+             │
+             │ TLS 🔒
+             ↓
+         MySQL  
+   
+    Đặc biệt khi DB nằm trên server/network khác:
+           Application Server
+                ↓
+               Network
+                ↓
+           Database Server  
+   
+    Nếu DB và Laravel cùng một host qua Unix socket/local connection thì threat model khác, nhưng với remote/cloud DB, TLS rất quan trọng.
+    Toàn hệ thống có thể thành:
+           Browser
+               │ HTTPS/TLS 🔒
+               ↓
+           Laravel
+               │ DB TLS 🔒
+               ↓
+           MySQL 
+ 4. Backup
+      Database production phải có backup.
+      Ví dụ:
+             MySQL
+              │
+              ├── users
+              ├── employees
+              ├── payroll
+              └── accounting
+                    ↓
+                 Backup
+                    ↓
+             2026-09-23.sql      
+
+      Nếu:
+              DB bị xóa
+              disk hỏng
+              deploy/migration lỗi
+              ransomware/sự cố vận hành      
+
+      thì backup giúp phục hồi.
+      Ví dụ mysqldump:
+                    mysqldump \
+                      -u backup_user \
+                      -p \
+                      schema_admin \
+                      > backup.sql      
+
+      Nhưng có file backup chưa đủ.
+      Phải quan tâm:
+                     Backup
+                     ├── tự động
+                     ├── retention
+                     ├── lưu tách biệt phù hợp
+                     ├── access control
+                     ├── encryption
+                     ├── integrity
+                     └── restore test      
+
+      Một backup chưa từng thử restore có thể đến lúc cần mới phát hiện không dùng được.  
+ 5. Encrypted Backup
+   Giả sử:
+         database.sql   
+
+    chứa:
+         Employees
+         Salary
+         Bank account
+         Personal information
+         Contracts
+         ...   
+
+   Nếu backup bị đánh cắp thì dữ liệu vẫn có thể lộ.
+   Do đó:
+          Database
+             ↓
+          Backup
+             ↓
+          Encrypt 🔒
+             ↓
+          backup.enc   
+
+   Kẻ lấy được:
+         backup.enc   
+
+   nhưng không có key phù hợp:
+        → không đọc plaintext trực tiếp   
+
+   Đây là một dạng bảo vệ data at rest.
+   Và nhớ:
+          Encrypted backup
+                  +
+          Encryption key   
+
+   không nên quản lý theo kiểu để tất cả cùng một chỗ, cùng quyền truy cập một cách vô nghĩa.
+ 6. Sensitive-column Protection
+       Không phải mọi column đều nhạy cảm như nhau.
+       Ví dụ HRM:
+                employees
+                ├── id
+                ├── name
+                ├── department_id
+                ├── bank_account       🔐
+                ├── government_id      🔐
+                └── ... 
+      
+       Nếu Laravel cần lấy lại giá trị gốc, có thể dùng encryption.
+       Ví dụ:
+               protected function casts(): array
+               {
+                   return [
+                       'bank_account' => 'encrypted',
+                       'government_id' => 'encrypted',
+                   ];
+               } 
+      
+       DB:
+               bank_account 
+              
+               Trước:
+               123456789 
+              
+               Sau:
+               eyJpdiI6Ik... 🔐 
+      
+       Laravel:
+               DB ciphertext
+                    ↓
+               Laravel decrypt
+                    ↓
+               123456789 
+      
+       Nhưng password thì:
+               Hash::make($password) 
+      
+       chứ không encrypt.
+       Quy tắc bạn đã học:
+       Cần lấy plaintext lại
+       → Encrypt 
+      
+       Chỉ cần kiểm tra đúng/sai
+       → Hash
+ 7. Audit
+    Audit trả lời:
+        Ai đã làm gì, với dữ liệu nào, lúc nào?    
+
+    Ví dụ:
+          14:00
+          User #12
+          ↓
+          UPDATE
+          ↓
+          Employee #100
+          ↓
+          salary
+          ↓
+          20,000,000 → 25,000,000    
+
+    Audit record có thể chứa:
+          actor_id
+          action
+          entity_type
+          entity_id
+          timestamp
+          request_id
+          IP/context phù hợp
+          old/new values (cân nhắc dữ liệu nhạy cảm)    
+
+    ERP rất cần audit cho:
+           Payroll
+           Accounting
+           Role/Permission
+           Employee
+           Bank/payment data
+           Approval
+           Contract    
+
+    Nhưng đừng ghi password, access token, API secret... vào audit log.
+ 8. Tenant Isolation
+   Cái này cực kỳ quan trọng với ERP multi-company của bạn.
+   Ví dụ:
+          Company 1
+          ├── Employee 1
+          └── Employee 2 
+  
+          Company 2
+          ├── Employee 3
+          └── Employee 4 
+  
+   User thuộc Company 1 không được:
+          GET /employees/4 
+  
+   rồi xem Employee 4 của Company 2.
+   Query nguy hiểm:
+         Employee::findOrFail($id); 
+  
+   Tenant-scoped:
+         Employee::query()
+             ->where('company_id', $companyId)
+             ->findOrFail($id); 
+  
+   Luồng:
+           User
+            ↓
+           Authenticated
+            ↓
+           Company context = 1
+            ↓
+           Policy / Permission
+            ↓
+           Query
+           WHERE company_id = 1
+            ↓
+           Database 
+  
+   Và database constraint/index/schema design cũng nên hỗ trợ tenant isolation chứ không chỉ dựa vào UI.
+ 9. Transaction
+       Transaction bảo vệ tính toàn vẹn của một nhóm thao tác DB.
+       Ví dụ chuyển tiền:
+               Account A
+               - 1,000,000       
+
+               Account B
+               + 1,000,000       
+
+       Nếu chỉ A bị trừ rồi chương trình crash trước khi cộng B:
+               A -1 triệu ✅
+               B +1 triệu ❌       
+
+               → dữ liệu sai       
+
+       Transaction:
+               DB::transaction(function () {
+                   // Trừ A
+                   // Cộng B
+               });       
+
+       Có hai kết quả chính:
+              Tất cả thành công
+                    ↓
+                  COMMIT ✅       
+
+       hoặc:
+               Có lỗi
+                ↓
+               ROLLBACK
+                ↓
+               quay lại trạng thái trước transaction       
+
+       Rất quan trọng trong:
+                 Payroll
+                 Payment
+                 Inventory
+                 Accounting
+                 Approval workflow
+ 10. Unique Constraint
+    Unique constraint đảm bảo DB không cho dữ liệu cần duy nhất bị trùng.
+    Ví dụ:
+          email VARCHAR(255) UNIQUE 
+
+    DB:
+           a@example.com   ✅ 
+
+           a@example.com
+                  ↓
+           duplicate
+                  ↓
+           ❌ DB từ chối 
+
+    Trong Laravel migration:
+          $table->string('email')->unique(); 
+
+    Hoặc ERP multi-tenant:
+            $table->unique([
+                'company_id',
+                'employee_code',
+            ]); 
+
+    Có nghĩa:
+             Company 1 + NV001 → ✅
+             Company 1 + NV001 → ❌ duplicate 
+
+             Company 2 + NV001 → ✅ 
+
+    Unique Constraint cực quan trọng với concurrency
+    Giả sử 2 request đến gần như cùng lúc:
+               Request A ─────┐
+                              ├── tạo payslip PAY001
+               Request B ─────┘ 
+
+    Nếu chỉ code:
+                 if (! Payslip::where('reference', 'PAY001')->exists()) {
+                     Payslip::create(...);
+                 } 
+
+    có thể xảy ra:
+                   A kiểm tra → chưa có
+                   B kiểm tra → chưa có 
+
+                   A INSERT
+                   B INSERT 
+
+                   → duplicate ❌ 
+
+    DB UNIQUE:
+                 UNIQUE(reference) 
+
+    thì:
+                A INSERT → ✅ 
+
+                B INSERT
+                   ↓
+                DB phát hiện trùng
+                   ↓
+                ❌ reject 
+
+    Đây chính là lý do project Payroll của bạn dùng:
+                 Idempotency
+                 +
+                 Unique Constraint
+                 +
+                 Transaction
+                 +
+                 Locking khi cần
+ Ghép toàn bộ 7.19
+ Một Laravel ERP được bảo vệ theo nhiều tầng:
+                           Laravel
+                              │
+                              ↓
+                       DB User riêng
+                              │
+                        Least Privilege
+                              │
+                              ↓
+                        TLS Connection 🔒
+                              │
+                              ↓
+                           MySQL
+              ┌───────────────┼────────────────┐
+              ↓               ↓                ↓
+       Tenant Isolation   Transaction       UNIQUE
+              │               │                │
+       đúng công ty      dữ liệu atomic    chống duplicate
+              │
+              ↓
+       Sensitive Columns 🔒
+              │
+              ↓
+       Audit
+              │
+              ↓
+       Backup
+              │
+              ↓
+       Encrypted Backup 🔒    
+ Cách nhớ
+       DB user permissions
+       → DB account chỉ có quyền cần thiết
+       
+       No root
+       → application không chạy bằng DB superuser
+       
+       Encrypted connection
+       → Laravel ↔ DB dùng TLS khi phù hợp
+       
+       Backup
+       → có dữ liệu để phục hồi
+       
+       Encrypted backup
+       → backup bị lấy cũng được bảo vệ
+       
+       Sensitive-column protection
+       → bảo vệ bank account/ID/secret...
+       
+       Audit
+       → ai làm gì, lúc nào
+       
+       Tenant isolation
+       → Company A không thấy Company B
+       
+       Transaction
+       → tất cả cùng thành công hoặc rollback
+       
+       Unique constraint
+       → DB không cho dữ liệu cần duy nhất bị trùng      
+Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique constraint là ba phần bạn nên học code thật kỹ, vì chúng không chỉ là “security” mà còn quyết định tính đúng đắn của dữ liệu.
 7.20 Multi-Tenant Security                       <
 
  Với HRM/ERP đây là mục bắt buộc. 
