@@ -50849,7 +50849,7 @@ SameSite
                                         hiển thị bảng lương            
 
             Cách nhớ: cả Cookie và Bearer đều có thể dùng để xác thực khi React gọi API; khác nhau là Cookie được browser quản lý/gửi theo quy tắc cookie, còn Bearer token thường được client code chủ động đặt vào Authorization header.
-7.19 Database Security                      <
+7.19 Database Security       10               <
  Phần này chuyển từ bảo mật Browser/API sang bảo vệ Database.
  Với Laravel ERP của bạn, luồng tổng thể:
    React / Browser / Mobile
@@ -50867,7 +50867,7 @@ SameSite
       Data + Backup   
 
    Mục tiêu là: kể cả Laravel kết nối được MySQL, Laravel cũng chỉ có đúng quyền nó cần.
- 1. DB User Permissions
+ 1. DB User Permissions          phân quyền cho user trong db      <
     MySQL có các user và mỗi user có quyền riêng.
     Ví dụ:
          root
@@ -50904,7 +50904,7 @@ SameSite
            Least Privilege — chỉ cấp quyền thực sự cần thiết. 
    
     Lưu ý migration/deployment cần CREATE, ALTER, INDEX... thì có thể thiết kế credential/quyền riêng cho deployment thay vì cấp dư quyền cho runtime app. 
- 2. Không dùng root cho Application
+ 2. Không dùng root cho Application        dùng DB VPS          <
       Đây là lỗi rất phổ biến.
       Không nên production:
            DB_USERNAME=root
@@ -50935,7 +50935,7 @@ SameSite
               schema_admin  
              
       Nếu credential bị lộ thì blast radius nhỏ hơn so với root.
- 3. Encrypted Connection
+ 3. Encrypted Connection         TLS mã hoá đường dẫn TLS đến DB            <
     Bạn đã học:
          Encryption in Transit  
    
@@ -50965,7 +50965,7 @@ SameSite
                │ DB TLS 🔒
                ↓
            MySQL 
- 4. Backup
+ 4. Backup        5      Kiểm tra VPS đã có mysqldump   | BACKUP→ cứu dữ liệu khi DB bị mất/hỏng        <
       Database production phải có backup.
       Ví dụ:
              MySQL
@@ -51005,7 +51005,582 @@ SameSite
                      └── restore test      
 
       Một backup chưa từng thử restore có thể đến lúc cần mới phát hiện không dùng được.  
- 5. Encrypted Backup
+    ------------------------------- giải thích 1: Backup Database cho Laravel/MySQL cài thế nào
+      Nếu bạn hỏi Backup Database cho Laravel/MySQL cài thế nào, thì Laravel bản thân không tự backup DB mặc định. Có 2 hướng: dùng mysqldump của MySQL hoặc package Laravel. Với project ERP, nên hiểu mysqldump trước.
+        1. Kiểm tra VPS đã có mysqldump
+              mysqldump --version        
+
+              Nếu báo không có, trên Debian/Ubuntu có thể cài MySQL client phù hợp với môi trường của bạn. Sau đó backup thủ công:
+              mysqldump \
+                -u laravel_app \
+                -p \
+                schema_admin \
+                > backup.sql        
+
+              Nó sẽ hỏi password DB.
+              Kết quả:
+              MySQL: schema_admin
+                      ↓
+                  mysqldump
+                      ↓
+                  backup.sql        
+
+              backup.sql chứa SQL để dựng lại dữ liệu/schema tương ứng với các option dump.
+        2. Nên lưu backup vào thư mục riêng
+               Ví dụ:
+               sudo mkdir -p /var/backups/laravel        
+
+               Backup có timestamp:
+               mysqldump \
+                 -u laravel_app \
+                 -p \
+                 schema_admin \
+                 > /var/backups/laravel/schema_admin_$(date +%Y-%m-%d_%H-%M-%S).sql        
+
+               Bạn sẽ có:
+               /var/backups/laravel/
+               ├── schema_admin_2026-09-24_02-10-00.sql
+               ├── schema_admin_2026-09-25_02-10-00.sql
+               └── ...        
+
+        3. Đừng để password thẳng trong script
+               Không nên:
+               mysqldump -u root -pMyRealPassword schema_admin > backup.sql        
+
+          vì password có thể lộ qua script/history hoặc các cơ chế khác.
+          Tốt hơn là dùng credential file được khóa quyền, secret store, hoặc cơ chế xác thực backup phù hợp.
+        4. Tự động backup
+                Ví dụ dùng cron để chạy mỗi ngày:
+                crontab -e        
+
+                Ý tưởng:
+                02:00 mỗi ngày
+                     ↓
+                mysqldump
+                     ↓
+                database.sql
+                     ↓
+                Encrypt
+                     ↓
+                lưu backup
+                     ↓
+                xóa backup quá cũ theo retention        
+
+                Nhưng tôi không khuyên nhét nguyên command có password vào cron.
+        5. Backup chưa đủ — phải kiểm tra restore
+                 Ví dụ restore vào database test/restore riêng, không đè production:
+                 mysql -u restore_user -p schema_admin_restore < backup.sql        
+
+                 Luồng:
+                 Production DB
+                      ↓
+                 BACKUP
+                      ↓
+                 backup.sql
+                      ↓
+                 RESTORE TEST
+                      ↓
+                 schema_admin_restore
+                      ↓
+                 kiểm tra dữ liệu        
+
+                 Đây mới chứng minh backup thực sự sử dụng được.
+        6. Với production ERP nên nâng lên
+                Không nên chỉ:
+                      MySQL
+                       ↓
+                      backup.sql
+                       ↓
+                      cùng VPS        
+
+                      Vì VPS chết/mất disk thì DB và backup có thể mất cùng lúc.
+                      Nên hướng tới:
+                      MySQL
+                       ↓
+                      Dump/Snapshot
+                       ↓
+                      Encrypt 🔒
+                       ↓
+                      ┌───────────────┐
+                      │ Local backup  │
+                      └───────┬───────┘
+                              ↓
+                      Off-site storage
+                              ↓
+                      S3 / Cloud Storage / backup service
+                              ↓
+                      Retention
+                              ↓
+                      Restore Test        
+
+                Và nên có:
+                         Automatic backup
+                         + Encryption
+                         + Off-site copy
+                         + Retention
+                         + Monitoring
+                         + Restore test        
+
+                Nếu mục tiêu hiện tại chỉ là học 7.19, bạn chưa cần cài package Laravel. Hãy nhớ trước:
+                          mysqldump = tạo backup
+                          mysql < backup.sql = restore        
+
+                          Backup ≠ chỉ tạo file
+                          Backup tốt = tạo + bảo vệ + lưu tách biệt + kiểm tra restore        
+
+                Nếu muốn, bước tiếp theo của project schema_admin có thể làm backup tự động mỗi ngày + giữ 7/30 ngày + mã hóa + lưu off-site, thay vì chỉ mysqldump thủ công.
+    ------------------------------- giải thích 2: Bạn đang nhầm giữa database backup và database dùng để test restore.      | câu hỏi: là trong vps nên tạo 2 db hay sao?
+     Không. Production bình thường không cần tạo 2 database chỉ để backup.
+     Bạn đang nhầm giữa database backup và database dùng để test restore.
+     Bình thường trên VPS
+     Chỉ cần DB production:
+               VPS
+               │
+               ├── Laravel
+               │
+               └── MySQL
+                   └── schema_admin      ← DB thật     
+
+     Mỗi ngày backup nó thành file, không phải DB thứ hai:
+                 schema_admin
+                      ↓
+                 mysqldump
+                      ↓
+                 schema_admin_2026-09-24.sql     
+
+     Ví dụ:
+                 VPS
+                 ├── MySQL
+                 │   └── schema_admin          ← DB production
+                 │
+                 └── /var/backups/laravel/
+                     ├── backup_2026-09-22.sql
+                     ├── backup_2026-09-23.sql
+                     └── backup_2026-09-24.sql     
+
+     Vậy schema_admin_restore lúc nãy là gì?
+     Nó chỉ là DB tạm để kiểm tra backup có phục hồi được không.
+     Ví dụ:
+                   schema_admin                 ← Production
+                        ↓
+                   mysqldump
+                        ↓
+                   backup.sql
+                        ↓
+                   restore thử
+                        ↓
+                   schema_admin_restore         ← DB TEST tạm     
+
+     Kiểm tra:
+                    schema_admin_restore
+                    ├── tables đủ?      ✅
+                    ├── employees đủ?   ✅
+                    ├── payroll đủ?     ✅
+                    └── dữ liệu đúng?   ✅     
+
+     Xong có thể xóa DB test:
+                    DROP DATABASE schema_admin_restore;     
+
+     Thậm chí tốt hơn, restore test không nhất thiết phải thực hiện trên chính VPS production. Có thể restore trên máy/dev/staging hoặc môi trường kiểm thử riêng để tránh ảnh hưởng production.
+     Còn backup tốt hơn
+     Mục tiêu cuối không phải:
+                       VPS
+                       ├── DB production
+                       └── DB backup     
+
+     Mà là:
+                         VPS
+                          │
+                     schema_admin
+                          │
+                      mysqldump
+                          ↓
+                   backup.sql
+                      /       \
+                     ↓         ↓
+             Local backup    Off-site backup
+                              🔒
+                               ↓
+                         Cloud Storage     
+
+     Nếu VPS chết hoàn toàn:
+                         VPS ❌
+                         ├── schema_admin ❌
+                         └── local backup ❌     
+
+                         Cloud backup ✅
+                                ↓
+                              VPS mới
+                                ↓
+                             MySQL mới
+                                ↓
+                         restore backup.sql
+                                ↓
+                         schema_admin ✅     
+
+     Cách nhớ: DB production = 1 DB thật; backup = file/snapshot được lưu an toàn; DB restore = DB tạm chỉ dùng khi muốn thử phục hồi.
+    ------------------------------- giải thích 3: Cloud backup nghĩa là file backup được đẩy ra một dịch vụ lưu trữ bên ngoài VPS. Bạn phải tạo nơi lưu đó trên một dịch vụ cloud. | Bạn có thể tạo ở các dịch vụ như Amazon S3, Google Cloud Storage, Cloudflare R2 hoặc object storage của nhà cung cấp VPS.
+      Cloud backup nghĩa là file backup được đẩy ra một dịch vụ lưu trữ bên ngoài VPS. Bạn phải tạo nơi lưu đó trên một dịch vụ cloud.
+        Ví dụ phổ biến:
+               VPS
+               │
+               ├── MySQL
+               │   └── schema_admin
+               │
+               └── mysqldump
+                     ↓
+               schema_admin_2026-09-24.sql
+                     ↓
+               Encrypt 🔒
+                     ↓
+               Upload qua Internet
+                     ↓
+               Cloud Storage      
+
+        Bạn có thể tạo ở các dịch vụ như Amazon S3, Google Cloud Storage, Cloudflare R2 hoặc object storage của nhà cung cấp VPS.
+        Vì project của bạn đã có hướng dùng Cloudflare R2 cho storage, R2 cũng có thể là một lựa chọn để lưu backup, nhưng nên tách bucket backup khỏi bucket media của ứng dụng và giới hạn credential riêng. 
+        Ví dụ:
+                Cloudflare R2
+                │
+                ├── Bucket: laravel-media
+                │   └── product-images/...
+                │
+                └── Bucket: laravel-db-backups
+                    ├── 2026/
+                    │   └── 09/
+                    │       ├── schema_admin_2026-09-23.sql.enc
+                    │       └── schema_admin_2026-09-24.sql.enc
+                    └── ...      
+
+                Khi đó kiến trúc là:
+                                 VPS
+                                  │
+                             schema_admin
+                                  ↓
+                              mysqldump
+                                  ↓
+                             backup.sql
+                                  ↓
+                              encrypt 🔒
+                                  ↓
+                          upload lên R2
+                                  ↓
+                      ┌─────────────────────┐
+                      │ Cloudflare R2       │
+                      │ db-backups bucket   │
+                      │ backup.sql.enc ✅   │
+                      └─────────────────────┘      
+
+        Điểm quan trọng là R2 không nằm trong ổ đĩa VPS của bạn. Vì vậy nếu VPS hỏng hoàn toàn, bạn vẫn có bản backup bên ngoài để dựng server mới và restore.
+        Nếu bạn đang học theo thứ tự, chưa cần làm cloud ngay. Có thể đi:
+                       Bước 1: mysqldump trên VPS
+                               ↓
+                       Bước 2: tự động backup
+                               ↓
+                       Bước 3: mã hóa backup
+                               ↓
+                       Bước 4: tạo R2 backup bucket
+                               ↓
+                       Bước 5: VPS tự upload backup lên R2
+                               ↓
+                       Bước 6: retention + restore test      
+
+        Nếu muốn triển khai thật trên VPS của bạn, mình có thể hướng dẫn từ tạo bucket Cloudflare R2 → tạo API token chỉ có quyền backup → script backup MySQL → upload tự động mỗi ngày.
+    ------------------------------- giải thích 4: 2 cách : 1 Laravel dung  config/filesystems.php > .env   |  2 để R2 bên ngoài khi cần thì chạy lệnh > lệnh sẽ kêu nhập cá mã của R2 
+      À, có. VPS muốn chạy lệnh upload/download Cloudflare R2 thì bắt buộc phải có thông tin xác thực R2 ở đâu đó. Chỉ là không bắt buộc phải gắn chúng vào source code Laravel.
+      Bạn có thể tách hoàn toàn backup khỏi project Laravel:
+                   Laravel project
+                   └── không cần biết R2 backup      
+
+                   VPS
+                   ├── MySQL
+                   │
+                   ├── backup script
+                   │
+                   └── R2 credentials 🔑
+                       ├── Account ID / endpoint
+                       ├── Access Key ID
+                       └── Secret Access Key
+                             ↓
+                         Cloudflare R2      
+
+      Ví dụ dùng công cụ tương thích S3 như AWS CLI, VPS được cấu hình credential một lần. Sau đó script có thể chạy kiểu:
+                   aws s3 cp backup.sql.enc \
+                     s3://schema-admin-db-backups/backup.sql.enc \
+                     --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com      
+
+      Nhưng để lệnh đó hoạt động, máy phải có:
+                    Access Key ID
+                    Secret Access Key
+                    R2 endpoint / Account ID
+                    Bucket name      
+
+      Không nên viết secret thẳng vào project
+      Không nên làm kiểu:
+                   $secret = "abc123_REAL_SECRET";      
+
+      rồi commit GitHub. ❌
+      Bạn có 2 kiến trúc:
+                    CÁCH A — Laravel trực tiếp dùng R2      
+
+                    Laravel
+                     ↓
+                    config/filesystems.php
+                     ↓
+                    .env
+                    R2_ACCESS_KEY_ID=...
+                    R2_SECRET_ACCESS_KEY=...
+                    R2_BUCKET=...
+                     ↓
+                    R2      
+
+      Cách này phù hợp khi Laravel application thực sự cần đọc/ghi object R2.
+      Còn backup DB có thể dùng:
+                    CÁCH B — VPS tự backup ⭐      
+
+                    Laravel ─────────────── không liên quan      
+
+                    MySQL
+                     ↓
+                    VPS backup script
+                     ↓
+                    R2 credentials trên VPS
+                     ↓
+                    Cloudflare R2      
+
+      Đây chính là điều bạn đang hỏi.
+      Khi VPS chết thì sao?
+      VPS cũ chết đồng nghĩa credential/config trên VPS cũ cũng có thể mất:
+                    VPS cũ 💥      
+
+                    Cloudflare R2
+                    └── backup.sql.enc ✅      
+
+      Bạn tạo VPS mới và cấu hình lại R2 credentials:
+                    VPS mới
+                     ↓
+                    cài công cụ R2/S3
+                     ↓
+                    đưa R2 credential vào VPS mới
+                     ↓
+                    download backup.sql.enc
+                     ↓
+                    decrypt
+                     ↓
+                    mysql < backup.sql
+                     ↓
+                    schema_admin phục hồi ✅      
+
+      Vì vậy phải quản lý credential ở nơi an toàn bên ngoài VPS nữa, ví dụ secret manager/password manager hoặc quy trình tạo/rotate credential mới.
+      Cách nhớ:
+                     Không cần:
+                     R2 credential nằm trong Laravel ❌      
+
+                     Nhưng bắt buộc:
+                     VPS phải được xác thực với R2 ✅      
+
+                     VPS ── R2 credentials ──> Cloudflare R2      
+
+      Với backup database của bạn, mình sẽ ưu tiên tách backup script khỏi Laravel, để việc Laravel lỗi/deploy lỗi không làm mất luôn cơ chế backup. 
+    ------------------------------- giải thích 5: mẫu | thao tác tạo trong R2 
+         Đúng chỗ quan trọng rồi: Cloudflare R2 xác thực VPS bằng Access Key ID + Secret Access Key. R2 cung cấp API tương thích S3, nên các công cụ như AWS CLI/rclone/SDK có thể dùng cặp credential này để ký request gửi tới R2. Cloudflare Docs
+          Luồng:
+                    VPS
+                     │
+                     │ Access Key ID
+                     │ Secret Access Key
+                     │
+                     ↓
+                    ký request S3
+                     │
+                     ↓
+                    Cloudflare R2
+                     │
+                     ├─ Credential đúng?
+                     ├─ Token còn hiệu lực?
+                     ├─ Có quyền bucket này?
+                     │
+                     ↓
+                    Cho upload/download     
+
+          1. Tạo credential ở Cloudflare
+          Trong Cloudflare Dashboard:
+                     Storage & databases
+                     ↓
+                     R2
+                     ↓
+                     Overview
+                     ↓
+                     Manage API Tokens
+                     ↓
+                     Create API Token     
+
+          Cloudflare hiện cho tạo Account API token hoặc User API token. Với backup, nên giới hạn token vào đúng bucket backup và chỉ cấp quyền cần thiết, chẳng hạn Object Read & Write. Cloudflare Docs
+          Ví dụ:
+                     Bucket:
+                     schema-admin-db-backups     
+
+                     Permission:
+                     Object Read & Write     
+
+                     Apply to:
+                     chỉ schema-admin-db-backups     
+
+          Sau khi tạo, Cloudflare đưa cho bạn:
+                      Access Key ID:
+                      xxxxxxxxxxxx     
+
+                      Secret Access Key:
+                      yyyyyyyyyyyyyyyyyyyy     
+
+                      Endpoint:
+                      https://<ACCOUNT_ID>.r2.cloudflarestorage.com     
+
+          Secret Access Key chỉ hiển thị để bạn lưu lúc tạo; Cloudflare cảnh báo rằng sau đó không xem lại được. Cloudflare Docs
+          2. VPS giữ credential
+          Ví dụ với AWS CLI, có thể cấu hình credential trên VPS thay vì nhét vào source Laravel.
+                    aws configure     
+
+          Nhập:
+                     AWS Access Key ID:
+                     <R2_ACCESS_KEY_ID>     
+
+                     AWS Secret Access Key:
+                     <R2_SECRET_ACCESS_KEY>     
+
+                     Default region:
+                     auto     
+
+          Cloudflare xác nhận AWS CLI và các S3-compatible CLI có thể dùng Access Key ID + Secret Access Key để truy cập R2. Cloudflare Docs
+          Sau đó upload:
+                      aws s3 cp backup.sql.enc \
+                        s3://schema-admin-db-backups/backup.sql.enc \
+                        --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com     
+
+          3. R2 xác thực request thế nào?
+          Không phải VPS gửi kiểu:
+                       password=123456     
+
+          Mà S3 client sử dụng credential để ký request.
+          Đơn giản hóa:
+                           VPS
+                           │
+                           ├── Access Key ID
+                           └── Secret Access Key
+                                   ↓
+                           AWS CLI ký request
+                                   ↓
+                           Request + chữ ký
+                                   ↓
+                           Cloudflare R2
+                                   ↓
+                           R2 kiểm tra chữ ký
+                                   ↓
+                                  đúng?
+                                 /    \
+                               YES     NO
+                                ↓       ↓
+                            Upload     401/403     
+
+          R2 sử dụng cơ chế ký request tương thích S3/AWS Signature Version 4. Cloudflare Docs
+          4. Account ID không phải password
+          Bạn sẽ có mấy thứ khác nhau:
+                             ACCOUNT_ID
+                             → xác định Cloudflare account / tạo endpoint     
+
+                             ACCESS_KEY_ID
+                             → định danh credential     
+
+                             SECRET_ACCESS_KEY
+                             → bí mật dùng để ký request 🔐     
+
+                             BUCKET
+                             → nơi chứa file     
+
+          Ví dụ cấu hình:
+                            ACCOUNT_ID=abc123
+                            ACCESS_KEY_ID=AAA111
+                            SECRET_ACCESS_KEY=SUPER_SECRET
+                            BUCKET=schema-admin-db-backups     
+
+          Endpoint:
+                       https://abc123.r2.cloudflarestorage.com     
+
+          Thứ phải bảo vệ đặc biệt là Secret Access Key.
+          5. Sau này VPS chết
+          Credential không phải được “nhúng” vào file backup.
+                         VPS cũ 💥     
+
+                         Cloudflare R2
+                         └── backup.sql.enc ✅     
+
+          Bạn dựng VPS mới:
+                          VPS mới
+                           ↓
+                          cài AWS CLI/rclone
+                           ↓
+                          cấu hình R2 credential
+                           ↓
+                          xác thực R2
+                           ↓
+                          download backup.sql.enc
+                           ↓
+                          decrypt
+                           ↓
+                          restore MySQL     
+
+          Nếu credential cũ bị mất hoặc bạn không muốn tái sử dụng nó, bạn có thể tạo credential mới có quyền với bucket rồi dùng credential mới để tải backup.
+          Cách nhớ
+                          Laravel login:
+                          email + password
+                                ↓
+                          Laravel xác thực User     
+                          
+
+                          R2:
+                          Access Key ID + Secret Access Key
+                                ↓
+                          ký request
+                                ↓
+                          Cloudflare xác thực VPS/tool     
+
+          Cloudflare R2 — Authentication > wed dẫn
+          Với hệ thống backup của bạn, Laravel thậm chí không cần biết credential R2 nếu toàn bộ mysqldump → encrypt → upload R2 được chạy bằng script/cron trên VPS.
+    ------------------------------- giải thích 6: là nhập trong lệnh 2 cái mã rồi nó tự lưu nếu sau này có dùng tới backup thì gọi bằng lệnh
+              Cloudflare R2
+              ↓
+              backup.sql.enc
+                    ↓
+              VPS mới
+                    ↓
+              Decrypt
+                    ↓
+              backup.sql
+                    ↓
+              MySQL restore
+                    ↓
+              schema_admin phục hồi ✅
+       LẦN ĐẦU
+       aws configure
+       ↓
+       nhập 2 mã R2
+       ↓
+       AWS CLI lưu credential       
+       
+
+       BACKUP
+       lệnh upload
+       ↓
+       VPS → R2 ☁️       
+       
+
+       CẦN KHÔI PHỤC
+       lệnh download
+       ↓
+       R2 ☁️ → VPS
+       ↓
+       restore MySQL
+ 5. Encrypted Backup    |  Nếu backup bị đánh cắp thì dữ liệu vẫn có thể lộ. > cho nó 1 cái đường dẫn mã hoá         < 
    Giả sử:
          database.sql   
 
@@ -51040,7 +51615,7 @@ SameSite
           Encryption key   
 
    không nên quản lý theo kiểu để tất cả cùng một chỗ, cùng quyền truy cập một cách vô nghĩa.
- 6. Sensitive-column Protection
+ 6. Sensitive-column Protectionb    |   dữ liệu nhạy cảm cho nó encrypted        <
        Không phải mọi column đều nhạy cảm như nhau.
        Ví dụ HRM:
                 employees
@@ -51087,8 +51662,8 @@ SameSite
       
        Chỉ cần kiểm tra đúng/sai
        → Hash
- 7. Audit
-    Audit trả lời:
+ 7. Audit    |  AUDIT→ xem lịch sử ai đã thay đổi dữ liệu | trong db: audit_logs   ← lịch sử Audit
+    Audit trả lời: 
         Ai đã làm gì, với dữ liệu nào, lúc nào?    
 
     Ví dụ:
@@ -51114,16 +51689,48 @@ SameSite
           old/new values (cân nhắc dữ liệu nhạy cảm)    
 
     ERP rất cần audit cho:
-           Payroll
-           Accounting
-           Role/Permission
-           Employee
-           Bank/payment data
-           Approval
-           Contract    
+          Payroll
+          → ai sửa lương?
+          → ai finalize payroll?
+          
+          Accounting
+          → ai tạo/sửa/xóa chứng từ?
+          
+          Employee
+          → ai sửa thông tin nhân viên?
+          
+          Role / Permission
+          → ai cấp quyền Admin?
+          
+          Contract
+          → ai sửa hợp đồng?
+          
+          Approval
+          → ai approve/reject? 
 
     Nhưng đừng ghi password, access token, API secret... vào audit log.
- 8. Tenant Isolation
+               Ví dụ DB của ERP:
+           schema_admin
+           │
+           ├── employees
+           ├── payroll_runs
+           ├── accounting_entries
+           ├── roles
+           ├── permissions
+           ├── contracts
+           ├── approvals
+           │
+           └── audit_logs       ← lịch sử chung của toàn hệ thống           
+
+           Ví dụ audit_logs sẽ có các record như:
+           id	user_id  action	        model_type	 model_id	old_values	     new_values
+           1	5	     update	        Employee   	   100	     salary: 15tr	salary: 20tr
+           2	5	     finalize	   PayrollRun	    20	     draft	      finalized
+           3	8	     create	       JournalEntry	   501	     null	       amount: 5tr
+           4	1	grant_permission	   User	        25	     employee	     admin
+           5	7	     update	         Contract	    70	     expires: ...	expires: ...
+           6	9	     approve         Approval	    88	     pending	     approved
+ 8. Tenant Isolation    |  phân quyền company cô lập
    Cái này cực kỳ quan trọng với ERP multi-company của bạn.
    Ví dụ:
           Company 1
@@ -51161,7 +51768,7 @@ SameSite
            Database 
   
    Và database constraint/index/schema design cũng nên hỗ trợ tenant isolation chứ không chỉ dựa vào UI.
- 9. Transaction
+ 9. Transaction     |  bài * 5.3. Idempotency:
        Transaction bảo vệ tính toàn vẹn của một nhóm thao tác DB.
        Ví dụ chuyển tiền:
                Account A
@@ -51200,7 +51807,7 @@ SameSite
                  Inventory
                  Accounting
                  Approval workflow
- 10. Unique Constraint
+ 10. Unique Constraint  |  bài * 5.3. Idempotency:  | không cho dữ liệu cần duy nhất bị trùng.
     Unique constraint đảm bảo DB không cho dữ liệu cần duy nhất bị trùng.
     Ví dụ:
           email VARCHAR(255) UNIQUE 
@@ -51331,7 +51938,7 @@ SameSite
        Unique constraint
        → DB không cho dữ liệu cần duy nhất bị trùng      
 Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique constraint là ba phần bạn nên học code thật kỹ, vì chúng không chỉ là “security” mà còn quyết định tính đúng đắn của dữ liệu.
-7.20 Multi-Tenant Security                       <
+7.20 Multi-Tenant Security   | Không chỉ ẩn trên UI mà phải chặn ở backend/database query.                     <
 
  Với HRM/ERP đây là mục bắt buộc. 
 
@@ -51351,7 +51958,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
  Document B 
 
  Không chỉ ẩn trên UI mà phải chặn ở backend/database query. 
-7.21 Race Condition & Concurrency Security                      <
+7.21 Race Condition & Concurrency Security       8   xem lại bài:  * 5.3. Idempotency:               <
  DB::transaction(function () use ($account) {
      $account = Account::query()
          ->lockForUpdate()
@@ -51363,23 +51970,1164 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
  Học: 
 
  lockForUpdate()
+    Ý nghĩa: Request A đang xử lý record thì Request B phải chờ.   
+
+   Ví dụ bảng:   
+
+   accounts   
+
+   id | balance
+   1  | 10,000,000   
+
+   Hai request cùng rút tiền:   
+
+   Request A             Request B
+       ↓                     ↓
+   lock account #1       muốn lock #1
+       ↓                     ↓
+   LOCK 🔒                CHỜ...
+       ↓
+   trừ tiền
+       ↓
+   COMMIT
+       ↓
+   UNLOCK 🔓
+                             ↓
+                         được xử lý   
+
+   Laravel:   
+
+   DB::transaction(function () use ($accountId) {   
+
+       $account = Account::query()
+           ->whereKey($accountId)
+           ->lockForUpdate()
+           ->firstOrFail();   
+
+       // xử lý...   
+
+       $account->save();
+   });   
+
+   NOTE:   
+
+   lockForUpdate()
+   → khóa row
+   → dùng bên trong transaction
+   → Request khác muốn lock/update row liên quan phải chờ
+   → COMMIT/ROLLBACK thì lock được nhả
  Atomic Update
+   Atomic Update = để database thực hiện thay đổi trực tiếp trong một câu SQL, thay vì PHP đọc → tính → ghi.   
+
+   Không tốt khi có concurrency:         
+
+         $account = Account::find(1);         
+
+         $account->balance = $account->balance - 100000;         
+
+         $account->save();         
+
+   Có thể:        
+
+        A đọc balance = 1,000,000
+        B đọc balance = 1,000,000        
+
+        A -100k → 900k
+        B -100k → 900k        
+
+        Đáng lẽ:
+        800k   
+
+   Atomic:   
+
+         Account::whereKey(1)->decrement('balance', 100000);   
+
+   DB thực hiện kiểu:          
+
+          UPDATE accounts
+          SET balance = balance - 100000
+          WHERE id = 1;          
+
+   NOTE:          
+
+          increment()
+          → tăng trực tiếp          
+
+          decrement()
+          → giảm trực tiếp   
+
+   Ví dụ:        
+
+        $product->increment('view_count');        
+
+        $product->decrement('stock', 1);   
+
+   Nếu cần đảm bảo không âm:         
+
+         $affected = Product::query()
+             ->whereKey($id)
+             ->where('stock', '>=', 1)
+             ->decrement('stock', 1);
+   $affected = 1 → thành công
+   $affected = 0 → không đủ stock / điều kiện không còn đúng
  Unique Constraint
+    Đây là DB cấm duplicate.   
+
+   Ví dụ mỗi nhân viên chỉ có một payslip trong một payroll run:   
+
+        payroll_run_id | employee_id
+        20             | 100       ✅
+        20             | 100       ❌   
+
+   Migration:   
+
+        $table->unique([
+            'payroll_run_id',
+            'employee_id',
+        ]);   
+
+   NOTE:        
+
+        UNIQUE
+        → hàng rào cuối cùng ở Database
+        → dù 2 request chạy cùng lúc
+        → DB vẫn không cho insert duplicate        
+
+   Rất quan trọng vì chỉ:        
+
+        if (! Payslip::where(...)->exists()) {
+            Payslip::create(...);
+        }        
+
+   vẫn có race condition:          
+
+          A check → chưa có
+          B check → chưa có          
+
+          A insert
+          B insert          
+
+          → duplicate   
+
+   Unique Constraint sẽ chặn B.
  Optimistic Lock
+  Khác với lockForUpdate().  
+
+  Optimistic Lock không khóa record ngay. Nó thêm một version.      
+
+      employees      
+
+      id | salary | version
+      1  | 20tr   | 5  
+
+  Request A đọc:      
+
+      salary = 20tr
+      version = 5  
+
+  Request B cũng đọc:       
+
+       salary = 20tr
+       version = 5  
+
+  A update trước:        
+
+        salary = 25tr
+        version = 6  
+
+  B muốn update bằng version cũ:       
+
+       UPDATE employees
+       SET salary = 30,
+           version = version + 1
+       WHERE id = 1
+       AND version = 5;  
+
+  Nhưng hiện tại:  
+
+       version = 6  
+
+  nên:  
+
+       0 rows updated  
+
+  → biết có người khác sửa trước.  
+
+  Laravel có thể làm:  
+
+        $affected = Employee::query()
+            ->whereKey($employee->id)
+            ->where('version', $employee->version)
+            ->update([
+                'salary' => $newSalary,
+                'version' => $employee->version + 1,
+            ]);  
+
+        if ($affected === 0) {
+            throw new RuntimeException(
+                'Employee đã được thay đổi bởi request khác.'
+            );
+        }  
+
+  NOTE:         
+
+         Optimistic Lock
+         → không khóa trước
+         → dùng version
+         → update chỉ khi version vẫn đúng
+         → version thay đổi = conflict
  Idempotency Key
+    Cái này cực kỳ quan trọng với Payment/API.   
+
+   Client tạo:   
+
+   Idempotency-Key:
+   pay_ABC123   
+
+   Request:   
+
+   POST /api/payments
+   Idempotency-Key: pay_ABC123   
+
+   Lần đầu:   
+
+   pay_ABC123
+   ↓
+   chưa từng xử lý
+   ↓
+   Payment thành công
+   ↓
+   lưu key   
+
+   Nếu mạng lag khiến client gửi lại:   
+
+   pay_ABC123
+   ↓
+   đã xử lý rồi
+   ↓
+   KHÔNG thanh toán lần 2
+   ↓
+   trả lại kết quả cũ / trạng thái đã xử lý   
+
+   DB:   
+
+   payments   
+
+   id | idempotency_key | amount
+   1  | pay_ABC123      | 500000   
+
+   Migration:   
+
+   $table->string('idempotency_key')->unique();   
+
+   NOTE:   
+
+   Idempotency Key
+   → định danh một operation/request nghiệp vụ
+   → cùng key gửi lại
+   → không thực hiện nghiệp vụ lần 2   
+
+   Thường phải kết hợp với UNIQUE, không chỉ exists().
  duplicate request
+  Cái này không phải một kỹ thuật.  
+
+  Nó là vấn đề:  
+
+  User bấm:
+  [Thanh toán]  
+
+  ↓ double click  
+
+  Request #1 ─────────→ Laravel
+  Request #2 ─────────→ Laravel  
+
+  Hoặc:  
+
+  Request gửi đi
+  ↓
+  server đã xử lý
+  ↓
+  response bị mất do mạng
+  ↓
+  client tưởng thất bại
+  ↓
+  retry
+  ↓
+  request được gửi lại  
+
+  Chống bằng:  
+
+  Duplicate Request
+         ↓
+  Idempotency Key
+         +
+  Unique Constraint  
+
+  NOTE:  
+
+  Duplicate Request = vấn đề
+  Idempotency = giải pháp
+  UNIQUE = hàng rào DB
  double payment
- double approval
-7.22 Queue / Job Security                      <
- Job authorization context
- không serialize secret không cần thiết
- encrypted jobs
- retry safety
- idempotent job
- unique job
- timeout
- failed jobs
- tránh duplicate payment/email/action
+    Một thiết kế có thể cần:    
+
+         Payment
+         │
+         ├── Idempotency Key
+         ├── Unique Constraint
+         ├── Transaction
+         ├── lockForUpdate()/conditional update khi phù hợp
+         └── trạng thái invoice    
+
+    Ví dụ:           
+
+           DB::transaction(function () use ($invoiceId) {           
+
+               $invoice = Invoice::query()
+                   ->whereKey($invoiceId)
+                   ->lockForUpdate()
+                   ->firstOrFail();           
+
+               if ($invoice->status === 'paid') {
+                   throw new RuntimeException('Invoice đã thanh toán.');
+               }           
+
+               // tạo payment...           
+
+               $invoice->update([
+                   'status' => 'paid',
+               ]);
+           });
+ double approval    | cho nó chuyển trạng thái , vs: $affected = 1 > lần 2  affected = 0   
+   Không bảo vệ:         
+
+         A thấy pending
+         B thấy pending         
+
+         A approve
+         B approve         
+
+         A gửi notification
+         B gửi notification         
+
+         A tạo accounting action
+         B tạo accounting action         
+
+         → nghiệp vụ chạy 2 lần ❌   
+
+   Có thể dùng Atomic Conditional Update:          
+
+          $affected = Approval::query()
+              ->whereKey($id)
+              ->where('status', 'pending')
+              ->update([
+                  'status' => 'approved',
+                  'approved_by' => auth()->id(),
+                  'approved_at' => now(),
+              ]);          
+
+          if ($affected === 0) {
+              throw new RuntimeException(
+                  'Approval không còn ở trạng thái pending.'
+              );
+          }   
+
+   Request A:            
+
+            WHERE status = pending
+            ↓
+            UPDATE approved
+            ↓
+            affected = 1 ✅   
+
+   Request B:            
+
+            WHERE status = pending            
+
+            nhưng DB hiện tại:
+            status = approved            
+
+            ↓
+            affected = 0
+            ↓
+            không approve lần 2 ✅            
+
+   Nếu approval kéo theo nhiều thao tác phức tạp thì thường đặt trong transaction và cân nhắc lockForUpdate().
+ | Kỹ thuật          | Hiểu đơn giản                               | Chống cái gì?                       | Lệnh / cách chính                         |
+ | ----------------- | ------------------------------------------- | ----------------------------------- | ----------------------------------------- |
+ | `lockForUpdate()` | Khóa record để 1 transaction xử lý trước    | 2 request cùng sửa dữ liệu          | `->lockForUpdate()` + `DB::transaction()` |
+ | Atomic Update     | DB tự tăng/giảm trực tiếp trong 1 câu lệnh  | Lost update khi cộng/trừ            | `increment()`, `decrement()`              |
+ | Unique Constraint | DB cấm giá trị trùng                        | Duplicate record                    | `$table->unique(...)`                     |
+ | Optimistic Lock   | Kiểm tra version trước khi update           | Người khác đã sửa record trước mình | `WHERE version = ?`                       |
+ | Idempotency Key   | 1 yêu cầu nghiệp vụ chỉ xử lý 1 lần         | User/API gửi request trùng          | `idempotency_key` + UNIQUE                |
+ | Duplicate Request | Hiện tượng request giống nhau gửi nhiều lần | Tạo đơn/payslip... nhiều lần        | Idempotency + UNIQUE                      |
+ | Double Payment    | Một khoản tiền bị thanh toán 2 lần          | Trừ tiền 2 lần                      | Transaction + Lock + Idempotency + UNIQUE |
+ | Double Approval   | Một yêu cầu bị approve 2 lần                | Workflow chạy 2 lần                 | Conditional/Atomic Update hoặc Lock       |
+ Bảng ghi nhớ
+  | Tên               | Loại         | Note                                              | Laravel/DB                                                 |
+ | ----------------- | ------------ | ------------------------------------------------- | ---------------------------------------------------------- |
+ | `lockForUpdate()` | Giải pháp    | **Khóa row, request khác chờ**                    | `->lockForUpdate()`                                        |
+ | Atomic Update     | Giải pháp    | **DB thay đổi trực tiếp, không read-modify-save** | `increment()`, `decrement()`, conditional `update()`       |
+ | Unique Constraint | Giải pháp DB | **DB cấm duplicate**                              | `$table->unique()`                                         |
+ | Optimistic Lock   | Giải pháp    | **Version đổi → phát hiện conflict**              | `where('version', $version)->update()`                     |
+ | Idempotency Key   | Giải pháp    | **1 operation không chạy 2 lần**                  | `idempotency_key` + `UNIQUE`                               |
+ | Duplicate Request | **Vấn đề**   | Request bị gửi lặp                                | Idempotency + UNIQUE                                       |
+ | Double Payment    | **Vấn đề**   | Thanh toán 2 lần                                  | Transaction + Idempotency + UNIQUE + Lock/atomic condition |
+ | Double Approval   | **Vấn đề**   | Approve 2 lần                                     | Conditional update hoặc Transaction + Lock                 |
+ Cách nhớ cực ngắn
+     lockForUpdate
+     → "Đợi tao làm xong rồi mày làm" 🔒    
+
+     Atomic Update
+     → "DB tự cộng/trừ trong 1 lệnh"    
+
+     Unique Constraint
+     → "DB cấm trùng"    
+
+     Optimistic Lock
+     → "Version thay đổi rồi → không cho ghi đè"    
+
+     Idempotency Key
+     → "Cùng một việc → chỉ làm một lần"    
+
+     Duplicate Request
+     → "Request gửi 2 lần"    
+
+     Double Payment
+     → "Trả tiền 2 lần"    
+
+     Double Approval
+     → "Approve 2 lần"
+
+7.22 Queue / Job Security        10              <
+ 1 Job authorization context  → Job đang làm cho ai/company nào?                   <
+          Đây là chỗ rất hay bị hiểu nhầm.         
+
+         Controller đã kiểm tra:               
+
+               User #5
+               ↓
+               payroll.generate permission ✅
+               ↓
+               Company #1 ✅
+               ↓
+               dispatch Job         
+
+         Nhưng Job chạy sau đó:                
+
+                5 phút sau...                
+
+                Queue Worker
+                ↓
+                GeneratePayrollJob         
+
+         Lúc này Job không còn nằm trong HTTP request ban đầu.         
+
+         Không nên viết Job dựa vào:         
+
+               auth()->user()         
+
+         vì worker không nhất thiết có authenticated HTTP user như Controller.         
+
+         Thay vào đó truyền context cần thiết:                 
+
+                 GeneratePayrollJob::dispatch(
+                     payrollRunId: $run->id,
+                     companyId: $company->id,
+                     actorId: auth()->id(),
+                 );                 
+
+         Job:                   
+
+                   final class GeneratePayrollJob implements ShouldQueue
+                   {
+                       public function __construct(
+                           public int $payrollRunId,
+                           public int $companyId,
+                           public int $actorId,
+                       ) {}                   
+
+                       public function handle(): void
+                       {
+                           // Load lại dữ liệu từ DB
+                           // kiểm tra tenant/state/quyền cần thiết
+                           // thực hiện nghiệp vụ
+                       }
+                   }         
+
+         Luồng:                     
+
+                     HTTP Request
+                     ↓
+                     User #5
+                     Company #1
+                     ↓
+                     Authorization
+                     ↓
+                     dispatch                     
+
+                     {
+                      payroll_run_id: 20,
+                      company_id: 1,
+                      actor_id: 5
+                     }                     
+
+                             ↓                     
+
+                     Queue Worker
+                     ↓
+                     load lại dữ liệu
+                     ↓
+                     Company #1?
+                     ↓
+                     Payroll #20 thuộc Company #1?
+                     ↓
+                     state còn hợp lệ?
+                     ↓
+                     xử lý
+         NOTE
+                 Job Authorization Context
+                 → Job phải biết tenant/actor/resource context cần thiết
+                 → không dựa mù quáng vào auth() của HTTP request
+                 → load lại và kiểm tra state/tenant/authorization phù hợp
+ 2 không serialize secret không cần thiết  → đừng nhét bí mật vào payload nếu không cần                   <
+                Khi dispatch:               
+
+                      SomeJob::dispatch(
+                          $password,
+                          $apiSecret,
+                          $accessToken
+                      );               
+
+               ❌ Không nên nếu Job không thực sự cần những secret đó.               
+
+               Bởi vì Queue phải lưu payload:                        
+
+                        Laravel
+                         ↓
+                        serialize Job
+                         ↓
+                        Queue Backend                        
+
+                        {
+                           job: "...",
+                           data: ...
+                        }               
+
+               Tùy queue driver, payload có thể nằm trong:                       
+
+                       Database
+                       Redis
+                       SQS
+                       ...               
+
+               Do đó nguyên tắc:               
+
+                          Job cần gì thì truyền đúng cái đó.               
+
+               Thay vì:                        
+
+                        SendEmployeeJob::dispatch(
+                            $user,
+                            $password,
+                            $token,
+                            $secret,
+                            ...
+                        );               
+
+               nên nếu phù hợp:                      
+
+                      SendEmployeeJob::dispatch(
+                          employeeId: $employee->id,
+                          companyId: $companyId,
+                      );               
+
+               Job load dữ liệu cần thiết từ nguồn phù hợp khi chạy.               
+
+               NOTE
+                        Không serialize secret
+                        → giảm dữ liệu nhạy cảm trong Queue payload
+ 3 encrypted jobs  → payload nhạy cảm thì mã hóa       |   ShouldQueue   ShouldBeEncrypted           <
+        Nếu Job thực sự phải chứa dữ liệu nhạy cảm trong payload, Laravel hỗ trợ encrypted queued job.       
+
+       Ví dụ:                
+
+                use Illuminate\Contracts\Queue\ShouldBeEncrypted;
+                use Illuminate\Contracts\Queue\ShouldQueue;                
+
+                final class ProcessSensitiveJob implements
+                    ShouldQueue,
+                    ShouldBeEncrypted
+                {
+                    // ...
+                }       
+
+       Ý tưởng:       
+          
+                 Không encrypt:       
+          
+                 Job
+                 ↓
+                 Queue
+                 ↓
+                 {
+                     "employee": ...,
+                     "sensitive": ...
+                 }       
+                 
+          
+                 Encrypt:       
+          
+                 Job
+                 ↓
+                 Laravel encrypt 🔐
+                 ↓
+                 Queue
+                 ↓
+                 ciphertext       
+
+       Worker:                  
+
+                  Encrypted Payload
+                  ↓
+                  Laravel decrypt
+                  ↓
+                  Job
+                  ↓
+                  handle()
+       Nhưng nhớ       
+
+       Encrypted Job không có nghĩa là được phép nhét mọi secret vào Job.       
+
+       Ưu tiên:               
+
+               Không truyền secret nếu không cần
+                      ↓
+               nếu payload cần bảo mật
+                      ↓
+               cân nhắc ShouldBeEncrypted
+ 4 retry safety    → chạy lại không được phá dữ liệu        |    cần DB constraint/transaction/locking/idempotency tùy nghiệp vụ.            <
+      đây là một trong những phần quan trọng nhất.     
+
+     Job có thể:                
+
+                Run
+                 ↓
+                Lỗi
+                 ↓
+                Retry
+                 ↓
+                Run lại     
+
+     Ví dụ:     
+
+                public int $tries = 3;     
+
+     Có nghĩa Job có thể được thử nhiều lần theo cấu hình/logic queue.     
+
+     Vấn đề:              
+
+              Lần 1:
+              ↓
+              tạo Payment ✅
+              ↓
+              sau đó lỗi ❌              
+
+              Laravel retry              
+
+              Lần 2:
+              ↓
+              tạo Payment lần nữa ❌❌     
+
+     Do đó Job phải được thiết kế sao cho retry an toàn.     
+
+     Ví dụ kiểm tra trạng thái:             
+
+             if ($payment->status === 'paid') {
+                 return;
+             }             
+
+     Nhưng với concurrency nghiêm trọng, chỉ if thường chưa đủ; cần DB constraint/transaction/locking/idempotency tùy nghiệp vụ.     
+
+     NOTE
+              Retry Safety
+              → Job chạy lại không được gây hậu quả sai
+    -------------------------------
+    Vì Laravel Queue nghĩ Job lần 1 chưa hoàn thành nên nó đưa Job đó chạy lại.
+
+         Ví dụ Payment Job:                    
+
+                    Job bắt đầu
+                       ↓
+                    1. Gọi cổng thanh toán
+                       ↓
+                    Payment thành công ✅
+                       ↓
+                    2. Update DB
+                       ↓
+                    💥 lỗi ở đây
+                       ↓
+                    Job throw Exception
+                       ↓
+                    Laravel đánh giá:
+                    "Job chưa hoàn thành"
+                       ↓
+                    Retry
+                       ↓
+                    handle() chạy LẠI TỪ ĐẦU         
+
+         Ví dụ code:                
+
+                public function handle(): void
+                {
+                    // Bước 1
+                    $gateway->charge(500000); // ✅ tiền đã bị charge                
+
+                    // Bước 2
+                    Payment::create([
+                        'amount' => 500000,
+                    ]);                
+
+                    // 💥 giả sử lỗi ở đây
+                    throw new Exception('Something went wrong');
+                }         
+
+         Nếu Job cấu hình:         
+
+                    public int $tries = 3;         
+
+         Laravel thấy lần 1 throw exception nên:                     
+
+                     Attempt 1
+                     ↓
+                     handle()
+                     ↓
+                     charge 500k ✅
+                     ↓
+                     Exception ❌                     
+
+                            ↓ RETRY                     
+
+                     Attempt 2
+                     ↓
+                     handle() chạy lại TỪ ĐẦU
+                     ↓
+                     charge 500k LẦN NỮA ❌
+         Tại sao Laravel không biết Payment đã thành công?         
+
+         Vì Laravel Queue chủ yếu biết:         
+
+                   Job hoàn thành không?         
+
+         Nó không tự hiểu nghiệp vụ bên trong:         
+
+                   "Cổng thanh toán đã trừ tiền rồi"         
+
+         Ví dụ:         
+
+                    Payment Provider
+                          ↓
+                    charge thành công ✅         
+
+                    nhưng         
+
+                    Job
+                          ↓
+                    Exception ❌         
+
+         Laravel nhìn thấy:         
+ 
+                  Job = FAILED         
+
+         nên nếu còn lượt retry:         
+
+                    → chạy lại         
+
+         Đây chính là lý do phải làm Idempotent Job.         
+
+         Ví dụ gửi:                   
+
+                   Idempotency-Key:
+                   payment:invoice:500         
+
+         Lần 1:                   
+
+                   payment:invoice:500
+                   ↓
+                   charge 500k ✅
+                   ↓
+                   sau đó Job lỗi         
+
+         Retry:                   
+
+                   payment:invoice:500
+                   ↓
+                   provider/hệ thống thấy operation này đã xử lý
+                   ↓
+                   KHÔNG charge lần nữa ✅
+         Không chỉ Exception         
+
+         Job có thể chạy lại vì nhiều nguyên nhân:                  
+
+                  Job
+                  ├── throw Exception
+                  ├── timeout
+                  ├── worker bị kill/crash
+                  ├── server/process restart đúng lúc
+                  ├── mất kết nối DB/API
+                  └── Job được release/retry         
+
+         Cho nên tư duy khi viết Queue là:         
+
+         Đừng giả định handle() chỉ chạy đúng một lần.         
+
+         Hãy giả định:                  
+
+                  handle()
+                  ↓
+                  có thể chạy lần 1
+                  ↓
+                  có thể chạy lại lần 2
+                  ↓
+                  có thể chạy lại lần 3         
+
+         và thiết kế để:         
+           
+                    Job chạy 3 lần         
+           
+                    nhưng         
+           
+                    Payment chỉ xảy ra 1 lần ✅
+                    Payslip chỉ tạo 1 lần ✅
+                    Approval chỉ approve 1 lần ✅         
+
+         Đó chính là ý nghĩa của retry safety + idempotency.
+ 5 idempotent job  → chạy nhiều lần nhưng business action không nhân đôi    |   idempotent Key cho Job              <
+          Idempotent nghĩa là:         
+
+              Job chạy 1 lần hay chạy lại nhiều lần thì kết quả nghiệp vụ cuối cùng vẫn không bị nhân đôi.         
+
+         Ví dụ:         
+
+               GeneratePayslipJob
+               employee = 100
+               payroll_run = 20         
+
+         Job chạy lần 1:               
+
+               Run #20 + Employee #100
+               ↓
+               Payslip #500 được tạo         
+
+         Job retry:         
+        
+                 Run #20 + Employee #100
+                 ↓
+                 Payslip đã tồn tại
+                 ↓
+                 không tạo cái thứ 2         
+
+         DB constraint:              
+
+              $table->unique([
+                  'payroll_run_id',
+                  'employee_id',
+              ]);              
+
+         Có thể dùng logic tạo phù hợp như:                 
+
+                 Payslip::firstOrCreate(
+                     [
+                         'payroll_run_id' => $runId,
+                         'employee_id' => $employeeId,
+                     ],
+                     [
+                         // dữ liệu...
+                     ]
+                 );         
+
+         Nhưng UNIQUE constraint ở DB vẫn rất quan trọng, vì hai worker có thể chạy đồng thời.                   
+
+                   Worker A ──┐
+                              ├── Employee #100 + Run #20
+                   Worker B ──┘
+                                 ↓
+                          UNIQUE(run_id, employee_id)
+                                 ↓
+                          không cho duplicate
+         NOTE
+                   Idempotent Job
+                   → Job chạy lại được
+                   → nhưng business action không nhân đôi
+ 6 unique job      → hạn chế nhiều Job giống nhau được queue   |   ShouldBeUnique   |              <
+        Laravel còn có:        
+
+               ShouldBeUnique        
+
+        Ví dụ:        
+
+               use Illuminate\Contracts\Queue\ShouldBeUnique;
+               use Illuminate\Contracts\Queue\ShouldQueue;        
+
+               final class GeneratePayrollJob implements
+                   ShouldQueue,
+                   ShouldBeUnique
+               {
+                   public function __construct(
+                       public int $payrollRunId
+                   ) {}        
+
+                   public function uniqueId(): string
+                   {
+                       return (string) $this->payrollRunId;
+                   }
+               }        
+
+        Hai request:               
+
+               Request A
+               ↓
+               GeneratePayrollJob(20)               
+
+               Request B
+               ↓
+               GeneratePayrollJob(20)        
+
+        Laravel uniqueness:               
+
+               Job payroll:20
+                     ↓
+               unique lock
+                     ↓               
+
+               A → queue ✅
+               B → duplicate job prevented        
+
+        Có thể cấu hình khoảng unique:        
+
+               public int $uniqueFor = 3600;              nghĩa là giữ khóa Unique Job tối đa 3600 giây = 1 giờ.
+        Nhưng cực kỳ quan trọng
+                 ShouldBeUnique
+                 ≠
+                 Idempotency        
+
+        Unique Job giúp hạn chế duplicate queued job.        
+
+        Idempotency bảo vệ business operation nếu Job thực sự chạy lại.        
+
+        Do đó nghiệp vụ quan trọng nên nghĩ:                
+
+                ShouldBeUnique
+                       +
+                Idempotent Handler/Job
+                       +
+                DB UNIQUE        
+
+        Không nên dựa duy nhất vào ShouldBeUnique để bảo vệ tiền.
+ 7 timeout         → không cho Job chạy mãi                   <
+    Nếu Job bị treo:           
+
+           Job
+           ↓
+           gọi API
+           ↓
+           API không phản hồi
+           ↓
+           ...
+           ↓
+           Worker mắc kẹt    
+
+    Có thể đặt:    
+
+            public int $timeout = 120;    
+
+    Ví dụ:                
+             final class GeneratePayrollJob implements ShouldQueue
+             {
+             public int $timeout = 120;                
+             // ...
+             }                
+    Tức Job có giới hạn thời gian xử lý ở worker theo cấu hình queue.    
+
+    Có thể thêm:    
+
+             public bool $failOnTimeout = true;    
+
+    khi phù hợp.    
+
+    Nhưng timeout phải phối hợp với retry_after/visibility timeout của queue driver để tránh tình huống Job bị worker khác nhận lại trong khi worker cũ vẫn có khả năng hoạt động.    
+
+    NOTE
+           timeout
+           → Job không được chạy vô hạn
+ 8 failed jobs     → Job chết thì phải biết và xử lý                   <
+    Nếu Job thử nhiều lần vẫn thất bại:           
+
+           Job
+           ↓
+           Attempt 1 ❌
+           ↓
+           Attempt 2 ❌
+           ↓
+           Attempt 3 ❌
+           ↓
+           FAILED    
+
+    Laravel có cơ chế lưu failed jobs nếu cấu hình tương ứng.    
+
+    Kiểm tra:    
+
+          php artisan queue:failed    
+
+    Retry:    
+
+          php artisan queue:retry <id>    
+
+    Retry tất cả:    
+  
+          php artisan queue:retry all    
+
+    Xóa failed record:    
+
+         php artisan queue:forget <id>    
+
+    Hoặc flush:    
+
+    php artisan queue:flush    
+
+    Nhưng:    
+
+         Đừng thấy payment job failed rồi cứ queue:retry all một cách mù quáng.    
+
+    Phải đảm bảo Job idempotent/retry-safe trước.    
+
+    Có thể định nghĩa:            
+
+            public function failed(?Throwable $exception): void
+            {
+                // alert / audit / mark state...
+            }
+    NOTE
+         failed_jobs
+         → giúp biết Job nào chết
+         → điều tra
+         → retry có kiểm soát
+ 9 tránh duplicate payment/email/action   → đặc biệt chống duplicate                   <
+        Ví dụ Approval:            
+
+            ApproveOvertimeJob
+            ↓
+            approve
+            ↓
+            notification
+            ↓
+            accounting      
+
+      Job chạy 2 lần có thể tạo:             
+
+             Approval      ×2
+             Notification  ×2
+             Accounting    ×2      
+
+      Nên business action phải có guard:              
+
+              $affected = Approval::query()
+                  ->whereKey($id)
+                  ->where('status', 'pending')
+                  ->update([
+                      'status' => 'approved',
+                  ]);              
+
+              if ($affected === 0) {
+                  return;
+              }      
+
+      Request/job đầu:            
+
+            pending → approved
+            affected = 1 ✅      
+
+      Job thứ hai:             
+
+             WHERE status = pending             
+
+             nhưng:
+             status = approved             
+
+             ↓
+             affected = 0
+             ↓
+             STOP ✅
+      Ghép vào Payroll của bạn      
+
+      Ví dụ user bấm:      
+
+               [Generate Missing Payslips]      
+
+      Thiết kế tốt:               
+
+               HTTP Request
+                    ↓
+               Authentication
+                    ↓
+               Permission
+                    ↓
+               Tenant
+                    ↓
+               GeneratePayslips Command
+                    ↓
+               Dispatch Job
+                    ↓
+               ┌───────────────────────────────┐
+               │ GeneratePayslipsJob           │
+               │                               │
+               │ company_id                    │
+               │ payroll_run_id                │
+               │ actor_id                      │
+               │                               │
+               │ ShouldQueue                   │
+               │ ShouldBeUnique                │
+               │ timeout                       │
+               │ tries                         │
+               └──────────────┬────────────────┘
+                              ↓
+                         Queue Worker
+                              ↓
+                      kiểm tra Run/Company
+                              ↓
+                     Generate từng Payslip
+                              ↓
+               UNIQUE(payroll_run_id, employee_id)
+                              ↓
+                       Không duplicate
+                              ↓
+                            Audit
+ Điểm quan trọng nhất của 7.22 là:                       <
+
+    Queue không có nghĩa:
+    "dispatch một lần → chắc chắn handle đúng một lần"    
+
+    Hãy thiết kế theo hướng:
+    Job CÓ THỂ retry/chạy lại
+            ↓
+    nhưng nghiệp vụ vẫn an toàn
+            ↓
+    Idempotency + DB Constraint + Transaction/Lock khi cần
+ Job thường làm các việc như                 <
+  | Tác vụ                  | Ví dụ Job                  |
+  | ----------------------- | -------------------------- |
+  | Gửi email               | `SendPayslipEmailJob`      |
+  | Gửi notification        | `SendNotificationJob`      |
+  | Export file lớn         | `ExportEmployeesJob`       |
+  | Import file             | `ImportEmployeesJob`       |
+  | Xử lý ảnh/video         | `GenerateThumbnailJob`     |
+  | Tạo báo cáo             | `GeneratePayrollReportJob` |
+  | Xử lý hàng nghìn record | `GeneratePayslipsJob`      |
+  | Đồng bộ hệ thống ngoài  | `SyncAccountingJob`        |
+  | Gọi API bên thứ ba      | `SyncPaymentStatusJob`     |
+  | Xử lý tài liệu          | `ScanEmployeeDocumentJob`  |
+  | Dọn dữ liệu             | `CleanupExpiredFilesJob`   |
+  
 7.23 Logging & Audit Trail                       <
 
  Phân biệt: 
