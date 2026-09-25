@@ -38176,6 +38176,159 @@ Dispatch sau commit
 
  Redis
  = cache store phổ biến production
+Cache = bộ nhớ tạm, dùng để giữ lại dữ liệu đã tính/lấy trước đó để lần sau không phải truy vấn DB hoặc tính lại, nhờ vậy hệ thống nhanh hơn.
+
+   Ví dụ Dashboard HRM phải tính:     
+
+        Tổng nhân viên
+        Tổng lương
+        Nhân viên nghỉ việc
+        Headcount
+        Vacancy
+
+   Không có cache:      
+
+         User mở Dashboard
+         ↓
+         Query Database
+         ↓
+         tính toán
+         ↓
+         trả kết quả      
+
+         User F5
+         ↓
+         Query Database LẠI
+         ↓
+         tính LẠI
+
+   Có cache:      
+
+         User mở Dashboard lần 1
+         ↓
+         Cache chưa có
+         ↓
+         Query Database
+         ↓
+         tính kết quả
+         ↓
+         lưu Cache
+         ↓
+         trả kết quả      
+
+         User mở lần 2
+         ↓
+         Cache có rồi
+         ↓
+         lấy Cache luôn ⚡
+         ↓
+         không cần query/tính lại
+
+   Laravel ví dụ:       
+
+          $employees = Cache::remember(
+              'employees:company:1',
+              300,
+              function () {
+                  return Employee::where('company_id', 1)->get();
+              }
+          );
+
+   300 = cache trong 300 giây = 5 phút.
+
+   Lần đầu:         
+
+            Cache có chưa?
+            ↓
+            KHÔNG
+            ↓
+            SELECT ... FROM employees
+            ↓
+            lưu kết quả vào Cache 5 phút
+            ↓
+            return
+
+   Lần sau trong 5 phút:           
+            Cache có chưa?
+            ↓
+            CÓ
+            ↓
+            return Cache ⚡
+
+   Cache có thể được lưu bằng:          
+
+             Redis        ← rất phổ biến
+             Database
+             File
+             Memcached
+             ...
+   Tại sao Cache liên quan Sensitive Data?
+
+   Giả sử bạn cache:      
+
+         Cache::put("employee:100", [
+             'name'         => 'Nguyễn A',
+             'cccd'         => '079123456789',
+             'bank_account' => '123456789',
+         ], 3600);      
+
+   Thì bây giờ CCCD không chỉ tồn tại trong DB:        
+
+           Database
+              ↓
+           CCCD        
+
+           +        
+
+           Redis Cache
+              ↓
+           CCCD        
+
+   Bạn xóa Employee khỏi DB:
+
+           $employee->delete();
+
+   nhưng nếu không xóa cache:
+        
+           Database
+           Employee #100 → XÓA ✅
+        
+           Redis
+           employee:100
+           ↓
+           CCCD vẫn còn ❌
+
+   Vì vậy khi dữ liệu thay đổi/xóa thường phải invalidate cache liên quan:
+
+            Cache::forget('employee:100');
+   Cache khác Database
+            Database	                    Cache
+            Nơi lưu dữ liệu chính	      Nơi lưu tạm
+            Dữ liệu bền vững	         Có thể hết hạn/xóa
+            Là nguồn dữ liệu chính	    Thường là bản sao để tăng tốc
+            Query có thể tốn thời gian	   Đọc thường rất nhanh
+            MySQL/PostgreSQL	          Redis/Memcached...
+
+   Cách nhớ:       
+
+          Database
+          = kho chính       
+
+          Cache
+          = lấy món hay dùng từ kho
+            để sẵn ngay trước mặt       
+
+          → lần sau lấy nhanh hơn ⚡
+
+   Với Laravel, bạn sẽ gặp 4 lệnh cơ bản rất nhiều:       
+
+          Cache::get('key');       // lấy       
+
+          Cache::put('key', $data, 300); // lưu 5 phút       
+
+          Cache::forget('key');    // xóa       
+
+          Cache::remember(...);    // chưa có → tạo; có rồi → lấy
 * Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version thay forget > Các key cũ tự hết TTL.                    <
  Đây là phần khó nhất.
 
@@ -52859,7 +53012,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
                    Idempotent Job
                    → Job chạy lại được
                    → nhưng business action không nhân đôi
- 6 unique job      → hạn chế nhiều Job giống nhau được queue   |   ShouldBeUnique   |              <
+ 6 unique job      → hạn chế nhiều Job giống nhau được queue   |   ShouldBeUnique   |  public int $uniqueFor = 3600;      nghĩa là giữ khóa Unique Job tối đa 3600 giây = 1 giờ. |    Không nên dựa duy nhất vào ShouldBeUnique để bảo vệ tiền.          <
         Laravel còn có:        
 
                ShouldBeUnique        
@@ -52924,7 +53077,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
                 DB UNIQUE        
 
         Không nên dựa duy nhất vào ShouldBeUnique để bảo vệ tiền.
- 7 timeout         → không cho Job chạy mãi                   <
+ 7 timeout         → không cho Job chạy mãi   |     public int $timeout = 120;   |     public bool $failOnTimeout = true;              <
     Nếu Job bị treo:           
 
            Job
@@ -52960,7 +53113,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
     NOTE
            timeout
            → Job không được chạy vô hạn
- 8 failed jobs     → Job chết thì phải biết và xử lý                   <
+ 8 failed jobs     → Job chết thì phải biết và xử lý    | trong DB xem: failed_jobs |        Phải đảm bảo Job idempotent/retry-safe trước.    |  public function failed(?Throwable $exception): void{// alert / audit / mark state...}            <
     Nếu Job thử nhiều lần vẫn thất bại:           
 
            Job
@@ -53128,14 +53281,196 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
   | Xử lý tài liệu          | `ScanEmployeeDocumentJob`  |
   | Dọn dữ liệu             | `CleanupExpiredFilesJob`   |
   
-7.23 Logging & Audit Trail                       <
+7.23 Logging & Audit Trail          11             <
 
  Phân biệt: 
+  | Loại                | Dùng để ghi                         | Ví dụ                                 |
+  | ------------------- | ----------------------------------- | ------------------------------------- |
+  | **Application Log** | Hoạt động/lỗi kỹ thuật của hệ thống | Exception, API timeout, Queue failed  |
+  | **Security Log**    | Sự kiện liên quan bảo mật           | Login fail, 403, MFA fail, rate limit |
+  | **Audit Log**       | Ai đã làm gì với dữ liệu nghiệp vụ  | Admin A đổi lương B từ 50tr → 70tr    |
+  
 
- Application Log
- Security Log
- Audit Log 
+ Application Log     → Hệ thống xảy ra chuyện gì?
+    Ví dụ Queue tạo Payroll bị lỗi:
 
+      Log::error('Payroll generation failed', [
+          'payroll_run_id' => $run->id,
+          'error' => $e->getMessage(),
+      ]);   
+
+      Thường có thể xuất hiện trong:   
+
+      storage/logs/laravel.log   
+
+      Nó phục vụ chủ yếu cho:   
+
+      Developer
+      DevOps
+      Debug
+      Monitoring   
+
+      Ví dụ:   
+
+      GeneratePayrollJob
+              ↓
+      gọi Accounting API
+              ↓
+      TIMEOUT ❌
+              ↓
+      Application Log   
+
+      "Accounting API timeout"
+ Security Log        → Bảo mật xảy ra chuyện gì?
+   Ghi những sự kiện bảo mật đáng quan tâm.   
+
+   Ví dụ:   
+
+       User #15
+       ↓
+       đăng nhập sai 5 lần
+       ↓
+       Rate Limit
+       ↓
+       429   
+
+   Security Log có thể lưu:        
+
+        event      = login_failed
+        actor_id   = 15
+        ip         = xxx.xxx.xxx.xxx
+        request_id = req_123
+        timestamp  = ...   
+
+   Hoặc:           
+
+           Employee A
+           ↓
+           cố truy cập Payroll
+           ↓
+           không có payroll.view
+           ↓
+           403           
+
+   ghi:          
+
+          event      = authorization_denied
+          actor_id   = 20
+          permission = payroll.view
+          resource   = Payroll
+          timestamp  = ...   
+
+   Các sự kiện thường gặp:         
+
+         login_failed
+         login_success
+         logout
+         mfa_failed
+         password_reset
+         authorization_denied
+         rate_limit_exceeded
+         token_created
+         token_revoked
+ Audit Log           → Ai làm gì với dữ liệu nào?
+  Đây là phần cực kỳ quan trọng với HRM / Payroll / Accounting.  
+
+  Ví dụ của bạn:      
+
+      Admin A
+         ↓
+      đổi salary Employee B      
+
+      50,000,000
+         ↓
+      70,000,000  
+
+  Audit Log ghi lại:       
+
+       actor
+       ↓
+       Admin A       
+
+       action
+       ↓
+       employee.salary.updated       
+
+       resource
+       ↓
+       Employee B       
+
+       old_value
+       ↓
+       50,000,000       
+
+       new_value
+       ↓
+       70,000,000       
+
+       timestamp
+       ↓
+       25/09/2026 ...       
+
+       request/context
+       ↓
+       company_id / request_id / IP / route...  
+
+  Sau này có người hỏi:  
+
+       Ai đổi lương Employee B thành 70 triệu?  
+
+  Tra Audit:       
+
+       Employee B
+       ↓
+       Audit History
+       ↓
+       Admin A
+       ↓
+       salary.changed
+       ↓
+       50tr → 70tr
+       ↓
+       25/09/2026
+ Audit Trail khác Audit Log thế nào?    |  Audit Log = một bản ghi.  | Audit Trail = toàn bộ chuỗi lịch sử.
+
+    Audit Log = một bản ghi.
+
+    Ví dụ:     
+
+         Admin A
+         salary
+         50tr → 70tr
+
+    Audit Trail = toàn bộ chuỗi lịch sử.     
+
+         Employee B     
+
+         01/07
+         40tr
+          ↓ Admin A     
+
+         50tr
+          ↓ HR Manager B     
+
+         60tr
+          ↓ Admin A     
+
+         70tr     
+
+    Có thể xem:
+
+           40tr → 50tr → 60tr → 70tr
+
+    và biết:      
+
+          Ai sửa?
+          Sửa gì?
+          Trước là gì?
+          Sau là gì?
+          Khi nào?
+          Từ request nào?
+
+    Đó là Audit Trail.
  Ví dụ HRM: 
 
  Admin A
@@ -53148,14 +53483,157 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
  Audit nên lưu tối thiểu: 
 
- actor
- action
- resource
+ actor       = ai gây ra hành động.    
+     actor = ai gây ra hành động.    
+
+    Thông thường:    
+
+        actor_id = user ID    
+
+    Ví dụ:    
+
+         users    
+
+         id = 5
+         name = Admin A    
+
+    Audit:    
+
+         actor_id = 5    
+
+    Không nên chỉ lưu:    
+
+          actor = "Admin A"    
+
+    mà mất ID.    
+
+    Tốt hơn có ID ổn định để truy vết.
+ action     Nên có action mang ý nghĩa nghiệp vụ:        
+   Không nên mọi thứ đều ghi chung chung:         
+
+         update
+         update
+         update   
+
+   Nên có action mang ý nghĩa nghiệp vụ:        
+
+        employee.updated        
+
+        employee.salary.changed        
+
+        payroll.finalized        
+
+        approval.approved        
+
+        approval.rejected        
+
+        role.assigned        
+
+        permission.granted        
+
+        contract.renewed   
+
+   Ví dụ Payroll:        
+
+        Admin A
+        ↓
+        Finalize Payroll #202609        
+
+   Audit:   
+
+        action = payroll.finalized   
+
+   rõ nghĩa hơn:   
+
+         action = update
+ resource    = đối tượng nào bị tác động.  
+    resource = đối tượng nào bị tác động.   
+
+   Ví dụ:   
+
+        resource_type = Employee
+        resource_id   = 100   
+
+   hoặc:   
+
+        resource_type = PayrollRun
+        resource_id   = 25   
+
+   Nhờ vậy có thể hỏi:        
+
+        Cho tôi toàn bộ lịch sử
+        Employee #100   
+
+   rồi query Audit theo resource.
  old_value
  new_value
+ old_value và new_value    trước và sau khi sửa
+
+    Ví dụ trước khi sửa:        
+
+        {
+            "salary": 50000000
+        }    
+
+    Sau khi sửa:        
+
+        {
+            "salary": 70000000
+        }    
+
+    Audit:        
+
+        old
+        50,000,000        
+
+              ↓ Admin A sửa        
+
+        new
+        70,000,000    
+
+    Nếu sửa nhiều field:         
+
+         old_values:
+         {
+             "salary": 50000000,
+             "position": "Senior Developer"
+         }         
+
+         new_values:
+         {
+             "salary": 70000000,
+             "position": "Tech Lead"
+         }
  timestamp
- request/context
-7.24 Sensitive Data / PII                       <
+ request/context        giúp điều tra sâu hơn.
+      Context giúp điều tra sâu hơn.     
+
+     Có thể gồm:     
+
+     company_id
+     request_id
+     IP
+     route
+     user_agent
+     job_id
+     correlation_id     
+
+     Ví dụ:     
+
+     request_id = req_XYZ123     
+
+     Cùng request_id có thể nối các log:     
+
+                         req_XYZ123
+                              │
+                ┌─────────────┼─────────────┐
+                ↓             ↓             ↓
+          Application      Security       Audit
+             Log             Log           Log     
+
+     Khi điều tra sự cố rất hữu ích.
+  
+7.24 Sensitive Data / PII          HRM có rất nhiều dữ liệu nhạy cảm: | giải thích che các  dữ liệu                 <
 
  HRM có rất nhiều dữ liệu nhạy cảm: 
 
@@ -53170,28 +53648,907 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
  Học: 
 
- encryption at rest
- encryption in transit
- masking
- access control
- audit
- retention
- secure deletion
+ encryption at rest     = dữ liệu đang được lưu trữ.     
+      At Rest = dữ liệu đang được lưu trữ.     
+
+     Ví dụ:          
+
+          Database
+          SSD
+          File Storage
+          Backup
+          Object Storage     
+
+     Thay vì DB chứa:          
+
+          bank_account
+          123456789     
+
+     có thể lưu:           
+
+           bank_account
+           eyJpdiI6Ik9...ciphertext...     
+
+     Laravel hỗ trợ encrypted cast:            
+
+            protected function casts(): array
+            {
+                return [
+                    'bank_account' => 'encrypted',
+                    'government_id' => 'encrypted',
+                ];
+            }     
+
+     Luồng:             
+
+             123456789
+                 ↓
+             Laravel Encrypt
+                 ↓
+             Ciphertext
+                 ↓
+             Database     
+
+     Khi Laravel cần đọc:              
+
+              Database
+              ↓
+              Ciphertext
+              ↓
+              Laravel + APP_KEY
+              ↓
+              Decrypt
+              ↓
+              123456789
+     Những dữ liệu có thể cân nhắc encrypt
+               CCCD
+               số tài khoản ngân hàng
+               thông tin thuế nhạy cảm
+               TOTP secret
+               integration credential
+               một số thông tin cá nhân nhạy cảm     
+
+     Còn password:              
+
+              Password
+              ↓
+              HASH ✅              
+
+              không phải
+              ↓
+              Encrypt ❌     
+
+     vì hệ thống không cần lấy lại password gốc.
+ encryption in transit       = dữ liệu đang truyền qua mạng.     
+      In Transit = dữ liệu đang truyền qua mạng.     
+
+     Ví dụ nhân viên mở:     
+
+              https://hrm.example.com     
+
+     rồi gửi:              
+
+              CCCD
+              salary
+              bank account              
+
+     Luồng:             
+
+             Browser / React Native
+                     ↓
+                   HTTPS
+                     ↓
+                    TLS
+                     ↓
+                Laravel Server     
+
+     HTTPS/TLS bảo vệ dữ liệu trên đường truyền.     
+
+     Ví dụ:             
+
+             React Native
+             ↓
+             POST /api/employees
+             ↓
+             HTTPS/TLS 🔒
+             ↓
+             Laravel     
+
+     Cách nhớ:             
+
+             At Rest
+             → bảo vệ lúc dữ liệu ĐANG NẰM trong storage             
+
+             In Transit
+             → bảo vệ lúc dữ liệu ĐANG ĐI qua network
+ masking        = che bớt dữ liệu khi hiển thị.     
+      Masking = che bớt dữ liệu khi hiển thị.     
+
+     DB có thể chứa:     
+
+              079123456789     
+
+     nhưng UI hiển thị:     
+
+              079******789     
+
+     Bank account:     
+
+              123456789012     
+
+     hiển thị:     
+
+              ********9012     
+
+     Ví dụ:     
+
+                $masked = '********' . substr($account, -4);     
+
+     UI:     
+          
+               Ngân hàng: Vietcombank
+               Số TK: ********9012     
+
+     Nếu người có quyền cần xem đầy đủ:               
+
+               HR Manager
+               ↓
+               [Reveal]
+               ↓
+               Authorization
+               ↓
+               Policy
+               ↓
+               Audit
+               ↓
+               123456789012
+     Masking không phải Encryption     
+
+     Đây là điểm rất quan trọng:             
+
+             Encryption
+             → bảo vệ dữ liệu khi lưu             
+
+             Masking
+             → che dữ liệu khi HIỂN THỊ     
+
+     Ví dụ DB:     
+
+              encrypted ciphertext 🔒     
+
+     Laravel decrypt:     
+
+            123456789012     
+
+     UI lại mask:     
+
+             ********9012     
+
+     Có thể dùng cả hai.
+ access control     |    Không phải user nào đăng nhập HRM cũng được xem dữ liệu nhạy cảm.    |  Authentication > Permission > Company/Tenant > Policy > Resource > Sensitive Data
+    Không phải user nào đăng nhập HRM cũng được xem dữ liệu nhạy cảm.    
+
+    Ví dụ:            
+
+            Employee thường
+            ↓
+            employee.view    
+
+    không có nghĩa được xem:             
+
+             salary
+             bank account
+             CCCD
+             tax    
+
+    Có thể tách permission:              
+
+              employee.view
+              employee.salary.view
+              employee.bank-account.view
+              employee.government-id.view
+              employee.document.view    
+
+    Ví dụ:    
+          
+              if (! $user->can('employee.salary.view')) {
+                  abort(403);
+              }    
+
+    Nhưng trong ERP multi-tenant của bạn còn phải kiểm tra:    
+            
+                Authentication
+                      ↓
+                Permission
+                      ↓
+                Company/Tenant
+                      ↓
+                Policy
+                      ↓
+                Resource
+                      ↓
+                Sensitive Data    
+
+    Không được chỉ kiểm tra:    
+
+               $user->can('employee.salary.view')    
+
+    rồi cho xem salary của mọi company.    
+
+    Phải bảo đảm Employee thuộc company mà user được phép truy cập.
+ audit      | log á   Khi dữ liệu nhạy cảm bị thay đổi — và với một số thao tác đặc biệt như reveal/download — nên có audit phù hợp.    
+    Khi dữ liệu nhạy cảm bị thay đổi — và với một số thao tác đặc biệt như reveal/download — nên có audit phù hợp.    
+
+    Ví dụ:          
+
+          Admin A
+          ↓
+          đổi salary Employee B          
+
+          50tr
+          ↓
+          70tr          
+
+    Audit:           
+
+           actor       = Admin A
+           action      = employee.salary.changed
+           resource    = Employee B
+           old_value   = 50tr
+           new_value   = 70tr
+           timestamp   = ...
+           request_id  = ...    
+
+    Hoặc:          
+
+          HR Manager
+          ↓
+          download Employee #100 contract    
+
+    Audit:          
+
+          actor    = HR Manager
+          action   = employee.contract.downloaded
+          resource = Contract #200
+          timestamp
+          request_id    
+
+    Tuy nhiên audit cũng phải tuân theo nguyên tắc không biến audit table thành nơi làm lộ secret/PII. Với field cực nhạy cảm, có thể chỉ ghi rằng field đã thay đổi thay vì copy toàn bộ plaintext vào old_values/new_values.
+ retention    = dữ liệu được giữ trong bao lâu.    
+    Retention = dữ liệu được giữ trong bao lâu.    
+
+    Sai:    
+
+          Upload CCCD
+          ↓
+          lưu vĩnh viễn
+          ↓
+          không bao giờ xem xét/xóa    
+
+    Thay vào đó doanh nghiệp cần quy định:          
+
+          Loại dữ liệu
+          ↓
+          Cần giữ bao lâu?
+          ↓
+          Vì lý do nghiệp vụ/pháp lý nào?
+          ↓
+          Hết thời hạn
+          ↓
+          Archive hoặc Delete theo chính sách    
+
+    Ví dụ về mặt kiến trúc:           
+
+           Employee document
+           ↓
+           retention policy
+           ↓
+           đến thời điểm đủ điều kiện xử lý
+           ↓
+           Retention Job
+           ↓
+           archive/delete
+           ↓
+           Audit    
+
+    Không nên tự đặt một con số retention chung cho tất cả CCCD, hợp đồng, thuế, payroll vì thời hạn thực tế phụ thuộc loại hồ sơ và nghĩa vụ pháp lý áp dụng.
+ secure deletion       |     Có thể dữ liệu vẫn tồn tại ở: 
+    DELETE FROM employees chưa chắc có nghĩa:    
+
+           “Mọi dấu vết dữ liệu của Employee đã biến mất.”    
+
+    Có thể dữ liệu vẫn tồn tại ở:           
+
+           Database backup
+           File storage
+           Object storage
+           Cache
+           Search index
+           Export Excel/CSV
+           Thumbnail
+           temporary files
+           Queue payload
+           logs    
+   | Nơi dữ liệu tồn tại  | Hiểu đơn giản                   | Ví dụ trong HRM                              | Khi xóa cần chú ý                                                             |
+   | -------------------- | ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------- |
+   | **Database Backup**  | Bản sao dự phòng của DB         | Backup hôm qua vẫn chứa CCCD, salary         | Dùng retention/lifecycle cho backup; không thể chỉ xóa DB hiện tại            |
+   | **File Storage**     | Nơi Laravel lưu file            | `storage/app/private/employees/100/cccd.pdf` | Xóa file vật lý nếu chính sách cho phép                                       |
+   | **Object Storage**   | Kho file bên ngoài/cloud        | S3, R2 chứa hợp đồng/CCCD                    | Xóa object, version cũ nếu versioning có bật, theo retention                  |
+   | **Cache**            | Dữ liệu tạm để truy xuất nhanh  | Redis cache Employee/Payroll                 | Invalidate/xóa cache liên quan                                                |
+   | **Search Index**     | Bản dữ liệu phục vụ tìm kiếm    | Elasticsearch/OpenSearch index Employee      | Xóa/cập nhật document trong index                                             |
+   | **Export Excel/CSV** | File đã xuất từ hệ thống        | `employees.xlsx`, `payroll.csv`              | Có thể chứa bản sao PII; cần kiểm soát quyền, thời hạn và vị trí lưu          |
+   | **Thumbnail**        | Bản ảnh nhỏ được tạo từ ảnh gốc | Avatar thumbnail, preview tài liệu           | Xóa cả ảnh gốc và các derived thumbnail cần thiết                             |
+   | **Temporary Files**  | File tạm trong quá trình xử lý  | File upload/import tạm                       | Cleanup sau xử lý hoặc theo TTL                                               |
+   | **Queue Payload**    | Dữ liệu được đưa vào Queue Job  | Job chứa employee data                       | Nên truyền ID thay vì nguyên PII; xử lý failed/pending payload theo retention |
+   | **Logs**             | Nhật ký hệ thống                | `laravel.log` vô tình chứa CCCD              | Tránh log PII ngay từ đầu; có retention/redaction phù hợp                     |
+   
+    Ví dụ employee document:           
+
+           documents table
+                  +
+           private storage
+                  +
+           thumbnail
+                  +
+           cache    
+
+    Khi xóa cần xác định tất cả nơi có bản sao:            
+
+            Delete policy
+                 ↓
+            DB record
+                 ↓
+            private file
+                 ↓
+            derived files/thumbnails
+                 ↓
+            cache/index
+                 ↓
+            backup lifecycle xử lý theo retention
+                 ↓
+            Audit việc xóa    
+
+    Đây là lý do Secure Deletion rộng hơn:    
+
+            $employee->delete();    
+
+    Đồng thời không nên tùy tiện hard-delete hồ sơ HRM nếu doanh nghiệp vẫn có nghĩa vụ phải giữ chúng.
  không log dữ liệu nhạy cảm
+     Đây là lỗi rất dễ mắc.     
+
+     Ví dụ cực kỳ nguy hiểm:     
+
+            Log::info('Employee updated', $request->all());     
+
+     Request có thể chứa:     
+         
+            name
+            CCCD
+            phone
+            address
+            bank_account
+            salary
+            tax_id     
+
+     Thế là:            
+
+            Database được bảo vệ 🔒            
+
+            nhưng            
+
+            storage/logs/laravel.log
+            ↓
+            CCCD plaintext ❌
+            Bank Account plaintext ❌     
+
+     Bạn đã vô tình tạo một bản sao dữ liệu nhạy cảm trong log.     
+
+     Tệ hơn nữa:     
+
+            Log::info('Login', $request->all());     
+
+     có thể log:           
+
+           email
+           password ❌❌❌           
+
+     Nên whitelist:            
+
+            Log::info('Employee updated', [
+                'actor_id' => auth()->id(),
+                'employee_id' => $employee->id,
+                'company_id' => $employee->company_id,
+                'request_id' => request()->header('X-Request-ID'),
+            ]);     
+
+     Log:     
+
+             Employee #100 updated by User #5     
+
+     thay vì:                     
+                 Employee #100
+                 CCCD = ...
+                 Bank = ...
+                 Salary = ...
+                 Address = ...
+     Tuyệt đối cẩn thận với
+                 password
+                 Bearer token
+                 API secret
+                 TOTP secret
+                 session cookie
+                 private key
+                 recovery code
+                 bank information
+                 CCCD
+                 sensitive documents
 7.25 OWASP Top 10                       <
 
  Đây là nhóm kiến thức Security rất nên thuộc khi phỏng vấn backend: 
+   | #   | Nhóm                                      | Hiểu đơn giản                                               |
+   | --- | ----------------------------------------- | ----------------------------------------------------------- |
+   | A01 | **Broken Access Control**                 | User làm/xem được thứ không thuộc quyền                     |
+   | A02 | **Security Misconfiguration**             | Cấu hình hệ thống không an toàn                             |
+   | A03 | **Software Supply Chain Failures**        | Dependency/build/update bị xâm phạm hoặc có lỗ hổng         |
+   | A04 | **Cryptographic Failures**                | Mã hóa/hash/TLS/secret làm sai                              |
+   | A05 | **Injection**                             | Input của attacker làm thay đổi câu lệnh                    |
+   | A06 | **Insecure Design**                       | Thiết kế nghiệp vụ vốn đã không an toàn                     |
+   | A07 | **Authentication Failures**               | Xác thực/login/session/token yếu                            |
+   | A08 | **Software or Data Integrity Failures**   | Không đảm bảo code/data nhận vào còn nguyên vẹn và đáng tin |
+   | A09 | **Security Logging & Alerting Failures**  | Không log/cảnh báo đủ để phát hiện tấn công                 |
+   | A10 | **Mishandling of Exceptional Conditions** | Xử lý lỗi/trạng thái bất thường không an toàn               |
+ OWASP Top 10 
+     │
+     ├── Access       → được phép làm gì?
+     ├── Config       → cấu hình có an toàn?
+     ├── Supply Chain → dependency/build có an toàn?
+     ├── Crypto       → hash/encrypt/TLS đúng?
+     ├── Injection    → input có điều khiển command/query?
+     ├── Design       → thiết kế nghiệp vụ có an toàn?
+     ├── Auth         → xác định user có an toàn?
+     ├── Integrity    → code/data có đáng tin và nguyên vẹn?
+     ├── Logging      → tấn công có được ghi + cảnh báo?
+     └── Exception    → gặp lỗi có fail an toàn?  
+ 1 Broken Access Control                     |  Access       → được phép làm gì?    
+    Đây là lỗi:    
 
- Broken Access Control
- Security Misconfiguration
- Supply Chain Failures
- Cryptographic Failures
- Injection
- Insecure Design
- Authentication Failures
- Software/Data Integrity Failures
- Logging & Alerting Failures
- Exceptional Condition Handling
+    User truy cập hoặc thực hiện được hành động mà họ không được phép.    
+
+    Ví dụ HRM có URL:    
+ 
+          /admin/employees/100    
+
+    Employee #100 thuộc:    
+
+           Company A    
+
+    User Company B đổi URL:    
+
+           /admin/employees/100    
+
+    Backend chỉ:    
+
+           $employee = Employee::findOrFail($id);    
+
+    và trả dữ liệu:             
+
+             Company B
+             ↓
+             Employee Company A
+             ↓
+             CCCD
+             Salary
+             Bank Account             
+
+             ❌ Broken Access Control    
+
+    Phải kiểm soát:            
+
+            Authentication
+            ↓
+            Permission
+            ↓
+            Tenant/Company
+            ↓
+            Policy/Ownership
+            ↓
+            Resource    
+
+    Laravel:    
+
+           $this->authorize('view', $employee);    
+
+    Đây cũng liên quan đến IDOR mà bạn đã học.
+ 2 Security Misconfiguration                 |  Config       → cấu hình có an toàn?       
+   = cấu hình sai hoặc cấu hình không an toàn.   
+
+   Ví dụ production:         
+
+         APP_ENV=production
+         APP_DEBUG=true   
+
+   APP_DEBUG=true trên production có thể làm lộ thông tin kỹ thuật không nên công khai.   
+
+   Hoặc:         
+
+         CORS quá rộng
+         permission file sai
+         default password
+         directory listing
+         security headers thiếu
+         database public Internet không cần thiết
+         service không cần thiết vẫn bật   
+
+   Ví dụ:        
+
+        Production
+        ↓
+        APP_DEBUG=false ✅
+        HTTPS ✅
+        Secure Cookie ✅
+        CORS phù hợp ✅
+        Security Headers ✅
+        least privilege ✅
+ 3 Supply Chain Failures                     |  Supply Chain → dependency/build có an toàn?       
+     Backend của bạn không chỉ có code bạn tự viết.
+    
+    Ví dụ Laravel:
+          
+          Laravel Project
+          │
+          ├── Laravel Framework
+          ├── Sanctum
+          ├── Spatie Permission
+          ├── Yajra DataTables
+          ├── Composer packages
+          ├── npm packages
+          ├── Docker images
+          └── GitHub Actions
+    
+    Nếu dependency/build pipeline bị compromise hoặc package có lỗ hổng:
+           
+           Application
+           ↓
+           cũng có thể bị ảnh hưởng
+    
+    Kiểm tra Composer:
+    
+          composer audit
+    
+    npm:
+    
+           npm audit
+    
+    Và cần:
+           
+           Lock dependencies
+           Update security patches
+           Review dependency
+           Protect CI/CD
+           Protect package credentials
+           Use trusted package/image sources
+ 4 Cryptographic Failures                    |  Crypto       → hash/encrypt/TLS đúng?       
+     = dùng encryption/hash/TLS/secret sai.     
+
+     Ví dụ cực kỳ sai:     
+
+            $user->password = $request->password; // ❌ plaintext     
+
+     Đúng:     
+
+            $user->password = Hash::make($request->password);     
+
+     Sensitive field cần lấy lại có thể:     
+
+             'bank_account' => 'encrypted',     
+
+     Dữ liệu truyền:              
+
+              React / Browser
+              ↓
+              HTTPS/TLS 🔒
+              ↓
+              Laravel     
+
+     Các lỗi thường gặp:              
+
+              Password plaintext ❌
+              Thuật toán crypto yếu/không phù hợp ❌
+              HTTP thay HTTPS ❌
+              APP_KEY bị lộ ❌
+              API secret hard-code ❌
+              Encryption key quản lý kém ❌     
+
+     Cách nhớ:              
+
+              Password
+              → Hash              
+
+              Sensitive data cần đọc lại
+              → Encryption              
+
+              Network
+              → HTTPS/TLS              
+
+              Secret/Key
+              → Secret Management
+ 5 Injection                                 |  Injection    → input có điều khiển command/query?     
+   Attacker đưa input làm thay đổi câu lệnh/hành vi interpreter.   
+
+   Ví dụ SQL Injection:   
+
+         $sql = "SELECT * FROM users WHERE email = '$email'";   
+
+   Nguy hiểm.   
+
+   Dùng binding/Eloquent:   
+
+          User::where('email', $email)->first();   
+
+   Hoặc:           
+
+           DB::select(
+               'SELECT * FROM users WHERE email = ?',
+               [$email]
+           );   
+
+   Dynamic column phải whitelist:           
+
+           $allowedSorts = [
+               'name',
+               'email',
+               'created_at',
+           ];   
+
+   Injection không chỉ có SQL; nhóm này có thể liên quan đến các interpreter/command khác tùy hệ thống.
+ 6 Insecure Design                           |  Design       → thiết kế nghiệp vụ có an toàn?     
+      Cái này khác bug code.     
+
+     Insecure Design = ngay từ thiết kế nghiệp vụ đã thiếu biện pháp an toàn cần thiết.     
+
+     Ví dụ Payment:            
+
+            POST /payments
+            ↓
+            Create Payment     
+
+     Nhưng thiết kế không nghĩ đến:             
+
+             Double click
+             Retry
+             Concurrent request
+             Duplicate request     
+
+     Kết quả:             
+
+             Request A → Payment 500k
+             Request B → Payment 500k             
+
+             ❌ Double Payment     
+
+     Thiết kế tốt hơn có thể cần:             
+
+             Idempotency Key
+             +
+             Unique Constraint
+             +
+             Transaction
+             +
+             State Machine
+             +
+             Lock/Atomic Update khi phù hợp     
+
+     Hoặc Payroll:                  
+
+                  Payroll finalized
+                  ↓
+                  vẫn cho sửa snapshot tùy ý     
+
+     Đó có thể là vấn đề thiết kế nghiệp vụ.     
+
+     Thiết kế:                 
+
+                 Draft
+                 ↓
+                 Review
+                 ↓
+                 Finalized
+                 ↓
+                 Immutable     
+
+     an toàn hơn cho nghiệp vụ đó.
+ 7 Authentication Failures                   |  Auth         → xác định user có an toàn?     
+     = lỗi trong việc xác minh:     
+
+         Bạn là ai?     
+
+     Ví dụ:            
+
+            Password yếu
+            Không rate limit login
+            Session quản lý kém
+            Token không revoke
+            Reset password yếu
+            MFA triển khai sai
+            Credential dễ brute-force     
+
+     Laravel:     
+
+             Auth::attempt($credentials);     
+
+     Sau login:     
+
+             $request->session()->regenerate();     
+
+     Password:     
+           
+                Password::min(12)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised();     
+
+     Login:              
+
+              Request
+              ↓
+              Rate Limit
+              ↓
+              Validate
+              ↓
+              Authentication
+              ↓
+              Session regenerate
+              ↓
+              MFA nếu cần
+ 8 Software/Data Integrity Failures          |  Integrity    → code/data có đáng tin và nguyên vẹn?     
+     Integrity = đảm bảo:    
+  
+           Code hoặc dữ liệu không bị thay đổi trái phép và nguồn/chuỗi xử lý đáng tin cậy.    
+
+    Một ví dụ rất dễ hiểu là Webhook.    
+
+    Payment Provider gửi:             
+
+             {
+                 "payment_id": 100,
+                 "status": "paid"
+             }             
+
+    Nếu Laravel cứ nhận:           
+
+           status = paid
+           ↓
+           update DB    
+
+    mà không xác minh tính toàn vẹn/xác thực phù hợp, request giả có thể gây vấn đề.    
+
+    Webhook thường có cơ chế signature, ví dụ về mặt ý tưởng:           
+
+           Webhook Request
+           ↓
+           Verify Signature
+           ↓
+           Signature đúng?
+           ├── NO → reject
+           └── YES
+                ↓
+              Process    
+
+    Ngoài ra còn phải quan tâm tính toàn vẹn của software/update/artifact/data pipeline tùy kiến trúc.
+ 9 Security Logging & Alerting Failures      |  Logging      → tấn công có được ghi + cảnh báo?      
+     Phần này nối trực tiếp với 7.23.     
+
+     Ví dụ attacker:            
+
+            Login fail 500 lần
+            ↓
+            MFA fail 100 lần
+            ↓
+            403 hàng nghìn lần
+            ↓
+            thử truy cập Admin     
+
+     nhưng hệ thống:             
+
+             Không Security Log ❌
+             Không Alert ❌
+             Không Monitoring ❌     
+
+     thì có thể không ai phát hiện kịp thời.     
+
+     Nên có log phù hợp cho:            
+
+            login_failed
+            mfa_failed
+            authorization_denied
+            rate_limit
+            password_reset
+            token_created/revoked
+            sensitive security changes     
+
+     và với sự kiện nghiêm trọng:            
+
+            Security Event
+            ↓
+            Log
+            ↓
+            Monitoring
+            ↓
+            Alert
+            ↓
+            Admin/Security team     
+
+     Đồng thời:            
+
+            Log password ❌
+            Log Bearer token ❌
+            Log API secret ❌
+            Log TOTP secret ❌
+ 10 Mishandling of Exceptional Conditions    |  Exception    → gặp lỗi có fail an toàn?       
+
+    Đây là nhóm dễ hiểu là:    
+
+           Có lỗi hoặc tình huống bất thường xảy ra nhưng hệ thống xử lý không an toàn.    
+
+    Ví dụ Payment:    
+
+           Begin Payment
+           ↓
+           Trừ tiền thành công ✅
+           ↓
+           Database update
+           ↓
+           Exception ❌
+           ↓
+           Retry
+           ↓
+           Trừ tiền lần nữa ❌❌    
+
+    Đây chính là lý do những thứ bạn vừa học như:            
+
+            Transaction
+            Idempotency
+            Unique Constraint
+            Retry Safety
+            State Machine
+            Exception Handling            
+
+    rất quan trọng.    
+
+    Một ví dụ khác:            
+
+            try {
+                $payment->process();
+            } catch (\Throwable $e) {
+                // bỏ qua hoàn toàn ❌
+            }            
+
+    Hệ thống nuốt lỗi và tiếp tục như thể thành công có thể gây trạng thái sai.    
+
+    Hoặc trả exception thô cho client:              
+
+              SQL error
+              DB host
+              filesystem path
+              stack trace
+              secret/context nhạy cảm    
+
+    cũng không tốt.    
+
+    Thiết kế nên hướng đến:    
+
+              Exception
+              ↓
+              Rollback khi cần
+              ↓
+              Fail safely
+              ↓
+              Log an toàn
+              ↓
+              Alert nếu nghiêm trọng
+              ↓
+              Client nhận error phù hợp
 7.26 Dependency / Supply-Chain Security                       <
 
  Laravel/PHP: 
