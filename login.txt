@@ -48717,7 +48717,7 @@ Câu trả lời phỏng vấn:                                                 
 
          Đó chính là Secrets Management.
     
-7.16 HTTPS / TLS                       <  
+7.16 HTTPS / TLS         quan trọng              <  
 
  Học: 
 
@@ -54082,7 +54082,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
                  bank information
                  CCCD
                  sensitive documents
-7.25 OWASP Top 10                       <
+7.25 OWASP Top 10         10     ( projec hiên tại chưa có hãy thêm vào ) chặn tấn công        <
 
  Đây là nhóm kiến thức Security rất nên thuộc khi phỏng vấn backend: 
    | #   | Nhóm                                      | Hiểu đơn giản                                               |
@@ -54109,7 +54109,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
      ├── Integrity    → code/data có đáng tin và nguyên vẹn?
      ├── Logging      → tấn công có được ghi + cảnh báo?
      └── Exception    → gặp lỗi có fail an toàn?  
- 1 Broken Access Control                     |  Access       → được phép làm gì?    
+ 1 Broken Access Control                     |  Access       → được phép làm gì?  |  ❌ User truy cập hoặc thực hiện được hành động mà họ không được phép.  | quyền Company  |   Phải kiểm soát: Authentication > Permission > Tenant/Company > Policy/Ownership > Resource
     Đây là lỗi:    
 
     User truy cập hoặc thực hiện được hành động mà họ không được phép.    
@@ -54159,7 +54159,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
            $this->authorize('view', $employee);    
 
     Đây cũng liên quan đến IDOR mà bạn đã học.
- 2 Security Misconfiguration                 |  Config       → cấu hình có an toàn?       
+ 2 Security Misconfiguration                 |  Config       → cấu hình có an toàn?  |  ❌ = cấu hình sai hoặc cấu hình không an toàn.      
    = cấu hình sai hoặc cấu hình không an toàn.   
 
    Ví dụ production:         
@@ -54189,7 +54189,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
         CORS phù hợp ✅
         Security Headers ✅
         least privilege ✅
- 3 Supply Chain Failures                     |  Supply Chain → dependency/build có an toàn?       
+ 3 Supply Chain Failures       cái này rối(v)|  Supply Chain → dependency/build có an toàn?  | ❌ Backend của bạn không chỉ có code bạn tự viết.   | Chuỗi quy trình xây dựng/quản lý phụ thuộc bị xâm nhập. 
      Backend của bạn không chỉ có code bạn tự viết.
     
     Ví dụ Laravel:
@@ -54221,13 +54221,300 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
     
     Và cần:
            
-           Lock dependencies
-           Update security patches
-           Review dependency
-           Protect CI/CD
-           Protect package credentials
-           Use trusted package/image sources
- 4 Cryptographic Failures                    |  Crypto       → hash/encrypt/TLS đúng?       
+    Lock dependencies         |  composer.lock giữ phiên bản cụ thể đã resolve:                              
+                        1. Lock dependencies                  
+
+            Giả sử bạn khai báo:                  
+
+                    "laravel/framework": "^13.0"                  
+
+            ^13.0 có thể cho phép nhiều phiên bản tương thích.                  
+
+            Sau khi:                  
+
+                        composer install                  
+
+            composer.lock giữ phiên bản cụ thể đã resolve:                              
+
+                        composer.json
+                        ↓
+                        laravel/framework ^13.0                              
+
+                        composer.lock
+                        ↓
+                        phiên bản cụ thể                  
+
+            Sau đó production chạy:                  
+
+                        composer install                  
+
+            sẽ dựa vào lock file.                  
+
+            Node cũng tương tự:                              
+
+                        package.json
+                                ↓
+                        package-lock.json                  
+
+            Vì vậy thường commit:                              
+
+                        composer.lock       ✅
+                        package-lock.json   ✅                  
+
+            vào Git.                  
+
+            Cách nhớ: *.lock = khóa bộ dependency đã resolve.
+    Update security patches   |  phát hiện lỗ hổng > maintainer phát hành bản vá | Package hôm nay an toàn không có nghĩa mãi mãi an toàn.              
+                  2. Update security patches              
+
+              Package hôm nay an toàn không có nghĩa mãi mãi an toàn.              
+
+              Ví dụ:              
+
+                         Package X
+                         ↓
+                         phát hiện lỗ hổng
+                         ↓
+                         maintainer phát hành bản vá
+                         ↓
+                         project cần cập nhật              
+
+              Composer kiểm tra:              
+
+                         composer audit              
+
+              Xem package cũ:              
+
+                          composer outdated              
+
+              Node:                          
+
+                          npm audit
+                          npm outdated              
+
+              Nhưng không nên thấy update là production update bừa:                          
+
+                          Audit
+                          ↓
+                          đánh giá ảnh hưởng
+                          ↓
+                          Update
+                          ↓
+                          PHPStan
+                          ↓
+                          Unit/Feature tests
+                          ↓
+                          E2E/Staging
+                          ↓
+                          Deploy
+    Review dependency         | npm audit  npm outdated  |  kiểm tra rồi cài package > tăng dêpndence | = trước khi cài hoặc khi đang sử dụng một package/thư viện, mình kiểm tra xem dependency đó có đáng tin, an toàn và còn được duy trì không.
+                3. Review dependency            
+
+            Ví dụ bạn cần package upload file và tìm được:            
+
+                          composer require random-person/super-upload            
+
+            Đừng chỉ thấy chức năng đúng ý là cài ngay.            
+
+            Cần xem:                          
+
+                          Package này từ đâu?
+                          ↓
+                          Có còn được maintain?
+                          ↓
+                          Version/release thế nào?
+                          ↓
+                          Có advisory/lỗ hổng đã biết?
+                          ↓
+                          Nó kéo thêm dependency nào?
+                          ↓
+                          Nó yêu cầu quyền/chạy script gì?
+                          ↓
+                          Có thực sự cần package không?            
+
+            Đặc biệt tránh kiểu:                         
+
+                         Cần một function 20 dòng
+                         ↓
+                         cài package khổng lồ
+                         ↓
+                         + 50 dependencies            
+
+            Bạn đã vô tình tăng attack surface.
+   -------------------------------Review dependency giải thích 2
+            Review dependency = trước khi cài hoặc khi đang sử dụng một package/thư viện, mình kiểm tra xem dependency đó có đáng tin, an toàn và còn được duy trì không.             
+
+             Ví dụ bạn định cài Laravel package:             
+
+                     composer require vendor/package             
+
+             Đừng cài ngay. Review theo kiểu này:                               
+
+                               Package cần cài
+                                   ↓
+                               1. Ai phát triển?
+                                   ↓
+                               2. Còn maintain không?
+                                   ↓
+                               3. Có lỗ hổng security không?
+                                   ↓
+                               4. Version có quá cũ không?
+                                   ↓
+                               5. Nó kéo thêm package gì?
+                                   ↓
+                               6. Project có thật sự cần nó không?
+                                   ↓
+                               Ổn → cài
+             Với Laravel/Composer, thực tế bạn làm thế nào?             
+
+             Giả sử project đã có package:             
+
+                         composer show             
+
+             Xem một package cụ thể:             
+
+                        composer show spatie/laravel-permission             
+
+             Bạn sẽ quan tâm đến:                            
+
+                            versions
+                            requires
+                            homepage/source
+                            dependency liên quan             
+
+             Kiểm tra package nào đang cũ:             
+
+                          composer outdated             
+
+             Kiểm tra security advisory:             
+
+                          composer audit             
+
+             Nếu:             
+
+                           Found 0 security vulnerability advisories             
+
+             thì Composer hiện không tìm thấy advisory tương ứng trong dependency đã cài.             
+
+             Nhưng composer audit chỉ là một phần của review, không phải toàn bộ review.             
+
+             Trước khi cài package mới             
+
+             Ví dụ bạn tìm thấy:             
+
+                           abc/laravel-excel-super             
+
+             Hãy kiểm tra:                                
+
+                                Kiểm tra	                    Bạn cần xem gì?
+                                Nguồn	              Package/repository có rõ ràng không?
+                                Maintainer	           Ai đang phát triển?
+                                Update	               Còn release/commit và hỗ trợ không?
+                                Security	           Có advisory/lỗ hổng đã biết không?
+                                Compatibility	       Có hỗ trợ Laravel/PHP version của bạn không?
+                                Dependencies	        Nó kéo thêm những package nào?
+                                Permissions/scripts     Có hành vi cài đặt/build bất thường không?
+                                Necessity	            Có thật sự cần cài package này không?             
+
+             Ví dụ package chỉ giúp bạn làm một việc rất đơn giản:             
+
+                           $string = strtoupper($string);             
+
+             mà nó kéo:             
+
+                             Package X
+                                ↓
+                             20 dependencies
+                                ↓
+                             50 packages khác             
+
+             thì phải cân nhắc:                            
+
+                            "Có đáng thêm 50 dependency
+                            chỉ để giải quyết việc nhỏ này không?"             
+
+             Vì càng nhiều dependency:                           
+
+                           Nhiều package
+                           ↓
+                           nhiều code bên thứ ba
+                           ↓
+                           nhiều thứ phải cập nhật
+                           ↓
+                           attack surface có thể tăng
+             Sau khi cài cũng phải review định kỳ             
+
+             Không phải:                         
+
+                         Review
+                         ↓
+                         Cài
+                         ↓
+                         xong mãi mãi ❌             
+
+             Mà:             
+           
+                        Cài package
+                        ↓
+                        composer.lock
+                        ↓
+                        sử dụng
+                        ↓
+                        thời gian trôi qua
+                        ↓
+                        lỗ hổng mới có thể được phát hiện
+                        ↓
+                        composer audit
+                        ↓
+                        update/replace/remove nếu cần             
+
+             Ví dụ quy trình đơn giản cho project Laravel của bạn:                            
+
+                            composer audit
+                            composer outdated             
+
+             Node:                              
+
+                             npm audit
+                             npm outdated             
+
+             Sau đó nếu có vấn đề thì mới xem package cụ thể và quyết định update.             
+
+             Nếu phỏng vấn hỏi             
+
+                    “Em review dependency như thế nào?”             
+
+             Bạn có thể trả lời ngắn:             
+
+                    “Em kiểm tra nguồn và maintainer của package, tình trạng maintain, version compatibility, dependency mà nó kéo theo và các security advisory. Với Laravel em dùng composer audit, composer outdated, xem composer.lock và package cụ thể trước khi update. Em cũng tránh thêm dependency không cần thiết.”             
+
+             Cách nhớ:                         
+
+                         Review Dependency
+                         = kiểm tra "hàng của người khác"
+                         trước và trong khi đưa nó vào project.                         
+
+                         Nguồn?
+                         Maintainer?
+                         Còn update?
+                         Có CVE/advisory?
+                         Kéo theo cái gì?
+                         Có thật sự cần?             
+
+             Nó khác Update security patches ở chỗ: Review là đánh giá package, còn Update patch là thực hiện cập nhật khi có bản sửa bảo mật phù hợp.
+    Protect CI/CD
+    Protect package credentials
+    Use trusted package/image sources
+   | Biện pháp                             | Hiểu đơn giản                                      | Laravel của bạn                                 |
+   | ------------------------------------- | -------------------------------------------------- | ----------------------------------------------- |
+   | **Lock dependencies**                 | Khóa chính xác version dependency                  | `composer.lock`, `package-lock.json`            |
+   | **Update security patches**           | Cập nhật bản vá lỗ hổng                            | `composer audit`, `npm audit`                   |
+   | **Review dependency**                 | Kiểm tra package trước khi cài                     | xem package có uy tín, còn maintain không       |
+   | **Protect CI/CD**                     | Bảo vệ pipeline build/deploy                       | GitHub Actions permissions/secrets              |
+   | **Protect package credentials**       | Không để lộ token/password dùng tải/publish/deploy | GitHub token, registry token                    |
+   | **Use trusted package/image sources** | Chỉ lấy package/Docker image từ nguồn tin cậy      | Packagist, npm registry, official Docker images |
+             
+ 4 Cryptographic Failures         các lỗi (v)|  Crypto       → hash/encrypt/TLS/Secret-Key đúng?  |  ❌  = dùng encryption/hash/TLS/secret sai.  | Lỗi mã hóa  |  Ví dụ cực kỳ sai:  $user->password = $request->password; // ❌ plaintext     Đúng: $user->password = Hash::make($request->password); ✅    | assword plaintext ❌  Thuật toán crypto yếu/không phù hợp ❌  HTTP thay HTTPS ❌  APP_KEY bị lộ ❌  API secret hard-code ❌  Encryption key quản lý kém ❌     
      = dùng encryption/hash/TLS/secret sai.     
 
      Ví dụ cực kỳ sai:     
@@ -54272,7 +54559,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
               Secret/Key
               → Secret Management
- 5 Injection                                 |  Injection    → input có điều khiển command/query?     
+ 5 Injection                                 |  Injection    → input có điều khiển command/query?  | >>> Attacker đưa input làm thay đổi câu lệnh/hành vi interpreter.   | dùng ELOQUENT thay lệnh SQL  
    Attacker đưa input làm thay đổi câu lệnh/hành vi interpreter.   
 
    Ví dụ SQL Injection:   
@@ -54301,7 +54588,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
            ];   
 
    Injection không chỉ có SQL; nhóm này có thể liên quan đến các interpreter/command khác tùy hệ thống.
- 6 Insecure Design                           |  Design       → thiết kế nghiệp vụ có an toàn?     
+ 6 Insecure Design                           |  Design       → thiết kế nghiệp vụ có an toàn?  |       Thiết kế tốt hơn có thể cần: Idempotency Key > Unique Constraint > Transaction > State Machine > Lock/Atomic Update khi phù hợp             
       Cái này khác bug code.     
 
      Insecure Design = ngay từ thiết kế nghiệp vụ đã thiếu biện pháp an toàn cần thiết.     
@@ -54316,7 +54603,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
              Double click
              Retry
-             Concurrent request
+             Concurrent request    |  bấm đồng thời
              Duplicate request     
 
      Kết quả:             
@@ -54357,7 +54644,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
                  Immutable     
 
      an toàn hơn cho nghiệp vụ đó.
- 7 Authentication Failures                   |  Auth         → xác định user có an toàn?     
+ 7 Authentication Failures                   |  Auth         → xác định user có an toàn?   |  = lỗi trong việc xác minh:  Password yếu | Không rate limit | login | Session quản lý kém | Token không revoke | Reset password yếu | MFA triển khai sai | Credential dễ brute-force     | ✅ Request > Rate Limit > Validate > Authentication > Session regenerate > MFA nếu cần
      = lỗi trong việc xác minh:     
 
          Bạn là ai?     
@@ -54401,7 +54688,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
               Session regenerate
               ↓
               MFA nếu cần
- 8 Software/Data Integrity Failures          |  Integrity    → code/data có đáng tin và nguyên vẹn?     
+ 8 Software/Data Integrity Failures   mã hoá nối A > B  |  Integrity    → code/data có đáng tin và nguyên vẹn?   | WEBHOOK_SECRET = abcXYZ123 | Payment Provider = nhà cung cấp dịch vụ bên ngoài >   Webhook Request (code nhận lệnh Route + Controller) > Verify Signature(xác minh chữ ký) >  Signature đúng?-NO → reject-YES > Process 
      Integrity = đảm bảo:    
   
            Code hoặc dữ liệu không bị thay đổi trái phép và nguồn/chuỗi xử lý đáng tin cậy.    
@@ -54425,18 +54712,903 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
     Webhook thường có cơ chế signature, ví dụ về mặt ý tưởng:           
 
-           Webhook Request
-           ↓
-           Verify Signature
-           ↓
-           Signature đúng?
-           ├── NO → reject
-           └── YES
+    Webhook Request    2  (là bên ngoài gọi vào cái luồng Provider nhận > route > controller >  )( À, Webhook không phải là một thư viện để composer require. Webhook là một cách hai hệ thống giao tiếp với nhau. Nói đơn giản, nó chỉ là một URL/API endpoint mà bạn tạo ra để hệ thống khác gọi vào khi có sự kiện. )
+    -------------------------------giải thích 1       |    giải thích wedbook là code   |  A nhận HTTP request → Route + Controller  | A gửi Webhook sang B  → HTTP POST | B nhận Webhook → Route + Controller | AppServiceProvider → KHÔNG phải nơi mặc định nhận Webhook      
+       À, Webhook không phải là một thư viện để composer require.              
+       Webhook là một cách hai hệ thống giao tiếp với nhau. Nói đơn giản, nó chỉ là một URL/API endpoint mà bạn tạo ra để hệ thống khác gọi vào khi có sự kiện.              
+
+       Ví dụ bạn có Laravel:              
+
+               https://kayaga.one/api/webhooks/payment              
+
+       Bạn tự tạo route:              
+
+                Route::post('/webhooks/payment', [
+                    PaymentWebhookController::class,
+                    'handle'
+                ]);              
+
+       Controller:                         
+
+                  class PaymentWebhookController extends Controller
+                  {
+                      public function handle(Request $request)
+                      {
+                          // Nhận thông báo từ hệ thống bên ngoài
+                      }
+                  }              
+
+       Vậy là về cơ bản bạn đã có một webhook endpoint. Không bắt buộc cài package nào cả.              
+
+       Nó hoạt động thế này              
+
+       Giả sử bạn tích hợp cổng thanh toán:                        
+
+                 Laravel của bạn
+                 https://kayaga.one                        
+
+                 Bạn tạo:
+                 POST /api/webhooks/payment
+                         ↑
+                         │
+                         │ HTTP Request
+                         │
+                 Payment Provider              
+
+       Bạn vào trang quản trị của Payment Provider và cấu hình:                         
+
+                  Webhook URL:                         
+
+                  https://kayaga.one/api/webhooks/payment              
+
+       Sau này khách thanh toán thành công:                             
+
+                      Payment Provider
+                             ↓
+                      "Ê, đơn #100 thanh toán rồi"
+                             ↓
+                      POST https://kayaga.one/api/webhooks/payment
+                             ↓
+                      Laravel Route
+                             ↓
+                      Controller
+                             ↓
+                      handle()
+                             ↓
+                      Verify Signature
+                             ↓
+                      Update Payment              
+
+       Ví dụ provider gửi:                             
+
+                      {
+                          "event": "payment.success",
+                          "payment_id": "PAY123",
+                          "order_id": 100,
+                          "amount": 500000
+                      }              
+
+       Laravel nhận:                                    
+
+                             public function handle(Request $request)
+                             {
+                                 $event = $request->input('event');                                    
+
+                                 if ($event === 'payment.success') {
+                                     // xử lý payment
+                                 }                                    
+
+                                 return response()->json([
+                                     'ok' => true,
+                                 ]);
+                             }
+       Vậy thư viện nằm ở đâu?              
+
+       Webhook là khái niệm/cơ chế, nhưng bạn có thể dùng SDK/package của dịch vụ để xử lý webhook dễ và an toàn hơn.              
+
+       Ví dụ về mặt ý tưởng:                                  
+
+                           Webhook
+                           = cơ chế giao tiếp
+                           = không phải package                                  
+
+                           Package/SDK
+                           = công cụ có thể giúp:
+                              ├── verify signature
+                              ├── parse event
+                              ├── validate payload
+                              └── xử lý API của provider              
+
+       Nó giống như REST API vậy:                                    
+
+                             REST API
+                             → không phải thư viện                                    
+
+                             Webhook
+                             → cũng không phải thư viện                                    
+
+       Laravel đã có đủ thứ cơ bản để tự tạo webhook:                                  
+
+                           Route
+                           Controller
+                           Request
+                           Validation
+                           Database
+                           Queue              
+
+       Ví dụ:              
+
+                       Route::post('/webhooks/payment', PaymentWebhookController::class);              
+
+       là đủ để tạo một endpoint nhận webhook.              
+
+       Ai tạo webhook?              
+
+       Có hai phía:                                
+
+                         HỆ THỐNG A                         HỆ THỐNG B
+                         Payment Provider                  Laravel của bạn                                
+
+                         Có event
+                         payment.success
+                               │
+                               │ POST
+                               └────────────────────────→ /webhooks/payment
+                                                               ↓
+                                                           Controller
+                                                               ↓
+                                                            xử lý                                
+
+       Laravel của bạn là webhook receiver.              
+
+       Còn Payment Provider là bên gửi webhook.              
+
+       Ngược lại, ERP của bạn cũng có thể gửi webhook cho hệ thống khác:              
+
+                           ERP Laravel
+                           ↓
+                           Employee Created
+                           ↓
+                           POST
+                           ↓
+                           https://system-b.com/webhooks/employee
+       Ví dụ gần với project của bạn              
+
+       Bạn có ERP:                                                   <
+
+                           Payroll finalized
+                           ↓
+                           Laravel Event
+                           ↓
+                           Webhook Job
+                           ↓
+                           POST sang Accounting System
+                           ↓
+                           Accounting nhận dữ liệu              
+
+       Lúc đó ERP của bạn là bên gửi webhook.                           <   <<
+
+       Còn nếu:                                                    <         
+
+                         Payment Provider
+                         ↓
+                         payment.success
+                         ↓
+                         POST /api/webhooks/payment
+                         ↓
+                         ERP Laravel              
+
+       thì ERP của bạn là bên nhận webhook.                                < <<
+
+       Cách nhớ
+                           Webhook KHÔNG phải:
+                           composer require webhook ❌              
+
+                           Webhook LÀ:
+                           một URL/API endpoint
+       để hệ thống khác chủ động báo sự kiện cho mình.              
+
+       Ví dụ cực ngắn:                                  
+
+                           API:
+                           Tôi → hỏi người ta                                  
+
+                           Webhook:
+                           Người ta → chủ động báo tôi              
+
+       Còn package/SDK chỉ là công cụ hỗ trợ webhook, có dịch vụ cần SDK, có dịch vụ bạn chỉ cần Laravel Route + Controller là xử lý được.
+    -------------------------------giải thích 2       |    Observer/Event→ chuyện xảy ra BÊN TRONG Laravel  |  Webhook→ chuyện xảy ra ở HỆ THỐNG BÊN NGOÀI → bên ngoài gọi HTTP vào Laravel → Laravel tự chạy code |  Webhook thực chất là đoạn code chờ nhận một HTTP request từ hệ thống bên ngoài, rồi khi nhận được thì tự động chạy logic bạn đã viết.
+           Gần đúng ý bạn, nhưng cần tách ra một chút: Webhook không phải một thứ “nằm trong Provider” của Laravel như AppServiceProvider.           
+
+           Webhook thực chất là đoạn code chờ nhận một HTTP request từ hệ thống bên ngoài, rồi khi nhận được thì tự động chạy logic bạn đã viết.           
+
+           Ví dụ bạn có:           
+
+                     Route::post('/webhooks/payment', PaymentWebhookController::class);           
+
+           Controller:                         
+
+                         class PaymentWebhookController
+                         {
+                             public function __invoke(Request $request)
+                             {
+                                 // Hệ thống bên ngoài gọi vào đây
+                                 // thì code này tự chạy                         
+
+                                 Cache::forget('payment:dashboard');                         
+
+                                 // update payment...
+                             }
+                         }           
+
+           Luồng:                          
+
+                          Payment Provider
+                                 │
+                                 │ Có sự kiện payment.success
+                                 ↓
+                          POST /webhooks/payment
+                                 ↓
+                          Laravel nhận request
+                                 ↓
+                          Route
+                                 ↓
+                          PaymentWebhookController
+                                 ↓
+                          code bên trong tự chạy
+                                 ↓
+                          Cache::forget(...)
+                          Update DB
+                          Dispatch Job...           
+
+           Nên cái bạn đang liên tưởng tới “viết code tự động xóa cache” là khá giống về mặt phản ứng khi có sự kiện, nhưng khác ở thứ kích hoạt nó.           
+
+           Ví dụ xóa cache bằng Laravel Event/Observer:                                  
+
+                                  Employee được update
+                                  ↓
+                                  Laravel Event / Observer
+                                  ↓
+                                  Cache::forget(...)           
+
+           Đây là sự kiện bên trong Laravel.           
+
+           Còn Webhook:                                  
+
+                                  Hệ thống bên ngoài có sự kiện
+                                  ↓
+                                  gửi HTTP request vào Laravel
+                                  ↓
+                                  Webhook endpoint
+                                  ↓
+                                  Laravel chạy code           
+
+           Ví dụ cụ thể:           
+
+                                              BÊN NGOÀI
+                                          Payment Provider
+                                                 ↓
+                                          payment.success
+                                                 ↓
+                                             HTTP POST
+                                                 ↓
+                                ────────────────────────────────
+                                              LARAVEL
+                                                 ↓
+                                       /webhooks/payment
+                                                 ↓
+                                     PaymentWebhookController
+                                                 ↓
+                                       verify signature
+                                                 ↓
+                                        update payment
+                                                 ↓
+                                       Cache::forget(...)
+                                                 ↓
+                                        dispatch Job           
+
+           Vì vậy Webhook không phải Provider, Event hay Observer của Laravel.           
+
+           Cách nhớ cực ngắn:                                  
+
+                                  Observer/Event
+                                  → chuyện xảy ra BÊN TRONG Laravel
+                                  → tự chạy code                                  
+
+                                  Webhook
+                                  → chuyện xảy ra ở HỆ THỐNG BÊN NGOÀI
+                                  → bên ngoài gọi HTTP vào Laravel
+                                  → Laravel tự chạy code           
+
+           Ví dụ Cloudflare/Stripe/GitHub → gọi URL Laravel → Laravel nhận → chạy code thì đó chính là nhận Webhook.
+    -------------------------------giải thích 3       |    A = thằng GỬI   B = thằng NHẬN   B phải tạo:Route > Controller >  code xử lý   
+         Đúng, nếu A gửi Webhook → B nhận, thì phía B phải viết sẵn code nhận. Nhưng code nhận đó thường là Route + Controller, không phải Provider của Laravel.      
+
+          Ví dụ có 2 hệ thống:                            
+
+                                HỆ THỐNG A                         HỆ THỐNG B
+                                Payment System                     Laravel ERP                            
+
+                                Có sự kiện
+                                payment.success
+                                      │
+                                      │ POST JSON
+                                      └──────────────────────────→ /api/webhooks/payment
+                                                                         ↓
+                                                                      Route
+                                                                         ↓
+                                                              PaymentWebhookController
+                                                                         ↓
+                                                                      handle()
+          Code phía B — bên nhận      
+
+          1. B tạo Route để chờ A gọi vào:                          
+
+                              use App\Http\Controllers\PaymentWebhookController;                          
+
+                              Route::post(
+                                  '/webhooks/payment',
+                                  [PaymentWebhookController::class, 'handle']
+                              );      
+
+          Bây giờ B có địa chỉ:      
+
+          POST /api/webhooks/payment      
+
+          2. B viết Controller nhận dữ liệu:                         
+
+                             class PaymentWebhookController extends Controller
+                             {
+                                 public function handle(Request $request)
+                                 {
+                                     $event = $request->input('event');
+                                     $orderId = $request->input('order_id');
+                                     $amount = $request->input('amount');                         
+
+                                     if ($event === 'payment.success') {                         
+
+                                         Payment::where('order_id', $orderId)
+                                             ->update([
+                                                 'status' => 'paid',
+                                             ]);                         
+
+                                         Cache::forget("order:{$orderId}");
+                                     }                         
+
+                                     return response()->json([
+                                         'success' => true,
+                                     ]);
+                                 }
+                             }      
+
+          Phía A gửi:                         
+
+                             {
+                                 "event": "payment.success",
+                                 "order_id": 100,
+                                 "amount": 500000
+                             }      
+
+          B nhận:                       
+
+                           $request->input('event');
+                           // payment.success                       
+
+                           $request->input('order_id');
+                           // 100                       
+
+                           $request->input('amount');
+                           // 500000
+          Vậy code của B có phải “code mẫu của Provider” không?      
+
+          Không nhất thiết.      
+
+          Có 2 trường hợp:                       
+
+                           1. Provider A có tài liệu hướng dẫn
+                              ↓
+                              họ nói Webhook sẽ gửi JSON dạng nào,
+                              header/signature ra sao
+                              ↓
+                              B tự viết Route + Controller để nhận                       
+
+                           2. Provider A cung cấp SDK/package
+                              ↓
+                              B có thể cài SDK
+                              ↓
+                              dùng code SDK để verify/parse Webhook dễ hơn                       
+
+          Ví dụ A quy định:      
+                   
+                             Khi thanh toán thành công,
+                             chúng tôi sẽ POST:      
+                   
+                             {
+                                "event": "payment.success",
+                                "order_id": "...",
+                                "amount": ...
+                             }      
+                   
+                             Header:
+                             X-Signature: ...      
+
+          Thì developer bên B đọc tài liệu đó và viết:      
+
+                                public function handle(Request $request)
+                                {
+                                    // 1. Verify signature của A                            
+
+                                    // 2. Validate JSON A gửi                            
+
+                                    // 3. Chống webhook gửi trùng                            
+
+                                    // 4. Xử lý nghiệp vụ                            
+
+                                    // 5. Trả response cho A
+                                }      
+
+          Nên bạn có thể hiểu cực đơn giản:      
+                             
+                                       A
+                                       = thằng GỬI      
+                             
+                                       B
+                                       = thằng NHẬN      
+                             
+                                       B phải tạo:
+                                       Route
+                                         ↓
+                                       Controller
+                                         ↓
+                                       code xử lý      
+
+          Còn Provider A thường cung cấp “luật giao tiếp/tài liệu” cho B biết: A sẽ gửi cái gì → gửi đến URL nào → signature kiểm tra thế nào → B cần trả response gì.      
+
+          Vì vậy khi tích hợp một dịch vụ thật, bạn thường vào tài liệu của Provider và tìm mục Webhooks, rồi viết code phía Laravel B theo đúng tài liệu đó.
+    -------------------------------giải thích 4       |    Payment Provider = nhà cung cấp dịch vụ bên ngoài  |   Laravel Service Provider = class dùng đăng ký/bootstrap service trong Laravel ví dụ AppServiceProvider        
+        Gần đúng, nhưng bạn đang nhầm chữ Provider ở hai nghĩa khác nhau.        
+
+        Nếu A và B đều là hệ thống Laravel thì bên nào nhận HTTP request cũng thường nhận qua Route → Controller.        
+
+        Ví dụ:                  
+
+                  Client
+                    │ Request
+                    ▼
+                  HỆ THỐNG A
+                  Route
+                    ↓
+                  Controller
+                    ↓
+                  Service
+                    ↓
+                  A xử lý        
+
+        Sau đó A muốn thông báo cho B bằng Webhook:        
+                 
+                         HỆ THỐNG A
+                         Có sự kiện
+                           ↓
+                         gửi HTTP POST
+                           ↓
+                         ──────────────────────────────→ HỆ THỐNG B
+                                                         Route
+                                                           ↓
+                                                         Controller
+                                                           ↓
+                                                         xử lý Webhook        
+                 
+        Ví dụ:        
+
+                      // BÊN B        
+               
+                      Route::post('/webhooks/payment', [
+                          PaymentWebhookController::class,
+                          'handle',
+                      ]);
+                      class PaymentWebhookController
+                      {
+                          public function handle(Request $request)
+                          {
+                              // Nhận dữ liệu A gửi sang B
+                          }
+                      }        
+               
+        Còn từ Provider trong câu như:        
+
+                      “Payment Provider gửi webhook”        
+
+        thì Provider ở đây có nghĩa là nhà cung cấp dịch vụ, ví dụ hệ thống thanh toán A, chứ không phải Laravel AppServiceProvider.        
+
+        Hai khái niệm hoàn toàn khác:                       
+
+                       Payment Provider
+                       = nhà cung cấp dịch vụ bên ngoài                       
+
+                       Laravel Service Provider
+                       = class dùng đăng ký/bootstrap service trong Laravel
+                         ví dụ AppServiceProvider        
+
+        Vậy bạn nhớ:                       
+
+                       A nhận HTTP request
+                       → Route + Controller                       
+
+                       A gửi Webhook sang B
+                       → HTTP POST                       
+
+                       B nhận Webhook
+                       → Route + Controller                       
+
+                       AppServiceProvider
+                       → KHÔNG phải nơi mặc định nhận Webhook        
+
+        Webhook thực chất vẫn là một HTTP request, chỉ khác ở chỗ request đó được hệ thống A tự động gửi sang hệ thống B khi A có một sự kiện.  
+    -------------------------------giải thích 5       |  HỆ THỐNG THANH TOÁN A > payment.success >  gửi Webhook > HTTP POST > HỆ THỐNG ERP B > Route > Controller |  À, Payment Provider trong sơ đồ đó KHÔNG phải AppServiceProvider của Laravel.
+
+          Provider ở đây chỉ có nghĩa là nhà cung cấp dịch vụ.          
+
+          Ví dụ:                   
+
+                   Payment Provider
+                   = Nhà cung cấp dịch vụ thanh toán          
+
+          Giả sử có:          
+        
+                  ERP của bạn
+                  +
+                  Hệ thống thanh toán A          
+
+          thì hệ thống thanh toán A được gọi là:          
+
+                  Payment Provider          
+
+          Luồng:                         
+
+                                       PAYMENT PROVIDER
+                                   (hệ thống thanh toán A)                         
+
+                         Khách thanh toán thành công
+                                       ↓
+                                payment.success
+                                       ↓
+                               Provider gửi HTTP POST
+                                       ↓
+                         ──────────────────────────────────
+                                       ↓
+                                   ERP Laravel
+                                       ↓
+                         POST /api/webhooks/payment
+                                       ↓
+                                     Route
+                                       ↓
+                         PaymentWebhookController
+                                       ↓
+                                 xử lý payment          
+
+          Trong câu:          
+
+                         Payment Provider
+                         ↓
+                         payment.success
+                         ↓
+                         POST /api/webhooks/payment
+                         ↓
+                         ERP Laravel          
+
+          thì:          
+                
+                          Payment Provider
+                                 ↑
+                                 │
+                          "Provider" = nhà cung cấp
+                                       dịch vụ thanh toán          
+
+          Không liên quan đến:          
+
+                            App\Providers\AppServiceProvider
+          Có 2 chữ Provider bạn đang gặp
+                            Từ	                                 Nghĩa
+                      Payment Provider          	Một công ty/hệ thống cung cấp dịch vụ thanh toán
+                      Laravel Service Provider	    Class của Laravel dùng đăng ký/bootstrap service          
+
+          Ví dụ Laravel:                    
+
+                    class AppServiceProvider extends ServiceProvider
+                    {
+                        public function register(): void
+                        {
+                            // đăng ký service
+                        }                    
+
+                        public function boot(): void
+                        {
+                            // bootstrap service
+                        }
+                    }          
+
+          Cái này không phải Payment Provider.          
+
+          Còn:                       
+
+                       Payment Provider
+                       ↓
+                       có giao dịch thành công
+                       ↓
+                       gửi Webhook
+                       ↓
+                       Laravel Route
+                       ↓
+                       Controller          
+
+          thì Provider chỉ đơn giản là hệ thống bên A cung cấp dịch vụ.          
+
+          Để khỏi nhầm, đổi tên luôn          
+
+          Bạn cứ hiểu sơ đồ thành:                        
+
+                        HỆ THỐNG THANH TOÁN A
+                                  ↓
+                           payment.success
+                                  ↓
+                             gửi Webhook
+                                  ↓
+                               HTTP POST
+                                  ↓
+                        HỆ THỐNG ERP B
+                                  ↓
+                                Route
+                                  ↓
+                              Controller                        
+
+          Không có AppServiceProvider nào trong luồng này cả.          
+
+          Cách nhớ:                       
+
+                       Payment Provider
+                       = một HỆ THỐNG / NHÀ CUNG CẤP bên ngoài                       
+
+                       AppServiceProvider
+                       = một CLASS bên trong Laravel          
+
+          Hai chữ Provider giống nhau về tên nhưng đang nói về hai thứ hoàn toàn khác nhau.   
+    ↓
+    Verify Signature       |   = xác minh chữ ký của request để kiểm tra request đó có đúng là do hệ thống A gửi sang hay không, đồng thời thường giúp phát hiện payload bị thay đổi.
+     = xác minh chữ ký của request để kiểm tra request đó có đúng là do hệ thống A gửi sang hay không, đồng thời thường giúp phát hiện payload bị thay đổi.
+
+     Trong Webhook, nó cực kỳ quan trọng.     
+
+     Giả sử:                  
+
+                  Hệ thống thanh toán A
+                          ↓
+                  payment.success
+                          ↓
+                  POST Webhook
+                          ↓
+                  ERP Laravel B     
+
+     Nếu B chỉ nhận:                   
+
+                   {
+                       "order_id": 100,
+                       "status": "paid",
+                       "amount": 500000
+                   }     
+
+     rồi tin luôn thì nguy hiểm.     
+
+     Attacker cũng có thể thử:                  
+
+                  Attacker
+                     ↓
+                  POST /api/webhooks/payment
+                     ↓
+                  {
+                     "order_id": 100,
+                     "status": "paid"
+                  }
+                     ↓
+                  ERP tin luôn ❌
+     Signature giải quyết chuyện này     
+
+     A và B có một Webhook Secret mà attacker không biết:     
+
+                 WEBHOOK_SECRET = abcXYZ123     
+
+     Bên A khi gửi webhook sẽ lấy:     
+
+                   Payload
+                      +
+                   Webhook Secret
+                      ↓
+                   HMAC
+                      ↓
+                   Signature     
+
+     Ví dụ:                     
+
+                     Payload:
+                     {"order_id":100,"status":"paid"}                     
+
+                     Secret:
+                     abcXYZ123                     
+
+                            ↓ HMAC-SHA256                     
+
+                     Signature:
+                     8fa913...     
+
+     Sau đó A gửi:                
+
+                POST /api/webhooks/payment                
+
+                X-Signature: 8fa913...     
+
+     kèm body:                 
+
+                 {
+                     "order_id": 100,
+                     "status": "paid"
+                 }
+     B nhận và Verify Signature     
+
+     Laravel B nhận:             
+
+             Payload
+             +
+             X-Signature     
+
+     B lấy cùng Webhook Secret:                  
+
+                  Payload nhận được
+                         +
+                  WEBHOOK_SECRET
+                         ↓
+                  tự tính HMAC
+                         ↓
+                  Expected Signature     
+
+     Sau đó:     
+             
+                  Signature A gửi
+                         VS
+                  Signature B tự tính     
+
+     Nếu:                  
+
+                  giống nhau
+                  ↓
+                  Verify thành công ✅
+                  ↓
+                  tiếp tục xử lý     
+
+     Nếu:                   
+
+                   khác nhau
+                   ↓
+                   Reject ❌     
+
+     Ví dụ Laravel ở mức nguyên lý:     
+               
+                    $payload = $request->getContent();     
+               
+                    $expectedSignature = hash_hmac(
+                        'sha256',
+                        $payload,
+                        config('services.payment.webhook_secret')
+                    );     
+               
+                    $receivedSignature = $request->header('X-Signature');     
+               
+                    if (! hash_equals($expectedSignature, $receivedSignature)) {
+                        abort(401);
+                    }     
+               
+                    // Signature hợp lệ
+                    // tiếp tục xử lý webhook     
+
+             Khi tích hợp provider thật, phải dùng đúng thuật toán/format/SDK mà provider quy định, không tự đặt cách verify như ví dụ trên.     
+
+     Tại sao attacker không giả được?     
+
+     Attacker có thể biết:                   
+
+                   URL webhook        ✅
+                   JSON format        ✅
+                   order_id           ✅ có thể đoán/biết trong một số tình huống                   
+
+     nhưng không được biết:     
+
+                    WEBHOOK_SECRET     ❌     
+
+     Nên attacker gửi:                 
+
+                 Fake Payload
+                 ↓
+                 không tạo được Signature hợp lệ
+                 ↓
+                 Laravel tự tính Signature
+                 ↓
+                 không khớp
+                 ↓
+                 401 ❌
+     Signature cũng phát hiện payload bị sửa     
+
+     A gửi:                
+
+                {
+                    "amount": 500000
+                }                
+
+     Signature được tính dựa trên chính payload đó.     
+
+     Nếu payload bị đổi thành:                
+
+                {
+                    "amount": 5000000
+                }                
+
+     thì khi B tính lại:                
+
+                payload khác
                 ↓
-              Process    
+                HMAC khác
+                ↓
+                Signature không khớp ❌
+     Nhưng Verify Signature chưa chống hết Replay     
+
+     Attacker có thể trong một số threat model lấy được nguyên request hợp lệ rồi gửi lại:                 
+
+                 Payload hợp lệ
+                 +
+                 Signature hợp lệ
+                 ↓
+                 gửi lần 1 ✅                 
+
+                 gửi lại y chang
+                 ↓
+                 Signature vẫn có thể hợp lệ ✅     
+
+     Vì vậy webhook thường cần thêm:                  
+
+                  Webhook
+                  ↓
+                  Verify Signature       ← đúng nguồn / integrity
+                  ↓
+                  Timestamp              ← request có quá cũ?
+                  ↓
+                  Event ID / Nonce       ← đã nhận request này chưa?
+                  ↓
+                  Idempotency            ← nghiệp vụ đã xử lý chưa?
+                  ↓
+                  Validate
+                  ↓
+                  Process
+     Cách nhớ
+                   Verify Signature
+                   = "Chứng minh request này đúng theo cơ chế xác thực
+                      của bên gửi và payload không bị sửa."     
+
+                   Signature
+                   → request có hợp lệ/xác thực không?     
+
+                   Timestamp + Nonce/Event ID
+                   → request có bị replay không?     
+
+                   Idempotency
+                   → nghiệp vụ có bị làm 2 lần không?     
+
+     Với Webhook Payment, không bao giờ chỉ thấy "status": "paid" rồi update đơn hàng; phải xác minh webhook theo tài liệu của nhà cung cấp trước.
+    ↓
+    Signature đúng?
+    ├── NO → reject
+    └── YES
+         ↓
+       Process    
 
     Ngoài ra còn phải quan tâm tính toàn vẹn của software/update/artifact/data pipeline tùy kiến trúc.
- 9 Security Logging & Alerting Failures      |  Logging      → tấn công có được ghi + cảnh báo?      
+ 9 Security Logging & Alerting Failures      |  Logging      → tấn công có được ghi + cảnh báo?    |  cho tất cả cấc thao tác và tác vụ thêm vào ghi LOG    <  bị tấn công còn biết truy vết
      Phần này nối trực tiếp với 7.23.     
 
      Ví dụ attacker:            
@@ -54485,7 +55657,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
             Log Bearer token ❌
             Log API secret ❌
             Log TOTP secret ❌
- 10 Mishandling of Exceptional Conditions    |  Exception    → gặp lỗi có fail an toàn?       
+ 10 Mishandling of Exceptional Conditions    |  Exception    → gặp lỗi có fail an toàn?   |   Có lỗi hoặc tình huống bất thường xảy ra nhưng hệ thống xử lý không an toàn.  |  Transaction | Idempotency | Unique Constraint | Retry Safety | State Machine | Exception Handling      
 
     Đây là nhóm dễ hiểu là:    
 
@@ -54549,66 +55721,1820 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
               Alert nếu nghiêm trọng
               ↓
               Client nhận error phù hợp
-7.26 Dependency / Supply-Chain Security                       <
+7.26 Dependency / Supply-Chain Security     10     Review             <
 
  Laravel/PHP: 
 
  composer audit
  composer outdated 
+ 1. composer audit   
 
+   Dùng để kiểm tra dependency Composer đang dùng có security advisory đã biết hay không.   
+
+         composer audit   
+
+   Ví dụ kết quả có thể cho biết:   
+
+         Package X
+         ↓
+         có security advisory
+         ↓
+         phiên bản đang dùng bị ảnh hưởng
+         ↓
+         cần đánh giá/update   
+
+   Sau đó thường:            
+
+            composer audit
+            ↓
+            phát hiện vấn đề
+            ↓
+            xem package/version bị ảnh hưởng
+            ↓
+            xem bản vá
+            ↓
+            update có kiểm soát
+            ↓
+            chạy test   
+
+   Không phải:   
+
+            composer update   
+
+   bừa toàn project production.
+ 2. composer outdated
+         composer outdated   
+
+   Nó trả lời:   
+
+          Dependency nào của project đang có phiên bản mới hơn?   
+
+   Ví dụ:   
+
+          Package A   1.2.0 → 1.2.5
+          Package B   3.0.0 → 4.0.0   
+
+   Khác với:            
+
+            composer audit
+            → tìm vấn đề bảo mật đã biết            
+
+            composer outdated
+            → tìm package có version mới hơn   
+
+   Outdated không đồng nghĩa với vulnerable.   
+
+   Package có thể cũ nhưng không có advisory đã biết.
  Node: 
 
  npm audit 
+ 3. npm audit   
 
+   Frontend/Node:   
+
+       npm audit   
+
+   Kiểm tra dependency npm có vulnerability được biết đến.   
+
+   Có thể dùng thêm:   
+
+        npm outdated   
+
+   để xem package nào đang cũ.   
+
+   Tư duy:         
+
+         Composer
+         ├── composer audit
+         └── composer outdated         
+
+         Node
+         ├── npm audit
+         └── npm outdated
  Học thêm: 
 
- CVE
- lock file
- dependency pinning
- malicious package
- abandoned dependency
- secret scanning
-7.27 Security Testing                       <
+ CVE        |   Hiểu đơn giản là một hệ thống định danh các lỗ hổng bảo mật được công bố.   
+    CVE = Common Vulnerabilities and Exposures.   
+
+   Hiểu đơn giản là một hệ thống định danh các lỗ hổng bảo mật được công bố.   
+
+   Ví dụ dạng:   
+
+            CVE-2026-XXXXX   
+
+   Bạn có thể hiểu nó giống:            
+
+            Lỗ hổng bảo mật
+            ↓
+            được công bố
+            ↓
+            được gắn mã định danh
+            ↓
+            CVE-....   
+
+   Ví dụ dependency:           
+
+           Package X 1.0
+           ↓
+           có vulnerability
+           ↓
+           CVE-....
+           ↓
+           Package X 1.1 sửa lỗi   
+
+   Thì:            
+
+            Project đang dùng 1.0
+            ↓
+            đánh giá ảnh hưởng
+            ↓
+            update lên bản đã fix
+            ↓
+            test
+            ↓
+            deploy   
+
+   Lưu ý: không phải mọi advisory đều nhất thiết có CVE ngay, nên đừng chỉ tìm CVE mà bỏ qua advisory từ hệ sinh thái/package.
+ lock file      |   composer.lock    
+    Laravel:    
+
+           composer.lock    
+
+    Node:    
+
+            package-lock.json    
+
+    Ví dụ composer.json:    
+
+            {
+                "laravel/framework": "^13.0"
+            }    
+
+    Đây là constraint.    
+
+    Sau khi Composer resolve dependencies:    
+
+            composer.lock
+            ↓
+            ghi lại bộ version cụ thể đã được resolve    
+
+    Production thường dùng:    
+
+            composer install    
+
+    để cài theo lock file.    
+
+    Node tương tự với:    
+
+            package.json
+            ↓
+            package-lock.json
+    Tại sao security cần lock?    
+
+    Nếu không kiểm soát dependency resolution:    
+
+            Build hôm nay
+            → dependency A    
+
+            Build ngày khác
+            → dependency B    
+
+            cùng source code
+            → dependency thực tế có thể khác    
+
+    Lock file giúp build ổn định/reproducible hơn và giúp bạn biết chính xác bộ dependency đang dùng.    
+
+    Thông thường:    
+
+            composer.lock       → commit Git ✅
+            package-lock.json   → commit Git ✅
+ dependency pinning     |    = giới hạn/cố định dependency vào version/tag/digest cụ thể ở mức phù hợp.   
+    Pinning = giới hạn/cố định dependency vào version/tag/digest cụ thể ở mức phù hợp.   
+
+   Ví dụ rất rộng:   
+
+           latest   
+
+   có vấn đề là:            
+
+            Hôm nay latest → A
+            Ngày mai latest → B            
+
+   Đặc biệt với Docker:   
+
+            FROM some-image:latest   
+
+   build ở hai thời điểm có thể lấy image khác nhau.   
+
+   Có thể pin rõ hơn:   
+
+              FROM some-image:1.2.3   
+
+   Trong môi trường yêu cầu reproducibility cao còn có thể pin bằng digest.   
+
+   Nhưng pinning cũng không có nghĩa:            
+
+            Pin version
+            ↓
+            không bao giờ update nữa ❌   
+
+   Đúng là:             
+
+             Pin
+             ↓
+             kiểm soát version
+             ↓
+             theo dõi vulnerability
+             ↓
+             update có chủ đích
+             ↓
+             test
+             ↓
+             pin version mới
+ malicious package      |    Đây là package độc hại.  | Ví dụ: composer show spatie/laravel-permission Hoặc tất cả: composer show | cat composer.json |  định cài mà nhập chữ gần giống là dính chưởng |    
+     Đây là package độc hại.     
+
+     Ví dụ attacker tạo package:     
+
+           super-laravel-helper     
+
+     Bên ngoài nhìn:     
+
+           "Package hỗ trợ Laravel cực hay!"     
+
+     nhưng code bên trong có thể cố:             
+
+             đọc environment/secret
+             ↓
+             đánh cắp credential
+             ↓
+             chạy code độc             
+
+     Một kiểu nguy hiểm khác là typosquatting.     
+
+     Bạn định cài:     
+
+               vendor/official-package     
+
+     nhưng gõ nhầm tên gần giống và cài package giả.     
+
+     Vì vậy trước:     
+
+              composer require ...     
+
+     hoặc:     
+
+              npm install ...     
+
+     cần kiểm tra:     
+
+             Tên package
+             Publisher/maintainer
+             Repository
+             Release history
+             Popularity chỉ là tín hiệu phụ
+             Dependency
+             Scripts
+             Security advisory
+             Tình trạng maintain
+ -------------------------------  composer show spatie/laravel-permission --tree   |   composer audit --abandoned=report   |   cat composer.json   |   composer install --no-plugins --no-scripts   |   grep -RniE \"shell_exec|exec\(|system\(|passthru|proc_open|popen|eval\(|base64_decode|curl_exec" \vendor/TEN-PACKAGE  |  
+   Có thể kiểm tra, nhưng không có một lệnh nào đảm bảo 100% “package này không độc”. composer audit chủ yếu phát hiện lỗ hổng/advisory đã biết, còn malicious package mới hoặc chưa bị phát hiện có thể chưa xuất hiện. 
+  
+   Với Laravel/Composer, bạn kiểm tra theo luồng này: 
+                  
+                   Package muốn cài
+                   ↓
+                   1. Xác minh đúng tên / đúng vendor
+                   ↓
+                   2. Kiểm tra repository + maintainer
+                   ↓
+                   3. composer audit
+                   ↓
+                   4. Kiểm tra abandoned
+                   ↓
+                   5. Xem dependency mà nó kéo theo
+                   ↓
+                   6. Kiểm tra Composer scripts/plugins
+                   ↓
+                   7. Nếu package đáng ngờ → xem source code
+                   ↓
+                   8. Test trong môi trường dev/container
+                   ↓
+                   Mới đưa vào production
+   1. Package đã cài: xem thông tin     |    composer show spatie/laravel-permission --tree 
+            
+             Ví dụ: 
+            
+                               composer show spatie/laravel-permission 
+            
+             Hoặc tất cả: 
+            
+                               composer show 
+            
+             Xem dependency tree: 
+            
+                               composer show spatie/laravel-permission --tree 
+            
+             Điểm này quan trọng vì: 
+                              
+                               Bạn cài Package A
+                                      ↓
+                               A phụ thuộc B
+                                      ↓
+                               B phụ thuộc C
+                                      ↓
+                               C có vấn đề 
+                              
+                               → project vẫn có thể bị ảnh hưởng
+   2. Kiểm tra security advisory    |   composer audit 
+                                  composer audit 
+              
+               Nếu muốn audit trực tiếp từ lock file trong quy trình CI, đây là bước rất hữu ích. 
+              
+               Nhưng nhớ: 
+              
+                                  composer audit sạch
+                                  ≠
+                                  package chắc chắn an toàn 100% 
+              
+               Nó không phải antivirus đọc toàn bộ source để kết luận package có độc hay không. 
+  
+   3. Kiểm tra abandoned package    |    composer audit --abandoned=report    |  nếu nó ra cảnh báo :   Nó chỉ có nghĩa package không còn được duy trì, làm tăng rủi ro về lâu dài. 
+                
+                 Bạn có thể chạy: 
+                
+                             composer audit --abandoned=report 
+                
+                 và chú ý các cảnh báo kiểu: 
+                
+                             Package xxx is abandoned 
+                
+                 Abandoned cũng không đồng nghĩa malicious. 
+                
+                 Nó chỉ có nghĩa package không còn được duy trì, làm tăng rủi ro về lâu dài. 
+  
+   4. Cẩn thận scripts và Composer plugins   |   cat composer.json 
+                   
+                    Đây là phần đáng chú ý vì package/plugin hoặc Composer workflow có thể khiến code chạy trong quá trình cài đặt. 
+                   
+                    Kiểm tra composer.json: 
+                   
+                                cat composer.json 
+                   
+                    Chú ý: 
+                   
+                                {
+                                    "scripts": {
+                                        "post-install-cmd": "...",
+                                        "post-update-cmd": "..."
+                                    }
+                                } 
+                   
+                    và: 
+                                 {
+                                   "config": {
+                                       "allow-plugins": {
+                                           "...": true
+                                       }
+                                   }
+                               }
+                   
+                    Nếu bạn gặp package lạ yêu cầu: 
+                   
+                                "Cho phép plugin này chạy" 
+                   
+                    thì không nên bấm/cấu hình true một cách máy móc. 
+  
+   5. Muốn kiểm tra trước khi cho scripts/plugins chạy    |    composer install --no-plugins --no-scripts 
+                   
+                    Trong trường hợp đang điều tra package lạ, có thể cài dependencies mà không chạy Composer scripts: 
+                   
+                                composer install --no-scripts 
+                   
+                    Composer cũng có: 
+                   
+                                composer install --no-plugins --no-scripts 
+                   
+                    Điều này hữu ích để inspect trước, nhưng không phải chế độ production mặc định vì một số package/project hợp lệ cần scripts/plugins để hoạt động đúng. 
+                   
+   6. Xem source package đáng ngờ   |  (v)
+                   
+                    Sau khi có source trong môi trường kiểm tra, có thể tìm những thứ bất thường: 
+                   
+                                grep -RniE \
+                                "shell_exec|exec\(|system\(|passthru|proc_open|popen|eval\(|base64_decode|curl_exec" \
+                                vendor/TEN-PACKAGE 
+                   
+                    Ví dụ thấy: 
+                   
+                                shell_exec($command); 
+                   
+                    không có nghĩa chắc chắn malware. 
+                   
+                    Một package hợp lệ hoàn toàn có thể cần chạy process. 
+                   
+                    Bạn phải hỏi: 
+                   
+                                Package này có chức năng gì?
+                                        ↓
+                                Tại sao nó cần shell_exec()?
+                                        ↓
+                                Có phù hợp chức năng không? 
+                   
+                    Ví dụ package xử lý FFmpeg gọi process là khá hợp lý. 
+                   
+                    Nhưng package chỉ để: 
+                   
+                                format số tiền 
+                   
+                    mà lại: 
+                   
+                                đọc .env
+                                ↓
+                                đọc SSH key
+                                ↓
+                                gọi shell
+                                ↓
+                                gửi HTTP tới domain lạ 
+                   
+                    thì rất đáng nghi. 
+  
+   7. Kiểm tra trước cả khi cài  |   kiểm tra cái package có phải tên thật ko
+                 
+                  Đây mới là thói quen tốt nhất. 
+                 
+                  Ví dụ bạn định chạy: 
+                 
+                              composer require somevendor/somepackage 
+                 
+                  Đừng thấy một bài hướng dẫn rồi cài ngay. Kiểm tra: 
+                 
+                              somevendor/somepackage
+                                      ↓
+                              Đúng vendor không?
+                                      ↓
+                              Repository chính chủ?
+                                      ↓
+                              Ai maintain?
+                                      ↓
+                              Release gần đây?
+                                      ↓
+                              Có security advisory?
+                                      ↓
+                              Có abandoned?
+                                      ↓
+                              Nó kéo thêm package nào?
+                                      ↓
+                              Có thực sự cần package này? 
+                 
+                  Đặc biệt tránh typosquatting: 
+                               
+                                Package thật:
+                                spatie/laravel-permission 
+                               
+                                Package giả:
+                                spatle/laravel-permission
+                                       ↑
+                                chỉ khác một ký tự
+                  Với npm cũng tương tự
+                                npm audit
+                                npm outdated
+                                npm ls 
+                 
+                  Và xem scripts: 
+                 
+                                 cat package.json 
+                 
+                  Đặc biệt chú ý các lifecycle script như: 
+                                
+                                 {
+                                     "scripts": {
+                                         "preinstall": "...",
+                                         "postinstall": "..."
+                                     }
+                                 } 
+                 
+                  Nếu đang điều tra package không tin cậy, đừng chạy package tùy tiện trên máy production hay máy đang chứa nhiều credential. 
+  
+   Cách nhớ:                    
+                      composer audit
+                      → "Có lỗ hổng ĐÃ BIẾT không?"                    
+                      abandoned check
+                      → "Còn người bảo trì không?"                    
+                      review source/dependency/scripts
+                      → "Package đang làm những gì?"                    
+                      trusted vendor/repository
+                      → "Tôi đang cài đúng package không?"                    
+                      malicious package
+                      → không có 1 lệnh thần kỳ phát hiện 100% 
+  
+   Trong phỏng vấn, nếu họ hỏi “Làm sao tránh malicious dependency?”, câu trả lời tốt là: xác minh nguồn và maintainer, review dependency/scripts/plugins, dùng lock file, chạy audit/secret scanning, hạn chế package không cần thiết và test package đáng ngờ trong môi trường cô lập trước production.
+ abandoned dependency   |  = dependency không còn được maintain.     |  mục trên vd (^)
+      = dependency không còn được maintain.     
+
+     Ví dụ:     
+
+            Package X
+            ↓
+            maintainer ngừng phát triển
+            ↓
+            không còn release
+            ↓
+            lỗ hổng mới xuất hiện
+            ↓
+            không có người sửa     
+
+     Nguy cơ:     
+
+            Hôm nay:
+            không thấy vulnerability     
+
+            6 tháng sau:
+            phát hiện vulnerability     
+
+            nhưng:
+            package đã abandoned
+            ↓
+            không có patch     
+
+     Khi gặp package abandoned, cân nhắc:              
+
+              Có replacement chính thức?
+              ↓
+              Có package khác được maintain?
+              ↓
+              Có thể bỏ dependency?
+              ↓
+              Có thể thay bằng code/framework built-in?     
+
+     Composer cũng có thể cảnh báo package abandoned trong một số tình huống.
+ secret scanning        |  = tìm xem bạn có vô tình đưa secret vào source code/Git không.  
+   = tìm xem bạn có vô tình đưa secret vào source code/Git không.  
+
+  Ví dụ cực kỳ nguy hiểm:  
+
+        $apiKey = 'sk_live_ABC123...';  
+
+  hoặc commit:  
+
+       .env  
+
+  chứa:  
+        
+          DB_PASSWORD=...
+          STRIPE_SECRET=...
+          CLOUDFLARE_API_TOKEN=...
+          APP_KEY=...  
+
+  Secret scanner cố phát hiện các pattern credential như:           
+
+           API Key
+           Access Token
+           Private Key
+           Cloud credential
+           Database credential  
+
+  CI/CD có thể chạy:  
+           
+             Git Push
+             ↓
+             Secret Scan
+             ↓
+             phát hiện credential
+             ↓
+             Fail/Alert  
+
+  Nhưng .gitignore thôi chưa đủ nếu secret đã từng được commit.  
+
+  Ví dụ:              
+
+              Commit #1
+              ↓
+              API_KEY = SECRET ❌              
+
+              Commit #2
+              ↓
+              xóa API_KEY  
+
+  Secret có thể vẫn tồn tại trong Git history.  
+
+  Nếu secret thật đã bị commit, tư duy an toàn là:              
+
+              Secret bị lộ
+              ↓
+              Revoke/Rotate secret
+              ↓
+              thay credential mới
+              ↓
+              xử lý Git history khi cần
+              ↓
+              kiểm tra logs/use  
+
+  Đừng chỉ:             
+
+             xóa dòng secret
+             ↓
+             commit
+             ↓
+             "xong" ❌
+ 10. Ghép toàn bộ vào Laravel project    
+
+    Một quy trình dependency tương đối tốt:              
+
+              Muốn thêm package
+                    ↓
+              Review Dependency
+                    ↓
+              Trusted source?
+              Maintained?
+              Thật sự cần?
+                    ↓
+              composer require
+                    ↓
+              composer.lock
+                    ↓
+              commit lock file
+                    ↓
+              composer audit
+                    ↓
+              PHPStan / Tests
+                    ↓
+              Secret Scan
+                    ↓
+              CI/CD
+                    ↓
+              Build từ trusted source/image
+                    ↓
+              Deploy
+                    ↓
+              Theo dõi advisory/CVE
+                    ↓
+              Patch/update khi cần
+    Bảng nhớ nhanh
+    Khái niệm	                Nhớ như thế này
+    composer audit	        Dependency PHP có advisory bảo mật không?
+    composer outdated	    Dependency PHP nào có version mới?
+    npm audit	            Dependency Node có advisory bảo mật không?
+    CVE	                    Mã định danh lỗ hổng được công bố
+    Lock file             	Ghi lại bộ dependency/version đã resolve
+    Dependency pinning   	Kiểm soát/cố định version/tag/digest
+    Malicious package	    Package chứa code độc
+    Abandoned dependency	Package không còn được maintain
+    Secret scanning	        Tìm secret vô tình lọt vào source/Git
+    Nếu đi phỏng vấn    
+
+    Nếu họ hỏi:    
+
+    “Em bảo vệ dependency/supply chain của Laravel project thế nào?”    
+
+    Bạn có thể trả lời:    
+
+    “Em review package trước khi cài, commit composer.lock/package-lock.json, kiểm tra dependency bằng composer audit, composer outdated, npm audit, theo dõi security advisory/CVE, tránh package abandoned hoặc không rõ nguồn, kiểm soát version, secret scanning và bảo vệ CI/CD. Khi có security patch thì update có kiểm soát rồi chạy test trước khi deploy.”    
+
+    Đây là câu trả lời thực tế hơn nhiều so với chỉ nói “em chạy composer update”.
+7.27 Security Testing           7            <
 
  Nên biết: 
 
- SAST
- DAST
- Dependency Scan
- Secret Scan
- Penetration Test
- Fuzz Testing
- Security Regression Test 
+ SAST   = kiểm tra source code mà không cần tấn công website đang chạy.| — Static Application Security Testing |  SQL Injection? XSS? Hardcoded secret?  Unsafe function? Data flow nguy hiểm?  
+   Ví dụ code nguy hiểm:  
 
- Test authorization chẳng hạn: 
+         $sql = "SELECT * FROM users WHERE email = '$email'";  
 
- public function test_employee_cannot_view_other_company_payroll(): void
- {
-     // Arrange
-     // Act
-     // Assert 403
- }
+  SAST có thể phát hiện pattern có nguy cơ SQL Injection.  
+
+  Hoặc:  
+
+          eval($request->input('code'));  
+
+  cũng cực kỳ đáng chú ý.  
+
+  Luồng:               
+
+               Source Code Laravel
+                       ↓
+                     SAST
+                       ↓
+               Phân tích code
+                       ↓
+               SQL Injection?
+               XSS?
+               Hardcoded secret?
+               Unsafe function?
+               Data flow nguy hiểm?  
+
+  Với PHP, PHPStan/Larastan mà bạn đang dùng chủ yếu là static analysis về type/code correctness; nó hữu ích nhưng không tự động đồng nghĩa với một SAST security scanner đầy đủ.
+ DAST   = kiểm thử bảo mật ứng dụng động — Dynamic Application Security Testing
+  Dependency Scan
+     Ngược lại với SAST:    
+
+             SAST
+             → nhìn CODE    
+
+             DAST
+             → kiểm tra APPLICATION ĐANG CHẠY    
+
+    Ví dụ Laravel đang chạy:    
+
+              https://kayaga.one    
+
+    DAST có thể gửi các request kiểm thử tới application:              
+
+              GET /employees
+              POST /login
+              GET /api/payroll/10
+              ...    
+
+    và tìm các dấu hiệu của:              
+
+              XSS
+              Injection
+              Security header sai
+              Authentication/configuration issue
+              ...    
+
+    Tư duy:                
+
+                Attacker-like requests
+                        ↓
+                Laravel đang chạy
+                        ↓
+                Quan sát Response
+                        ↓
+                Phát hiện vấn đề    
+
+    Một công cụ phổ biến là OWASP ZAP.
+ Dependency Scan      = quét các thành phần phụ thuộc   |  7.26 vừa học.
+
+      Đây chính là phần 7.26 vừa học.      
+
+      PHP:      
+
+               composer audit      
+
+      Node:      
+
+                 npm audit      
+
+      Luồng:                
+
+                composer.lock
+                package-lock.json
+                       ↓
+                Dependency Scan
+                       ↓
+                Security advisory / vulnerability?                
+
+      Nó kiểm tra thư viện bạn phụ thuộc, chứ không chủ yếu kiểm tra code nghiệp vụ bạn tự viết.
+ Secret Scan   = Tìm credential/secret vô tình xuất hiện trong source hoặc Git history.   
+    Tìm credential/secret vô tình xuất hiện trong source hoặc Git history.   
+
+   Ví dụ:   
+
+         $token = 'REAL_SECRET_TOKEN';   
+
+   hoặc:           
+
+           DB_PASSWORD=real-password
+           STRIPE_SECRET=...
+           CLOUDFLARE_API_TOKEN=...   
+
+   Luồng:           
+
+           Source/Git
+              ↓
+           Secret Scanner
+              ↓
+           API Key?
+           Token?
+           Private Key?
+           Password?
+           Cloud credential?   
+
+   Nếu secret thật đã commit:            
+
+            Phát hiện secret
+            ↓
+            Revoke / Rotate
+            ↓
+            tạo secret mới
+            ↓
+            xử lý source/history phù hợp   
+
+   Chỉ xóa dòng rồi commit lại không đủ.
+ Penetration Test    = kiểm thử hệ thống theo góc nhìn của người tấn công, trong phạm vi được cho phép.
+     Ví dụ tester kiểm tra:            
+
+            Login
+            ↓
+            Authentication bypass?            
+
+            Employee
+            ↓
+            IDOR?            
+
+            Payroll
+            ↓
+            Company A xem Company B?            
+
+            File
+            ↓
+            Download tài liệu người khác?            
+
+            Role
+            ↓
+            User thường gọi API Admin?            
+
+            Webhook
+            ↓
+            Có giả webhook được không?    
+
+    Ví dụ:              
+
+              User Company A              
+
+              GET /api/payroll/100
+                      ↓
+              Payroll #100 thuộc Company B
+                      ↓
+              Server trả dữ liệu    
+
+    Nếu server trả:    
+
+              200 OK + dữ liệu Company B    
+
+    → có vấn đề Broken Access Control/tenant isolation.    
+
+    Đúng phải từ chối, thường là 403 hoặc đôi khi thiết kế dùng 404 để không tiết lộ resource tồn tại.
+ Fuzz Testing      = đưa rất nhiều input bất thường/không mong đợi vào hệ thống để xem nó xử lý thế nào.  
+
+  Ví dụ API mong:         
+
+         {
+             "salary": 20000000
+         }         
+
+  Fuzz test có thể thử các trường hợp:          
+
+          salary = -999999999
+          salary = chuỗi cực dài
+          salary = null
+          salary = []
+          salary = object
+          salary = số cực lớn
+          JSON malformed
+          Unicode bất thường
+          field thiếu
+          field thừa  
+
+  Mục tiêu không phải chỉ:  
+
+          “Nó có trả validation error không?”  
+
+  mà còn tìm:           
+
+           Crash?
+           500?
+           Unhandled exception?
+           Validation bypass?
+           Data corruption?
+           Resource exhaustion?
+           Unexpected behavior?  
+
+  Ví dụ FormRequest của bạn:           
+
+           'salary' => [
+               'required',
+               'numeric',
+               'min:0',
+           ],  
+
+  Fuzzing thử phá các giả định của code.
+ Security Regression Test        = Kiểm thử hồi quy bảo mật   |  Lỗi đã sửa rồi nhưng một lần sửa code sau này làm lỗi đó xuất hiện trở lại.     
+    Cái này rất quan trọng với project của bạn.    
+
+    Regression nghĩa là:    
+
+              Lỗi đã sửa rồi nhưng một lần sửa code sau này làm lỗi đó xuất hiện trở lại.    
+
+    Ví dụ trước đây bạn phát hiện:              
+
+              Company A
+              ↓
+              đổi URL
+              ↓
+              xem Payroll Company B ❌    
+
+    Bạn sửa bằng tenant scope + Policy.    
+
+    Đừng chỉ sửa code.    
+
+    Viết luôn test:             
+
+             public function test_employee_cannot_view_other_company_payroll(): void
+             {
+                 // ...
+             }    
+
+    Sau này developer khác vô tình bỏ:    
+
+              ->where('company_id', $companyId)    
+
+    thì test:               
+
+               CI
+               ↓
+               php artisan test
+               ↓
+               Security Regression Test
+               ↓
+               FAIL ❌    
+
+    Bạn phát hiện trước khi deploy.    
+
+    Ví dụ Laravel hoàn chỉnh    
+
+    Giả sử có:              
+
+              Company A
+              └── Alice              
+
+              Company B
+              └── Payroll #100    
+
+    Alice không được xem Payroll #100.    
+
+    Ví dụ Feature Test:               
+
+               public function test_employee_cannot_view_other_company_payroll(): void
+               {
+                   // Arrange
+                   $companyA = Company::factory()->create();
+                   $companyB = Company::factory()->create();               
+
+                   $alice = User::factory()->create([
+                       'company_id' => $companyA->id,
+                   ]);               
+
+                   $payroll = Payroll::factory()->create([
+                       'company_id' => $companyB->id,
+                   ]);               
+
+                   // Act
+                   $response = $this
+                       ->actingAs($alice)
+                       ->get("/admin/payrolls/{$payroll->id}");               
+
+                   // Assert
+                   $response->assertForbidden();
+               }               
+
+    Tức là:    
+             
+                 Arrange
+                 ↓
+                 chuẩn bị Company A/B + User + Payroll    
+             
+                 Act
+                 ↓
+                 Alice cố request Payroll B    
+             
+                 Assert
+                 ↓
+                 phải 403    
+
+    Nếu Controller/Policy bảo vệ đúng:                   
+
+                   Company A user
+                   ↓
+                   Payroll Company B
+                   ↓
+                   Policy / Tenant check
+                   ↓
+                   403
+                   ↓
+                   TEST PASS ✅    
+
+    Nếu sau này có người làm hỏng tenant check:                    
+
+                    Company A user
+                    ↓
+                    Payroll Company B
+                    ↓
+                    200 OK ❌
+                    ↓
+                    assertForbidden() FAIL
+                    ↓
+                    CI FAIL    
+
+    Đó chính là Security Regression Test.    
+
+    Những security tests rất đáng có trong ERP    
+
+    Không chỉ test một cái. Ví dụ:                  
+
+                  test_employee_cannot_view_other_company_payroll();                  
+
+                  test_employee_cannot_update_other_company_employee();                  
+
+                  test_user_without_permission_cannot_finalize_payroll();                  
+
+                  test_finalized_payroll_cannot_be_modified();                  
+
+                  test_user_cannot_download_other_company_document();                  
+
+                  test_invalid_webhook_signature_is_rejected();                  
+
+                  test_duplicate_webhook_is_not_processed_twice();                  
+
+                  test_duplicate_payment_is_not_created();                  
+
+                  test_login_is_rate_limited();                  
+
+                  test_sensitive_endpoint_requires_authentication();    
+
+    Những test này rất sát với hệ thống ERP thực tế.
+
+  Test authorization chẳng hạn:  
+
+  public function test_employee_cannot_view_other_company_payroll(): void
+  {
+      // Arrange
+      // Act
+      // Assert 403
+  }
+ Câu trả lời là: có cả hai, tùy loại. 
+   
+  Security Testing	           Thường chạy kiểu gì?	                 Ví dụ
+  SAST	                           Terminal / CI/CD	         chạy scanner phân tích source
+  DAST	                      Tool riêng / Terminal / CI	   OWASP ZAP scan website đang chạy
+  Dependency Scan	                 Terminal / CI	        composer audit, npm audit
+  Secret Scan	                     Terminal / CI               	secret scanner
+  Penetration Test	           Tool + thao tác thủ công	       ZAP/Burp Suite + kiểm thử
+  Fuzz Testing	               Tool/script/test tự động	     gửi hàng loạt input bất thường
+  Security Regression Test	Viết PHPUnit Feature/Unit Test	        php artisan test  
+
+  Ví dụ cái bạn vừa đưa:          
+
+         public function test_employee_cannot_view_other_company_payroll(): void
+         {
+             // Arrange
+             // Act
+             // Assert 403
+         }         
+
+  Bạn viết nó vào project, ví dụ: 
+       
+        tests/
+        └── Feature/
+            └── Security/
+                └── PayrollAuthorizationTest.php 
+        
+  rồi Terminal chạy:  
+
+           php artisan test 
+
+  Hoặc chỉ chạy file đó:  
+
+           php artisan test tests/Feature/Security/PayrollAuthorizationTest.php 
+
+  Hoặc chạy đúng test:  
+
+          php artisan test --filter=test_employee_cannot_view_other_company_payroll 
+
+  Kết quả kiểu:            
+
+           PASS           
+
+           ✓ employee cannot view other company payroll           
+
+           Tests: 1 passed 
+
+  Còn Dependency Scan thì không cần bạn viết PHPUnit test:              
+
+             composer audit
+             npm audit 
+
+  Tương tự, SAST/Secret Scan thường cài công cụ rồi chạy bằng Terminal hoặc tự động trong CI/CD:            
+
+           Developer push GitHub
+                   ↓
+           GitHub Actions
+                   ↓
+           ┌─────────────────────────────┐
+           │ php artisan test            │ ← Feature/Unit/Security regression
+           │ composer audit              │ ← Dependency
+           │ npm audit                   │ ← Dependency
+           │ SAST scanner                │ ← Source code
+           │ Secret scanner              │ ← Secret
+           └─────────────────────────────┘
+                   ↓
+           PASS ✅
+                   ↓
+           Deploy           
+
+  Còn chuyện “cài vào cái nút”: nếu ý bạn là trong VS Code/PHPStorm có nút ▶️ cạnh test thì cũng chạy được nếu IDE/extension đã cấu hình PHPUnit/Pest. Nút đó về bản chất vẫn gọi test runner cho bạn.  
+
+  Nên với project Laravel của bạn, bạn có thể nhớ:            
+
+           Unit / Feature / Security Regression
+           → VIẾT code test
+           → php artisan test           
+
+           Dependency Scan
+           → composer audit / npm audit           
+
+           SAST / Secret Scan
+           → cài scanner
+           → chạy Terminal hoặc CI/CD           
+
+           DAST / Pentest / Fuzz
+           → dùng công cụ/script chuyên dụng
+           → test application           
+
+  Và khi làm CI/CD tốt thì phần lớn những thứ có thể tự động hóa sẽ tự chạy mỗi lần push/PR, chứ bạn không phải ngồi gõ từng lệnh mãi.
 7.28 Infrastructure / Production Security                      <
- Firewall
- SSH key
- disable root SSH
- least privilege
- database không public
- Redis không public
- Queue/Horizon protection
- debug mode OFF
- production error handling
- backup
- restore test
- patching
- WAF
- DDoS protection
- monitoring 
+ 1 Firewall      |   quyết định port(mã) nào Internet được phép truy cập.  | Nếu có thể, SSH còn nên giới hạn theo IP/VPN/bastion thay vì mở rộng rãi.
+   Firewall quyết định port nào Internet được phép truy cập.  
+
+  Ví dụ VPS Laravel thường cần:       
+
+       22    SSH
+       80    HTTP
+       443   HTTPS  
+
+  Còn:        
+
+        3306  MySQL
+        6379  Redis  
+
+  thường không nên public ra Internet nếu chúng chỉ được Laravel trên cùng server/private network sử dụng.  
+
+  Ví dụ UFW:         
+
+         sudo ufw allow OpenSSH
+         sudo ufw allow 'Nginx Full'
+         sudo ufw enable
+         sudo ufw status  
+
+  Tư duy:         
+
+         Internet
+            ↓
+         Firewall
+            ├── 443 → cho vào ✅
+            ├── 80  → cho vào ✅
+            ├── 22  → cho vào theo chính sách quản trị
+            ├── 3306 → chặn ❌
+            └── 6379 → chặn ❌  
+
+  Nếu có thể, SSH còn nên giới hạn theo IP/VPN/bastion thay vì mở rộng rãi.
+ 2 SSH key       |   chạy lệnh tạo trong terminal SSH > Mac giữ Private Key 🔐 | dán Public Key 🔑 vào Projec Github | còn với VPS : Terminal VPS 
+  Thay vì đăng nhập server chủ yếu bằng password:        
+
+        SSH
+        ↓
+        username + password  
+
+  ưu tiên:          
+
+          Máy Mac
+          ↓
+          Private Key 🔐          
+
+          Server
+          ↓
+          Public Key 🔓  
+
+  Tạo key hiện đại:  
+
+         ssh-keygen -t ed25519  
+
+  Sau đó public key nằm trong:  
+
+        ~/.ssh/authorized_keys  
+
+  trên server.  
+
+  Private key không được đưa lên GitHub/project/server lung tung.
+
+ | SSH Key dùng ở đâu? | Dùng để làm gì?                                      |
+ | ------------------- | ---------------------------------------------------- |
+ | **Mac → GitHub**    | Chứng minh máy bạn được phép `git push/pull`         |
+ | **Mac → VPS**       | Chứng minh bạn được phép đăng nhập server bằng `ssh` |
+ VPS cũng y chang Mac nếu mục đích là cho VPS kết nối GitHub để git clone/pull.    
+
+    MAC → GitHub
+    Terminal Mac tạo SSH key
+    ↓
+    Mac giữ Private Key
+    ↓
+    lấy Public Key (.pub)
+    ↓
+    dán vào GitHub
+    ↓
+    Mac được xác thực với GitHub    
+
+  Còn VPS:    
+
+    VPS → GitHub
+    Terminal VPS tạo SSH key
+    ↓
+    VPS giữ Private Key
+    ↓
+    lấy Public Key (.pub)
+    ↓
+    dán vào GitHub
+    ↓
+    VPS được xác thực với GitHub    
+
+  Ví dụ bạn SSH vào VPS rồi chạy:    
+
+    ssh-keygen -t ed25519    
+
+  VPS tạo:    
+
+    ~/.ssh/id_ed25519
+    → Private Key 🔐
+    → VPS giữ
+    → KHÔNG dán GitHub    
+
+    ~/.ssh/id_ed25519.pub
+    → Public Key 🔑
+    → cái này dán GitHub    
+
+  Lấy public key:    
+
+    cat ~/.ssh/id_ed25519.pub    
+
+  Nó hiện kiểu:    
+
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI........ vps-user@server    
+
+  Copy nguyên dòng đó → thêm vào GitHub.    
+
+  Sau này trên VPS:    
+
+    git pull    
+
+  thì:    
+
+    VPS
+    │
+    │ Private Key 🔐
+    │
+    ▼
+    GitHub
+    │
+    │ có Public Key 🔑 của VPS
+    │
+    ▼
+    Xác thực thành công
+    │
+    ▼
+    GitHub kiểm tra quyền repo
+    │
+    ▼
+    git pull ✅    
+
+  Vậy nếu trong GitHub của bạn hiện 2 SSH keys, có thể chính là:    
+
+    GitHub
+    │
+    ├── Public Key của Mac
+    │       ↑
+    │       └── Mac → GitHub
+    │           git push / pull
+    │
+    └── Public Key của VPS
+            ↑
+            └── VPS → GitHub
+                git clone / pull    
+
+  Nhưng còn một chuyện khác rất dễ nhầm:    
+
+    Mac → VPS    
+
+  Để bạn chạy:    
+
+    ssh username@IP_VPS    
+
+  thì cũng có thể dùng SSH key, nhưng public key lúc này dán/lưu trên VPS, thường ở:    
+
+    ~/.ssh/authorized_keys    
+
+   chứ không dán GitHub.    
+
+   Cách nhớ:    
+
+    Mac → GitHub   = Public Key đưa GitHub
+    VPS → GitHub   = Public Key đưa GitHub    
+
+    Mac → VPS      = Public Key của Mac đưa VPS    
+
+   Và mục 7.28 Infrastructure Security → SSH key chủ yếu đang nói cái cuối: dùng SSH key để quản trị/đăng nhập VPS thay vì phụ thuộc vào mật khẩu.
+ 3 disable root SSH
+   Không nên thường xuyên SSH trực tiếp:  
+
+         ssh root@server  
+
+    Nên:  
+
+          SSH
+          ↓
+          deploy / admin user
+          ↓
+          sudo khi thực sự cần  
+
+    Sau khi xác nhận user thường + SSH key + sudo hoạt động, mới cân nhắc cấu hình:  
+
+          PermitRootLogin no  
+
+    và có thể tắt password authentication nếu hạ tầng cho phép.  
+
+    Điểm quan trọng: đừng tắt trước khi kiểm tra key, nếu không có thể tự khóa mình khỏi VPS.
+ 4 least privilege
+   Nguyên tắc:   
+
+        Chỉ cấp đúng quyền cần thiết.   
+
+   Ví dụ:          
+
+          Nginx
+          → không cần quyền root toàn hệ thống          
+
+          Laravel runtime
+          → không cần MySQL root          
+
+          Backup process
+          → chỉ cần quyền đọc/upload backup cần thiết          
+
+          CI/CD
+          → chỉ cần quyền deploy cần thiết   
+
+   MySQL production không nên:   
+
+            DB_USERNAME=root   
+
+   mà dùng application account riêng với quyền phù hợp.
+ 5. Database không public  
+
+  Kiến trúc tốt nếu MySQL cùng VPS:        
+
+        Internet
+            ↓
+        Nginx
+            ↓
+        Laravel
+            ↓
+        127.0.0.1:3306
+            ↓
+        MySQL  
+
+  Không phải:        
+
+        Internet
+           ↓
+        MySQL :3306 ❌  
+
+  Laravel có thể:  
+
+       DB_HOST=127.0.0.1  
+
+  và firewall không mở 3306 public.  
+
+  Nếu DB nằm server/cloud riêng thì dùng private network/TLS/firewall allowlist phù hợp.
+ 6. Redis không public    
+
+    Tương tự:          
+
+          Laravel
+          ↓
+          127.0.0.1:6379
+          ↓
+          Redis    
+
+    Redis có thể chứa:          
+
+          Cache
+          Session
+          Queue
+          Locks
+          Rate-limit state    
+
+    Nếu Redis bị public/misconfigure thì hậu quả có thể rất nghiêm trọng.    
+
+    Không nên:          
+
+          Internet
+          ↓
+          6379
+          ↓
+          Redis ❌
+ 7. Queue / Horizon Protection   
+
+   Laravel Queue Worker chạy:   
+
+          php artisan queue:work   
+
+   Production thường dùng process manager/container orchestration để giữ worker sống và restart khi cần.   
+
+   Horizon cung cấp dashboard quản lý/quan sát Redis queue.   
+
+   Ví dụ:   
+
+            /admin/horizon   
+
+   Không được để:   
+        
+           Internet
+           ↓
+           Horizon
+           ↓
+           ai cũng xem được ❌   
+
+   Phải có authorization.   
+
+   Ví dụ ý tưởng:          
+
+          Gate::define('viewHorizon', function ($user) {
+              return $user->hasRole('Super Admin');
+          });   
+
+   Ngoài dashboard, job vẫn phải có:          
+
+          Idempotency
+          Retry safety
+          Timeout
+          Authorization/business state checks
+          Không serialize secret không cần thiết
+ 8. Debug Mode OFF     
+
+     Production:
+         
+         APP_ENV=production
+         APP_DEBUG=false
+         
+     Không:     
+
+          APP_DEBUG=true     
+
+     Vì debug page có thể làm lộ thông tin kỹ thuật nhạy cảm như:
+             
+             Stack trace
+             File path
+             SQL/context
+             Configuration details
+             Code location     
+
+     Sau khi chỉnh cấu hình deployment, thường cần đảm bảo config/cache đang ở trạng thái đúng theo quy trình deploy của bạn.
+ 9. Production Error Handling    
+
+    Debug OFF không có nghĩa là:          
+
+          Có lỗi
+          ↓
+          không lưu gì    
+
+    Mà:           
+
+           User
+           ↓
+           500
+           ↓
+           "Đã xảy ra lỗi."           
+
+    Trong khi phía server:            
+
+            Application log
+            ↓
+            Exception
+            ↓
+            request_id
+            ↓
+            Monitoring/Alert
+            ↓
+            Developer điều tra    
+
+    Tức là:    
+         
+             USER
+             → thông báo an toàn    
+         
+             DEVELOPER
+             → đủ thông tin điều tra    
+
+    Nhưng log cũng không được chứa password/token/API secret.
+ 10. Backup    
+
+    Không chỉ backup source code.    
+
+    GitHub có thể chứa:    
+
+         Source Code    
+
+    nhưng production còn có:           
+
+           MySQL Data
+           Uploaded files
+           Private documents
+           Configuration/secrets strategy    
+
+    Ví dụ:            
+
+            MySQL
+            ↓
+            Backup
+            ↓
+            Encrypt
+            ↓
+            Off-site storage            
+
+    Không nên chỉ:           
+
+           VPS
+           ├── MySQL
+           └── backup.sql    
+
+    vì VPS chết:           
+
+           VPS ❌
+           ├── MySQL ❌
+           └── backup.sql ❌
+ 11. Restore Test 
+  
+   Có backup chưa đủ. 
+  
+   Phải kiểm tra: 
+  
+       Backup đó có restore được không? 
+  
+   Ví dụ: 
+        
+         Production DB
+         ↓
+         Backup
+         ↓
+         backup.sql.enc
+         ↓
+         Test Restore
+         ↓
+         Temporary DB
+         ↓
+         Kiểm tra dữ liệu
+         ↓
+         PASS ✅ 
+  
+   Không restore thử trực tiếp đè production. 
+  
+   Điều đáng sợ nhất là: 
+        
+         Backup mỗi ngày 1 năm
+         ↓
+         VPS chết
+         ↓
+         lấy backup
+         ↓
+         restore lỗi 
+  
+   nên restore test là một phần của backup strategy. 
+ 12. Patching    
+
+    Production còn rất nhiều thứ ngoài Laravel:           
+
+           Ubuntu/Debian
+           Nginx
+           PHP
+           Composer dependencies
+           Node dependencies
+           MySQL
+           Redis
+           Docker
+           Laravel
+           Sanctum
+           Packages           
+
+    Cần theo dõi security update.    
+
+    Laravel:    
+
+          composer audit    
+
+    Node:    
+
+           npm audit    
+
+    OS:    
+
+           sudo apt update    
+
+    Nhưng production không nên kiểu:    
+
+           Có version mới
+           ↓
+           update tất cả ngay
+           ↓
+           cầu mong không lỗi ❌    
+
+    Nên:    
+
+           Security update
+           ↓
+           Đánh giá ảnh hưởng
+           ↓
+           Staging/Test
+           ↓
+           Unit Test
+           ↓
+           Feature Test
+           ↓
+           E2E
+           ↓
+           Deploy
+ 13. WAF  
+
+  WAF = Web Application Firewall.  
+
+  Nó đứng trước web application:         
+
+         Internet
+         ↓
+         WAF
+         ↓
+         Nginx
+         ↓
+         Laravel  
+
+  WAF có thể giúp phát hiện/chặn một số traffic xấu dựa trên rule:        
+
+        Bot/rule violations
+        Known attack patterns
+        Suspicious requests
+        Certain injection attempts  
+
+  Ví dụ Cloudflare có dịch vụ WAF.  
+
+  Nhưng:         
+
+         WAF
+         ≠
+         thay thế Laravel Security  
+
+  Bạn vẫn cần:  
+       
+         Validation
+         Policy
+         Authorization
+         SQL parameter binding
+         XSS protection
+         Rate limiting
+         Secure upload
+         ...  
+
+  WAF là thêm một lớp phòng thủ.
+ 14. DDoS Protection    
+
+    DDoS:    
+    
+        Attacker/botnet
+        ↓
+        ↓
+        ↓
+        rất nhiều traffic
+        ↓
+        Server
+        ↓
+        quá tải    
+
+    DDoS protection cố xử lý/lọc traffic trước khi nó làm cạn tài nguyên origin.    
+
+    Kiến trúc:          
+
+          Internet
+          ↓
+          DDoS Protection/CDN
+          ↓
+          Origin VPS
+          ↓
+          Nginx
+          ↓
+          Laravel    
+
+    Rate Limit trong Laravel vẫn hữu ích nhưng không phải toàn bộ giải pháp DDoS:           
+
+           DDoS protection
+           → lớp mạng/edge           
+
+           WAF
+           → HTTP/application firewall           
+
+           Laravel Rate Limit
+           → giới hạn request ở application
+ 15. Monitoring     
+
+     Production phải biết khi hệ thống có vấn đề.     
+
+     Theo dõi chẳng hạn:            
+
+            CPU
+            RAM
+            Disk
+            HTTP 5xx
+            Response time
+            Queue failures/backlog
+            Database health
+            Redis health
+            Login/security anomalies
+            Certificate expiry
+            Backup failures     
+
+     Ví dụ:            
+
+            Queue failed tăng bất thường
+            ↓
+            Monitoring phát hiện
+            ↓
+            Alert
+            ↓
+            Developer kiểm tra     
+
+     Nếu chỉ có logging:           
+
+           Lỗi xảy ra
+           ↓
+           ghi log
+           ↓
+           không ai đọc           
+
+     thì có thể nhiều giờ/ngày sau mới phát hiện.     
+
+     Monitoring + alerting:          
+
+          Lỗi xảy ra
+          ↓
+          ghi nhận metric/event
+          ↓
+          đạt điều kiện cảnh báo
+          ↓
+          Alert
+          ↓
+          Developer xử lý      
 
  Production Laravel: 
 
  APP_ENV=production
  APP_DEBUG=false
+ Riêng 2 dòng Laravel này rất quan trọng   
+
+   Production:   
+
+        APP_ENV=production
+        APP_DEBUG=false   
+
+   Hiểu là:        
+
+        APP_ENV=production
+        → Laravel biết đây là môi trường production        
+
+        APP_DEBUG=false
+        → không hiển thị debug/stack trace chi tiết cho người dùng   
+
+   Nhưng chỉ hai dòng này không làm server an toàn.   
+
+   Toàn bộ lớp bảo vệ nên nhìn như:          
+
+                           INTERNET
+                              ↓
+                      DDoS Protection
+                              ↓
+                             WAF
+                              ↓
+                           Firewall
+                              ↓
+                        HTTPS / Nginx
+                              ↓
+                       Laravel Production
+                       APP_DEBUG=false
+                              ↓
+                  ┌───────────┼───────────┐
+                  ↓           ↓           ↓
+                MySQL       Redis       Queue
+              non-public   non-public   protected
+                  │
+                  ↓
+                Backup
+                  ↓
+            Encrypted/off-site
+                  ↓
+              Restore Test   
+
+   + SSH Key
+   + Disable direct root SSH
+   + Least Privilege
+   + Patching
+   + Monitoring/Alerting   
+
+   Cách nhớ 7.28: bảo vệ từ Internet → Server → Laravel → DB/Redis/Queue → dữ liệu backup, đồng thời phải theo dõi và cập nhật production liên tục.
 7.29 Security Incident Response                       <
 
  Phải biết xử lý khi: 
