@@ -50380,7 +50380,7 @@ SameSite
                                 Access-Control-Allow-Methods: GET, POST  
                     
                       thì DELETE không nằm trong danh sách CORS cho phép.
-  5. Access-Control-Allow-Headers        |      Cái này nói request cross-origin được phép sử dụng những request header nào. 
+  5. Access-Control-Allow-Headers        |      Cái này nói request cross-origin được phép sử dụng những request header nào. | Server preflight có thể trả:Access-Control-Allow-Headers: Authorization, Content-Type, X-Request-ID  
                      Cái này nói request cross-origin được phép sử dụng những request header nào.
                      React có thể gửi:
                                Authorization: Bearer ABCXYZ
@@ -56853,8 +56853,8 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
            → test application           
 
   Và khi làm CI/CD tốt thì phần lớn những thứ có thể tự động hóa sẽ tự chạy mỗi lần push/PR, chứ bạn không phải ngồi gõ từng lệnh mãi.
-7.28 Infrastructure / Production Security                      <
- 1 Firewall      |   quyết định port(mã) nào Internet được phép truy cập.  | Nếu có thể, SSH còn nên giới hạn theo IP/VPN/bastion thay vì mở rộng rãi.
+7.28 Infrastructure / Production Security           VPS           <
+ 1 Firewall      |  VPS  quyết định port(mã) nào Internet được phép truy cập.  | Nếu có thể, SSH còn nên giới hạn theo IP/VPN/bastion thay vì mở rộng rãi.
    Firewall quyết định port nào Internet được phép truy cập.  
 
   Ví dụ VPS Laravel thường cần:       
@@ -56889,7 +56889,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
             └── 6379 → chặn ❌  
 
   Nếu có thể, SSH còn nên giới hạn theo IP/VPN/bastion thay vì mở rộng rãi.
- 2 SSH key       |   chạy lệnh tạo trong terminal SSH > Mac giữ Private Key 🔐 | dán Public Key 🔑 vào Projec Github | còn với VPS : Terminal VPS 
+ 2 SSH key       |   chạy lệnh tạo trong terminal SSH > Mac giữ Private Key 🔐 | dán Public Key 🔑 vào Projec Github | còn với VPS : Terminal VPS tạo SSH key > VPS giữ Private Key > lấy Public Key dán vào GitHub > VPS được xác thực với GitHub
   Thay vì đăng nhập server chủ yếu bằng password:        
 
         SSH
@@ -56918,122 +56918,122 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
   Private key không được đưa lên GitHub/project/server lung tung.
 
- | SSH Key dùng ở đâu? | Dùng để làm gì?                                      |
- | ------------------- | ---------------------------------------------------- |
- | **Mac → GitHub**    | Chứng minh máy bạn được phép `git push/pull`         |
- | **Mac → VPS**       | Chứng minh bạn được phép đăng nhập server bằng `ssh` |
- VPS cũng y chang Mac nếu mục đích là cho VPS kết nối GitHub để git clone/pull.    
+  | SSH Key dùng ở đâu? | Dùng để làm gì?                                      |
+  | ------------------- | ---------------------------------------------------- |
+  | **Mac → GitHub**    | Chứng minh máy bạn được phép `git push/pull`         |
+  | **Mac → VPS**       | Chứng minh bạn được phép đăng nhập server bằng `ssh` |
+  VPS cũng y chang Mac nếu mục đích là cho VPS kết nối GitHub để git clone/pull.     
 
-    MAC → GitHub
-    Terminal Mac tạo SSH key
-    ↓
-    Mac giữ Private Key
-    ↓
-    lấy Public Key (.pub)
-    ↓
-    dán vào GitHub
-    ↓
-    Mac được xác thực với GitHub    
+     MAC → GitHub
+     Terminal Mac tạo SSH key
+     ↓
+     Mac giữ Private Key
+     ↓
+     lấy Public Key (.pub)
+     ↓
+     dán vào GitHub
+     ↓
+     Mac được xác thực với GitHub     
 
-  Còn VPS:    
+   Còn VPS:     
 
-    VPS → GitHub
-    Terminal VPS tạo SSH key
-    ↓
-    VPS giữ Private Key
-    ↓
-    lấy Public Key (.pub)
-    ↓
-    dán vào GitHub
-    ↓
-    VPS được xác thực với GitHub    
+     VPS → GitHub
+     Terminal VPS tạo SSH key
+     ↓
+     VPS giữ Private Key
+     ↓
+     lấy Public Key (.pub)
+     ↓
+     dán vào GitHub
+     ↓
+     VPS được xác thực với GitHub     
 
-  Ví dụ bạn SSH vào VPS rồi chạy:    
+   Ví dụ bạn SSH vào VPS rồi chạy:     
 
-    ssh-keygen -t ed25519    
+     ssh-keygen -t ed25519     
 
-  VPS tạo:    
+   VPS tạo:     
 
-    ~/.ssh/id_ed25519
-    → Private Key 🔐
-    → VPS giữ
-    → KHÔNG dán GitHub    
+     ~/.ssh/id_ed25519
+     → Private Key 🔐
+     → VPS giữ
+     → KHÔNG dán GitHub     
 
-    ~/.ssh/id_ed25519.pub
-    → Public Key 🔑
-    → cái này dán GitHub    
+     ~/.ssh/id_ed25519.pub
+     → Public Key 🔑
+     → cái này dán GitHub     
 
-  Lấy public key:    
+   Lấy public key:     
 
-    cat ~/.ssh/id_ed25519.pub    
+     cat ~/.ssh/id_ed25519.pub     
 
-  Nó hiện kiểu:    
+   Nó hiện kiểu:     
 
-    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI........ vps-user@server    
+     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI........ vps-user@server     
 
-  Copy nguyên dòng đó → thêm vào GitHub.    
+   Copy nguyên dòng đó → thêm vào GitHub.     
 
-  Sau này trên VPS:    
+   Sau này trên VPS:     
 
-    git pull    
+     git pull     
 
-  thì:    
+   thì:     
 
-    VPS
-    │
-    │ Private Key 🔐
-    │
-    ▼
-    GitHub
-    │
-    │ có Public Key 🔑 của VPS
-    │
-    ▼
-    Xác thực thành công
-    │
-    ▼
-    GitHub kiểm tra quyền repo
-    │
-    ▼
-    git pull ✅    
+     VPS
+     │
+     │ Private Key 🔐
+     │
+     ▼
+     GitHub
+     │
+     │ có Public Key 🔑 của VPS
+     │
+     ▼
+     Xác thực thành công
+     │
+     ▼
+     GitHub kiểm tra quyền repo
+     │
+     ▼
+     git pull ✅     
 
-  Vậy nếu trong GitHub của bạn hiện 2 SSH keys, có thể chính là:    
+   Vậy nếu trong GitHub của bạn hiện 2 SSH keys, có thể chính là:     
 
-    GitHub
-    │
-    ├── Public Key của Mac
-    │       ↑
-    │       └── Mac → GitHub
-    │           git push / pull
-    │
-    └── Public Key của VPS
-            ↑
-            └── VPS → GitHub
-                git clone / pull    
+     GitHub
+     │
+     ├── Public Key của Mac
+     │       ↑
+     │       └── Mac → GitHub
+     │           git push / pull
+     │
+     └── Public Key của VPS
+             ↑
+             └── VPS → GitHub
+                 git clone / pull     
 
-  Nhưng còn một chuyện khác rất dễ nhầm:    
+   Nhưng còn một chuyện khác rất dễ nhầm:     
 
-    Mac → VPS    
+     Mac → VPS     
 
-  Để bạn chạy:    
+   Để bạn chạy:     
 
-    ssh username@IP_VPS    
+     ssh username@IP_VPS     
 
-  thì cũng có thể dùng SSH key, nhưng public key lúc này dán/lưu trên VPS, thường ở:    
+   thì cũng có thể dùng SSH key, nhưng public key lúc này dán/lưu trên VPS, thường ở:     
 
-    ~/.ssh/authorized_keys    
+     ~/.ssh/authorized_keys     
 
-   chứ không dán GitHub.    
+    chứ không dán GitHub.     
 
-   Cách nhớ:    
+    Cách nhớ:     
 
-    Mac → GitHub   = Public Key đưa GitHub
-    VPS → GitHub   = Public Key đưa GitHub    
+     Mac → GitHub   = Public Key đưa GitHub
+     VPS → GitHub   = Public Key đưa GitHub     
 
-    Mac → VPS      = Public Key của Mac đưa VPS    
+     Mac → VPS      = Public Key của Mac đưa VPS     
 
-   Và mục 7.28 Infrastructure Security → SSH key chủ yếu đang nói cái cuối: dùng SSH key để quản trị/đăng nhập VPS thay vì phụ thuộc vào mật khẩu.
- 3 disable root SSH
+    Và mục 7.28 Infrastructure Security → SSH key chủ yếu đang nói cái cuối: dùng SSH key để quản trị/đăng nhập VPS thay vì phụ thuộc vào mật khẩu.
+ 3 disable root SSH   |    = không cho đăng nhập VPS trực tiếp bằng tài khoản root qua SSH.
    Không nên thường xuyên SSH trực tiếp:  
 
          ssh root@server  
@@ -57053,7 +57053,198 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
     và có thể tắt password authentication nếu hạ tầng cho phép.  
 
     Điểm quan trọng: đừng tắt trước khi kiểm tra key, nếu không có thể tự khóa mình khỏi VPS.
- 4 least privilege
+    -------------------------------giải thích chi tiết 2 = không cho đăng nhập VPS trực tiếp bằng tài khoản root qua SSH.   |  Vậy tại sao làm vậy? : Nếu cho phép: root + SSH   >  attacker đã biết sẵn username root và nếu chiếm được credential thì vào thẳng tài khoản quyền cao nhất.    
+      disable root SSH = không cho đăng nhập VPS trực tiếp bằng tài khoản root qua SSH.
+                 Bình thường có thể có:
+                            ssh root@IP_VPS      
+
+                 Nếu disable root SSH:
+                            Mac
+                            ↓ SSH
+                            root@VPS
+                            ↓
+                            ❌ từ chối      
+
+                 Thay vào đó bạn đăng nhập bằng một user thường, ví dụ:
+                            ssh deploy@IP_VPS      
+
+                 Khi cần quyền quản trị mới dùng:
+                            sudo apt update
+                            sudo systemctl restart nginx
+                            sudo nano /etc/nginx/sites-available/laravel      
+
+                 Luồng an toàn hơn:
+                            Mac
+                            ↓ SSH Key
+                            deploy
+                            ↓
+                            VPS
+                            ↓
+                            cần quyền admin?
+                            ↓
+                            sudo
+                            ↓
+                            thực hiện lệnh quản trị      
+
+      Cách cấu hình trên VPS
+             Quan trọng: trước khi disable root, phải chắc chắn user thường đăng nhập bằng SSH key được và có sudo. Giữ nguyên cửa sổ SSH hiện tại trong lúc kiểm tra để tránh tự khóa mình khỏi server.
+             Ví dụ tạo user:
+                        sudo adduser deploy
+                        sudo usermod -aG sudo deploy      
+
+             Public key của Mac phải được cấp cho user deploy, trong:
+                        /home/deploy/.ssh/authorized_keys      
+
+             Sau đó mở một Terminal Mac khác và thử:
+                        ssh deploy@IP_VPS      
+
+             Kiểm tra:
+                        sudo whoami      
+
+             Nếu ra:
+                        root      
+
+             thì nghĩa là:
+                        deploy đăng nhập được ✅
+                        deploy dùng sudo được ✅      
+
+             Lúc này mới chỉnh SSH server. Trên Debian/Ubuntu hiện đại, cấu hình có thể nằm trong file chính hoặc file include. Kiểm tra cấu hình hiệu lực trước:
+                         sudo sshd -T | grep permitrootlogin      
+
+             Sau đó cấu hình:
+                         PermitRootLogin no      
+
+             Ví dụ chỉnh:
+                         sudo nano /etc/ssh/sshd_config      
+
+             rồi kiểm tra syntax:
+                         sudo sshd -t      
+
+             Không có output thường nghĩa là syntax hợp lệ. Sau đó reload SSH:
+                         sudo systemctl reload ssh      
+
+             Đừng đóng phiên SSH hiện tại. Mở Terminal khác kiểm tra lại:
+                         ssh deploy@IP_VPS      
+
+             Nếu vào được thì thử:
+                         ssh root@IP_VPS      
+
+             root phải bị từ chối.
+      Vậy tại sao làm vậy?
+             Nếu cho phép:
+                         root + SSH      
+
+             attacker đã biết sẵn username root và nếu chiếm được credential thì vào thẳng tài khoản quyền cao nhất.
+             Còn:
+                          SSH
+                          ↓
+                          user thường
+                          ↓
+                          sudo khi cần      
+
+             giúp áp dụng least privilege và tách đăng nhập khỏi tài khoản root.
+             Và nó không liên quan SSH key GitHub:
+                          Mac → GitHub
+                          SSH key
+                          → git push/pull      
+
+                          Mac → VPS
+                          SSH key
+                          → đăng nhập server      
+
+                          disable root SSH
+                          → cấm tài khoản root đăng nhập VPS trực tiếp qua SSH      
+
+             Nói ngắn gọn: không phải tắt SSH; chỉ tắt quyền SSH trực tiếp bằng user root.
+    -------------------------------giải thích chi tiết 3    |   nếu lở khoá mình khỏi vps thì sao mở lại?
+             Nếu lỡ khóa chính mình khỏi VPS sau khi bật PermitRootLogin no hoặc cấu hình SSH sai, bạn vẫn có thể khôi phục thông qua bảng điều khiển của nhà cung cấp VPS, miễn là nhà cung cấp hỗ trợ Console hoặc chế độ cứu hộ (Rescue Mode).
+         Với VPS trên Google Cloud, cách xử lý thường là dùng SSH qua trình duyệt hoặc Serial Console, tùy nguyên nhân khiến bạn bị khóa.
+      >   1. Có 3 trường hợp
+                    Trường hợp	                                                       Cách khôi phục
+                Chặn root nhưng user thường vẫn đăng nhập được      	SSH bằng user thường rồi dùng sudo
+                SSH key sai hoặc không đăng nhập được	                Dùng Console hoặc phương thức khôi phục của nhà cung cấp
+                SSH server cấu hình lỗi, không kết nối được         	Dùng Serial Console hoặc Rescue Mode
+      >   2. Nếu vẫn đăng nhập được bằng user thường
+         Ví dụ:
+                   ssh deploy@IP_VPS         
+         
+
+         Sau khi đăng nhập, bạn có thể chỉnh lại cấu hình:
+                   sudo nano /etc/ssh/sshd_config         
+         
+
+         Nếu thực sự cần mở lại SSH cho root, sửa:
+                     PermitRootLogin yes         
+         
+
+         Tuy nhiên, nên ưu tiên khôi phục quyền đăng nhập cho user thường và giữ root SSH bị vô hiệu hóa.
+         Kiểm tra trước khi áp dụng:
+                      sudo sshd -t         
+         
+
+         Nếu không có lỗi:
+                       sudo systemctl reload ssh         
+         
+
+         Giữ nguyên phiên SSH đang hoạt động và mở Terminal khác để thử đăng nhập.         
+         
+         
+         
+         
+
+      >   3. Nếu bị khóa hoàn toàn trên Google Cloud
+              Khôi phục VPS bằng Google Cloud
+                              1. Truy cập Google Cloud — VM instances.
+                              2. Chọn máy chủ laravel-server (nếu đó vẫn là tên VPS của bạn).
+                              3. Thử nút SSH trên giao diện Google Cloud. Đôi khi cách này vẫn hoạt động dù SSH trên Mac bị lỗi.
+                              4. Nếu SSH cũng thất bại, mở phần cấu hình VM và bật Enable connecting to serial ports nếu được phép.
+                              5. Chọn Connect to serial console và sử dụng tài khoản hệ điều hành có quyền truy cập để sửa cấu hình SSH.
+              Serial Console là kênh truy cập riêng, nhưng vẫn yêu cầu quyền Google Cloud và có thể cần thông tin đăng nhập Linux.           Google Cloud Documentation +1         
+         Sau khi vào được VPS, kiểm tra:
+                 sudo sshd -t
+                 sudo sshd -T | grep permitrootlogin
+                 sudo systemctl status ssh         
+         
+
+         Nếu cấu hình SSH sai, sửa lại rồi kiểm tra và reload.
+         Trường hợp cả SSH lẫn Serial Console đều không sử dụng được, Google Cloud còn có phương pháp tạo VM cứu hộ và gắn ổ đĩa của VPS cũ vào để sửa cấu hình. Hướng dẫn cứu hộ VM của Google Cloud.
+                   
+                   Để tránh bị khóa ngay từ đầu                        <
+                   Trước khi tắt root SSH, hãy tạo snapshot ổ đĩa, kiểm tra user thường đăng nhập được và chạy sudo thành công. Giữ nguyên phiên SSH cũ cho đến khi phiên đăng nhập mới hoạt động.         
+
+         Bạn không cần bật lại root SSH vĩnh viễn. Sau khi khôi phục được user thường, nên tiếp tục quản trị VPS qua user đó và sudo.
+    -------------------------------giải thích chi tiết 4    |   bật Enable connecting to serial ports ?   |   Google Cloud VM > Edit > Remote access / Security (tùy giao diện) > ☑ Enable connecting to serial ports > Save   > sau đó hỏi AI
+      Đúng. Nếu mục tiêu của bạn là chuẩn bị đường cứu hộ phòng trường hợp tự khóa SSH, thì Enable connecting to serial ports chính là tùy chọn bật Serial Console.
+      Nhưng chưa cần dùng Serial Console nếu SSH bình thường vẫn vào được. Bạn có thể bật nó như một phương án dự phòng:
+              Google Cloud VM
+              ↓
+              Edit
+              ↓
+              Remote access / Security (tùy giao diện)
+              ↓
+              ☑ Enable connecting to serial ports
+              ↓
+              Save      
+
+      Sau đó ý nghĩa là:
+                 SSH bình thường
+                 Mac ──────────→ VPS
+                         ❌ nếu SSH bị khóa      
+
+                                  ↓      
+
+                 Serial Console của Google Cloud
+                 Google Cloud ──────────→ VPS
+                                  ↑
+                            đường cứu hộ      
+
+      Ví dụ sau này bạn lỡ cấu hình:
+                   PermitRootLogin no      
+
+      nhưng user thường cũng chưa đăng nhập được, hoặc cấu hình sshd bị lỗi, thì SSH có thể không vào được. Lúc đó Serial Console có thể giúp chẩn đoán/khôi phục trong một số trường hợp.
+      Bật Serial Console không có nghĩa là tắt SSH hiện tại, và cũng không phải SSH key GitHub.
+      Nếu bạn đang đứng ở trang Edit VM và thấy đúng ô Enable connecting to serial ports, bạn có thể bật → Save. Sau đó nói tôi biết bạn thấy những nút nào ở trang VM, tôi chỉ bạn bước tiếp theo để kiểm tra đường cứu hộ trước khi đụng vào PermitRootLogin.
+ 4 least privilege    |    quyền hạn tối thiểu > Chỉ cấp đúng quyền cần thiết.   
    Nguyên tắc:   
 
         Chỉ cấp đúng quyền cần thiết.   
@@ -57077,7 +57268,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
             DB_USERNAME=root   
 
    mà dùng application account riêng với quyền phù hợp.
- 5. Database không public  
+ 5. Database không public  |   vd: firewall không mở 3306 public.  |  Nếu DB nằm server/cloud riêng thì dùng private network/TLS/firewall allowlist phù hợp.
 
   Kiến trúc tốt nếu MySQL cùng VPS:        
 
@@ -57104,7 +57295,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
   và firewall không mở 3306 public.  
 
   Nếu DB nằm server/cloud riêng thì dùng private network/TLS/firewall allowlist phù hợp.
- 6. Redis không public    
+ 6. Redis không public     |   Redis chỉ nên cho những hệ thống cần thiết kết nối; không mở port 6379 thẳng ra Internet một cách không cần thiết.    |   Nhưng lưu ý: systemctl start redis-server là bật service Redis, không có nghĩa là phải mở port 6379 ra Internet. Với Laravel và Redis cùng VPS, ta muốn:   Laravel → 127.0.0.1:6379 → Redis ✅  |  Internet → VPS:6379 → Redis ❌
 
     Tương tự:          
 
@@ -57131,7 +57322,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
           6379
           ↓
           Redis ❌
- 7. Queue / Horizon Protection   
+ 7. Queue / Horizon Protection   | cài lệnh phân quyền cho khi xem Horizon
 
    Laravel Queue Worker chạy:   
 
@@ -57168,7 +57359,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
           Timeout
           Authorization/business state checks
           Không serialize secret không cần thiết
- 8. Debug Mode OFF     
+ 8. Debug Mode OFF     |   để APP_DEBUG=false  | Vì debug page có thể làm lộ thông tin kỹ thuật nhạy cảm như:
 
      Production:
          
@@ -57188,7 +57379,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
              Code location     
 
      Sau khi chỉnh cấu hình deployment, thường cần đảm bảo config/cache đang ở trạng thái đúng theo quy trình deploy của bạn.
- 9. Production Error Handling    
+ 9. Production Error Handling    |  Xử lý lỗi trong môi trường sản xuất  |   trong DB có file Log
 
     Debug OFF không có nghĩa là:          
 
@@ -57206,15 +57397,15 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
 
     Trong khi phía server:            
 
-            Application log
+            Application log     |  Nhật ký ứng dụng
             ↓
-            Exception
+            Exception           |  Ngoại lệ
             ↓
-            request_id
+            request_id          |  ID yêu cầu
             ↓
-            Monitoring/Alert
+            Monitoring/Alert      |  Giám sát/Cảnh báo
             ↓
-            Developer điều tra    
+            Developer điều tra    |  Điều khiển dành cho nhà phát triển
 
     Tức là:    
          
@@ -57225,7 +57416,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
              → đủ thông tin điều tra    
 
     Nhưng log cũng không được chứa password/token/API secret.
- 10. Backup    
+ 10. Backup    |  không nên làm backup ở VPS hãy để DB ra Cloud ròi cho VPS gọi vào
 
     Không chỉ backup source code.    
 
