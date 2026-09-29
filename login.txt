@@ -57452,7 +57452,7 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
            VPS ❌
            ├── MySQL ❌
            └── backup.sql ❌
- 11. Restore Test 
+ 11. Restore Test    2     | 2 cách | cách 2  Backup = chụp ảnh database. + Binlog/Transaction Log = quay lại mọi thay đổi sau bức ảnh.  |   Restore Test = thử xem bức ảnh đó có mở lại được không.
   
    Có backup chưa đủ. 
   
@@ -57489,6 +57489,324 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
          restore lỗi 
   
    nên restore test là một phần của backup strategy. 
+ -------------------------------2 cách khôi phục : 1: Database hiện tại (nghi lỗi) > Copy ra database tạm >  db_recovery = dữ liệu mới nhưng có lỗi )-( R2 >  backup-29-03h.sql.gz > restore > database: production_restore = dữ liệu tốt lúc 03:00  )>(So sánh và lấy phần cần cứu > rồi đưa sang database đã restore.)>Nhưng không phải lúc nào cũng đơn giản.     | 2 hãy bật Transaction Log (Binlog) trong DB 
+    cách 3 không phải là lấy "backup lỗi" rồi dán đè lên backup cũ. Thực tế người ta thường làm như sau:
+          Giả sử:
+                 Ngày 29 - 03:00
+                 ↓
+                 Backup tốt
+                 ↓
+                 R2:
+                 backup-29-03h.sql.gz ✅   
+                 
+
+                 Ngày 29 - 15:00
+                 ↓
+                 Database có lỗi
+                 ↓
+                 VPS vẫn còn database hiện tại (có thể còn đọc được một phần)   
+
+          Không nên làm:
+                  backup lỗi
+                  ↓
+                  đè lên backup cũ ❌   
+
+          Vì có thể làm mất luôn bản backup tốt.
+   Cách cứu dữ liệu thường là:
+   Bước 1: Giữ nguyên database lỗi
+           Không restore đè:
+                    Database lỗi
+                            ↓
+                            giữ nguyên   
+
+           Vì trong đó có thể còn dữ liệu mới.
+   Bước 2: Tạo một bản sao database lỗi
+           Ví dụ:
+                    Database hiện tại (nghi lỗi)
+                            ↓
+                    Copy ra database tạm
+                            ↓
+                    db_recovery   
+
+           Mục đích:
+                   Không phá dữ liệu gốc   
+
+   Bước 3: Restore backup tốt ra một database khác
+           Ví dụ:
+                      R2
+                      ↓
+                      backup-29-03h.sql.gz
+                      ↓
+                      restore   
+
+                      database:
+                      production_restore   
+
+           Lúc này có:
+                         production_restore
+                         = dữ liệu tốt lúc 03:00   
+
+                         db_recovery
+                         = dữ liệu mới nhưng có lỗi   
+
+   Bước 4: So sánh và lấy phần cần cứu
+             Ví dụ:
+             Backup tốt:
+                    employees             
+
+                    id | name
+                    1  | An
+                    2  | Bình             
+
+             Database lỗi hiện tại:
+                    employees             
+
+                    id | name
+                    1  | An
+                    2  | Bình
+                    3  | Cường   ← tạo lúc 10h
+                    4  | Dũng    ← tạo lúc 12h             
+
+             Có thể lấy:
+                     3 Cường
+                     4 Dũng             
+
+             rồi đưa sang database đã restore.
+             Nhưng không phải lúc nào cũng đơn giản.
+             Ví dụ Payroll:
+                      Employee
+                      ↓
+                      Salary
+                      ↓
+                      Payroll
+                      ↓
+                      Accounting entries             
+
+             Có quan hệ:
+                       employees.id
+                               ↓
+                       payroll.employee_id
+                               ↓
+                       accounting.transaction_id             
+
+             Nên không thể chỉ copy một bảng.
+             Phải đảm bảo:
+                      Foreign Key
+                      Transaction
+                      Consistency
+                      Audit log             
+
+   Trong hệ thống lớn thường dùng cách khác
+   Không copy tay mà dùng:
+   1. MySQL Binlog
+               Backup 03:00
+               +
+               Transaction log   
+
+        khôi phục chính xác hơn.
+   2. Point-in-Time Recovery
+      Ví dụ:
+             03:00 backup tốt   
+
+             10:00 tạo Employee mới   
+
+             15:00 sửa Salary   
+
+             18:00 lỗi   
+
+             Restore:
+             03:00 backup
+             +
+             chạy lại transaction tới 17:59   
+
+      Kết quả:
+             Gần như giữ nguyên dữ liệu trước khi lỗi   
+
+      Nên hiểu câu "cứu dữ liệu trước khi restore" là:
+      Không:
+              DB lỗi
+              ↓
+              đập bỏ
+              ↓
+              restore backup cũ ❌   
+              
+
+              Mà:
+              DB lỗi
+              ↓
+              giữ lại
+              ↓
+              copy/clone
+              ↓
+              restore bản tốt sang nơi khác
+              ↓
+              lấy dữ liệu mới còn hợp lệ
+              ↓
+              ghép lại   
+
+      Với ERP/HRM của bạn có Payroll, Accounting, Contract thì cách an toàn hơn là backup + binlog/PITR + audit log, vì dữ liệu nghiệp vụ liên quan nhiều bảng, copy thủ công rất dễ lệch.
+ -------------------------------giải thích cách 2 : Backup = chụp ảnh database. + Binlog/Transaction Log = quay lại mọi thay đổi sau bức ảnh.  |   Restore Test = thử xem bức ảnh đó có mở lại được không.
+ Đúng, nhưng không phải chỉ chạy một lệnh là có đủ cả 3. Trên VPS bạn sẽ cấu hình từng phần:
+         VPS
+         │
+         ├── 1. Backup
+         │      ↓
+         │   mysqldump tạo bản sao DB
+         │
+         ├── 2. Transaction Log (MySQL Binlog)
+         │      ↓
+         │   MySQL tự ghi mọi thay đổi
+         │
+         └── 3. Restore Test
+                ↓
+             định kỳ thử khôi phục   
+
+   1. Backup (chạy lệnh tạo bản sao)
+   Ví dụ:
+           mysqldump \
+           -u app_user \
+           -p \
+           database_name \
+           | gzip > backup-$(date +%F).sql.gz   
+
+   Kết quả:
+           VPS   
+
+           backup-2026-09-29.sql.gz   
+
+   Sau đó upload:
+           VPS
+            ↓
+           Cloudflare R2
+            ↓
+           backup-2026-09-29.sql.gz   
+
+   Cái này thường chạy tự động bằng cron:
+           crontab -e   
+
+   Ví dụ:
+          0 3 * * * /scripts/mysql-backup.sh   
+
+   Nghĩa là:
+           03:00 mỗi ngày
+           ↓
+           chạy script backup   
+
+   2. Transaction Log (Binlog)
+   Cái này khác backup.
+   Bạn bật một lần trong MySQL, sau đó MySQL tự ghi.
+   Ví dụ:
+             MySQL
+              |
+              | INSERT employee
+              |
+              ↓
+             binlog ghi   
+
+             INSERT employee id=100   
+
+   Kiểm tra:
+             SHOW VARIABLES LIKE 'log_bin';   
+
+   Nếu:
+             ON   
+
+   thì đang chạy.
+   Xem log:
+            SHOW BINARY LOGS;   
+
+   Ví dụ:
+           mysql-bin.000001
+           mysql-bin.000002   
+
+   Sau đó bạn có thể backup luôn binlog sang R2.
+   3. Restore Test
+   Cái này không phải chạy mỗi ngày.
+   Ví dụ mỗi tuần:
+             R2
+              ↓
+             lấy backup.sql.gz
+              ↓
+             tạo MySQL test
+              ↓
+             restore
+              ↓
+             kiểm tra dữ liệu   
+
+   Ví dụ:
+   Tạo database test:
+           CREATE DATABASE restore_test;   
+
+   Giải nén:
+            gunzip backup.sql.gz   
+
+   Restore:
+            mysql restore_test < backup.sql   
+
+   Kiểm tra:
+   USE restore_test;          
+
+          SELECT COUNT(*) FROM users;
+          SELECT COUNT(*) FROM employees;
+          SELECT COUNT(*) FROM payrolls;          
+
+   Nếu dữ liệu đúng:
+             Restore Test PASS ✅   
+
+   Trong production thật:
+   Luồng sẽ là:
+             Hàng ngày 03:00   
+
+             MySQL
+               |
+               |
+               ↓
+             Full Backup
+               |
+               ↓
+             Cloudflare R2   
+             
+
+             Trong ngày:   
+
+             User tạo nhân viên
+             User sửa lương
+             Payroll finalize   
+
+               |
+               ↓
+             MySQL Binlog ghi lại   
+             
+
+             Có sự cố:   
+
+             VPS chết
+               |
+               ↓
+             Tạo VPS mới
+               |
+               ↓
+             Restore backup gần nhất
+               |
+               ↓
+             Apply binlog
+               |
+               ↓
+             Khôi phục gần thời điểm lỗi   
+
+   Với project Laravel ERP/HRM của bạn, tối thiểu nên có:
+   ✅ MySQL Full Backup
+   ✅ MySQL Binlog
+   ✅ Backup lưu ngoài VPS (R2/S3)
+   ✅ Encryption backup
+   ✅ Restore Test
+   ✅ Backup rotation (giữ nhiều ngày)   
+
+   Nói ngắn gọn:
+          - Backup = chụp ảnh database.
+          - Binlog/Transaction Log = quay lại mọi thay đổi sau bức ảnh.
+          - Restore Test = thử xem bức ảnh đó có mở lại được không.
+   Ba cái kết hợp mới tạo thành hệ thống backup production.
  12. Patching    
 
     Production còn rất nhiều thứ ngoài Laravel:           
@@ -57542,6 +57860,499 @@ Trong 7.19, với ERP/Payroll thì tenant isolation + transaction + unique const
            E2E
            ↓
            Deploy
+ ------------------------------- Patching (Security Update) giải thích dễ hiểu       
+      Patching = cập nhật các thành phần trong hệ thống để vá lỗi, đặc biệt là lỗ hổng bảo mật (security vulnerability).
+      Production không chỉ có Laravel, mà có cả một "chuỗi":
+              Internet
+                 ↓
+              Ubuntu/Debian
+                 ↓
+              Nginx
+                 ↓
+              PHP
+                 ↓
+              Laravel
+                 ↓
+              Composer packages
+                 ↓
+              MySQL
+                 ↓
+              Redis
+                 ↓
+              Docker   
+
+      Chỉ cần một phần có lỗ hổng cũng có thể ảnh hưởng toàn hệ thống.
+   Ví dụ thực tế
+   1. Ubuntu/Debian    |    Ubuntu là hệ điều hành (Operating System - OS), giống như: Windows  macOS  Ubuntu  Debian  CentOS
+         Ví dụ:
+             Ubuntu
+             ↓
+             phát hiện lỗ hổng OpenSSL
+             ↓
+             có bản vá mới   
+
+     Kiểm tra:
+             sudo apt update   
+
+     Nó chỉ cập nhật danh sách package.
+     Sau đó xem package nào cần update:
+              apt list --upgradable   
+
+     Update:
+               sudo apt upgrade   
+    -------------------------------
+          Ubuntu là hệ điều hành (Operating System - OS), giống như:
+              Windows
+              macOS
+              Ubuntu
+              Debian
+              CentOS      
+
+      Trên VPS của bạn, thường sẽ là:
+                VPS
+                │
+                └── Ubuntu / Debian  ← hệ điều hành
+                        │
+                        ├── Nginx
+                        ├── PHP
+                        ├── Laravel
+                        ├── MySQL
+                        ├── Redis
+                        └── Docker      
+
+      Nó là nền móng để chạy các phần mềm khác.
+      Ubuntu dùng làm gì?
+                       Ví dụ bạn thuê VPS:
+                                  VPS của nhà cung cấp
+                                          ↓
+                                  Cài Ubuntu
+                                          ↓
+                                  Cài môi trường chạy web
+                                          ↓
+                                  Deploy Laravel      
+
+                       Ubuntu cung cấp:
+                                  - quản lý file
+                                  - quản lý user
+                                  - quyền truy cập
+                                  - network
+                                  - firewall
+                                  - chạy service
+                                  - cài package
+      Cài phần mềm trên Ubuntu bằng gì?
+                      Ubuntu có hệ thống quản lý package gọi là APT.
+                      Ví dụ cài Nginx:
+                                 sudo apt update      
+
+                                 sudo apt install nginx      
+
+                      Cài PHP:
+                            sudo apt install php8.4-fpm      
+
+                      Cài Redis:
+                            sudo apt install redis-server      
+
+                      Cài MySQL:
+                            sudo apt install mysql-server      
+
+      sudo apt update là gì?
+                     Bạn thấy phần Patching:
+                           sudo apt update      
+
+                     Nó nghĩa là:
+                           Ubuntu
+                           ↓
+                           kiểm tra kho package
+                           ↓
+                           xem có bản cập nhật mới không      
+
+                     Nó chưa update ngay.
+                     Ví dụ:
+                           Ubuntu đang có:      
+
+                          nginx 1.24.0      
+
+                           Kho Ubuntu có:      
+
+                           nginx 1.24.1 (security fix)      
+
+                     Chạy:
+                           sudo apt update      
+
+                     Ubuntu biết:
+                           Có bản mới      
+
+                     Sau đó:
+                           sudo apt upgrade      
+
+                     mới cài bản mới.
+      Ubuntu liên quan Laravel thế nào?
+                    Laravel không chạy trực tiếp trên Ubuntu.
+                    Luồng:
+                             id="o0lq7v"
+                             Ubuntu
+                             ↓
+                             PHP
+                             ↓
+                             Composer
+                             ↓
+                             Laravel
+                             ↓
+                             Application      
+
+                    Ví dụ:
+                             Ubuntu
+                                 |
+                                 |
+                                 ↓
+                             PHP 8.4
+                                 |
+                                 |
+                                 ↓
+                             Laravel 13
+                                 |
+                                 |
+                                 ↓
+                             ERP/HRM của bạn      
+
+      Khi học Security Production, tại sao nói "patch Ubuntu"?
+                Vì Ubuntu cũng có lỗ hổng.
+                Ví dụ:
+                           Ubuntu package
+                           ↓
+                           OpenSSL có lỗi bảo mật
+                           ↓
+                           Ubuntu phát hành bản vá
+                           ↓
+                           apt update
+                           apt upgrade
+                           ↓
+                           server an toàn hơn      
+
+                Không chỉ Laravel mới có lỗi.
+                Toàn bộ:
+                           Ubuntu
+                           Nginx
+                           PHP
+                           MySQL
+                           Redis
+                           Docker
+                           Laravel packages      
+
+                đều cần cập nhật.
+                Cách nhớ:
+                          Ubuntu
+                          = hệ điều hành của VPS      
+
+                          apt
+                          = công cụ cài/cập nhật phần mềm trên Ubuntu      
+
+                          Laravel
+                          = ứng dụng chạy bên trên Ubuntu      
+
+                Ví dụ VPS của bạn hiện tại có thể hiểu:
+                          Google Cloud VPS
+                                  ↓
+                          Debian/Ubuntu
+                                  ↓
+                          Nginx
+                                  ↓
+                          PHP 8.4
+                                  ↓
+                          Laravel 13
+                                  ↓
+                          DJI ERP/HRM      
+
+                Ubuntu không phải thư viện, nó là môi trường chạy toàn bộ hệ thống.
+   2. Nginx
+      Ví dụ:
+              Nginx version cũ
+              ↓
+              có security patch
+              ↓
+              update   
+
+      Kiểm tra:
+              nginx -v   
+
+      Sau update:
+              sudo systemctl reload nginx   
+
+   3. PHP
+      Ví dụ:
+               PHP 8.4.x
+               ↓
+               phát hiện lỗi security
+               ↓
+               PHP release bản vá   
+
+      Kiểm tra:
+                php -v   
+
+      Update qua package manager:
+                 sudo apt update
+                 sudo apt upgrade php8.4*   
+
+   4. Composer dependencies (Laravel)
+             Ví dụ:
+             Bạn đang dùng:
+                       laravel/framework 13.x
+                       spatie/permission
+                       sanctum             
+
+             Một package phát hiện lỗ hổng.
+             Kiểm tra:
+                      composer audit             
+
+             Ví dụ:
+                        Package:
+                        abc/package             
+
+                        Vulnerability:
+                        CVE-xxxx             
+
+                        Fixed:
+                        version 2.0.5             
+
+             Lúc này:
+             Không làm:
+                       composer update             
+
+             mù toàn bộ ❌
+             Vì có thể:
+                        Laravel update
+                        ↓
+                        package đổi version
+                        ↓
+                        code lỗi             
+
+             Nên:
+                         Xem package bị lỗi
+                         ↓
+                         Update package đó
+                         ↓
+                         Chạy test
+                         ↓
+                         Deploy   
+
+   5. Node dependencies
+           Frontend:
+                      npm audit   
+
+           Ví dụ:
+                    react-package
+                    ↓
+                    có vulnerability   
+
+           Xử lý:
+                    Xem ảnh hưởng
+                    ↓
+                    update version
+                    ↓
+                    npm test/build
+                    ↓
+                    deploy   
+
+   6. MySQL
+        Ví dụ:
+                 MySQL 8.4
+                 ↓
+                 security patch   
+
+        Kiểm tra:
+                 mysql --version   
+
+        Update:
+                 sudo apt update
+                 sudo apt upgrade mysql-server   
+
+        Sau update:
+                 backup
+                 ↓
+                 update
+                 ↓
+                 test query
+                 ↓
+                 test Laravel connection   
+
+   7. Redis
+           Kiểm tra:
+                redis-server --version   
+
+           Update:
+                sudo apt update
+                sudo apt upgrade redis-server   
+
+           Test:
+                redis-cli ping   
+
+           Kết quả:
+                PONG   
+
+   8. Docker
+           Nếu chạy Docker:
+           Ví dụ:
+                FROM php:8.4-fpm   
+
+           Image cũ:
+                php:8.4-fpm
+                ↓
+                có security patch   
+
+           Cần:
+                pull image mới
+                ↓
+                build lại
+                ↓
+                test container
+                ↓
+                deploy   
+
+           Vì sao không update tất cả ngay?
+           Ví dụ:
+           Production đang:
+                     Laravel 13
+                     PHP 8.4
+                     MySQL 8.4   
+
+           Bạn thấy:
+                     PHP 8.4.10 → 8.4.12
+                     Laravel package mới
+                     Node package mới   
+
+           Nếu làm:
+                     composer update
+                     npm update
+                     apt upgrade   
+
+           ngay trên production:
+                     Update
+                      ↓
+                     Code lỗi
+                      ↓
+                     Website chết
+                      ↓
+                     Không biết lỗi từ đâu   
+
+   Quy trình đúng
+   1. Có security update
+                   Ví dụ:
+                              CVE phát hiện
+                              ↓
+                              Package có bản vá                   
+
+   2. Đánh giá ảnh hưởng
+                 Hỏi:
+                            Package nào?
+                            Version nào?
+                            Có breaking change không?
+                            Có ảnh hưởng database không?   
+              
+   3. Update ở Staging trước
+                Không update production trước.
+                Luồng:
+                           Production
+                                 |
+                                 |
+                                 ↓
+                           Staging clone
+                                 |
+                                 ↓
+                           Update                
+
+                Ví dụ:
+                           composer update package-name                
+
+   4. Chạy Unit Test
+               Kiểm tra logic nhỏ:
+                          php artisan test --testsuite=Unit   
+
+               Ví dụ:
+                          SalaryCalculator
+                          Permission check
+                          Service logic   
+
+   5. Chạy Feature Test
+              Kiểm tra chức năng:
+                         php artisan test --testsuite=Feature   
+           
+              Ví dụ:
+                         Login
+                         Payroll
+                         Employee
+                         Permission
+                         API   
+           
+   6. Chạy E2E (Playwright)
+           Giả lập user thật:
+                       npx playwright test   
+
+           Ví dụ:
+                       Mở browser
+                       ↓
+                       Login
+                       ↓
+                       Vào Payroll
+                       ↓
+                       Finalize
+                       ↓
+                       Kiểm tra UI   
+                    
+   7. Deploy Production
+           Sau khi:
+                        Staging PASS
+                               ↓
+                        Deploy production
+                               ↓
+                        Migration
+                               ↓
+                        Restart queue
+                               ↓
+                        Health check   
+
+   Ví dụ thực tế với project Laravel ERP của bạn
+   Có CVE:
+                Spatie Permission version cũ   
+
+   Quy trình:
+                composer audit
+                        ↓
+                phát hiện package
+                        ↓
+                composer update spatie/permission
+                       ↓
+                git commit composer.lock
+                        ↓
+                CI chạy:
+                    Unit Test
+                    Feature Test
+                    Playwright
+                        ↓
+                Deploy VPS
+                        ↓
+                composer install --no-dev
+                        ↓
+                php artisan optimize
+                        ↓
+                restart queue   
+
+   Cách nhớ ngắn:
+                Patching
+                =
+                Không phải thấy bản mới là bấm update.   
+
+                Đúng:
+                Phát hiện lỗi bảo mật
+                        ↓
+                Đánh giá
+                        ↓
+                Test ở staging
+                        ↓
+                Test tự động
+                        ↓
+                Deploy production   
+
+   Đặc biệt với ERP/HRM có Payroll, Accounting, Employee data, việc update có kiểm soát rất quan trọng vì lỗi sau update có thể ảnh hưởng dữ liệu nghiệp vụ.     
  13. WAF  
 
   WAF = Web Application Firewall.  
