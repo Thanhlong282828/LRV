@@ -1900,173 +1900,173 @@ Khi bạn có VPS/staging riêng, phase tiếp theo sẽ là:
        404
 * Eloquent | whereHas() , with() , withWhereHas()  |  whereHas() lọc model cha dựa trên relationship. | with() LOAD + lọc theo con ( né N+1 ) | withWhereHas() lọc theo quan hệ và load luôn chính nó ( né N+1 )                           <
  whereHas() lọc theo bảng quan hệ
- Employee::query()
-    ->whereHas('contracts', function ($query) {
-        $query->where('status', 'active');
-    })
-    ->get();
+     Employee::query()
+        ->whereHas('contracts', function ($query) {
+            $query->where('status', 'active');
+        })
+        ->get();
  with() load relationship:
- Employee::query()
-    ->with('contracts')
-    ->get();
+    Employee::query()
+       ->with('contracts')
+       ->get();
  Có thể dùng cả hai:
- Employee::query()
-    ->whereHas('contracts', fn ($query) =>
-        $query->where('status', 'active')
-    )
-    ->with([
-        'contracts' => fn ($query) =>
+     Employee::query()
+        ->whereHas('contracts', fn ($query) =>
             $query->where('status', 'active')
-    ])
-    ->get();
- Giả sử:
+        )
+        ->with([
+            'contracts' => fn ($query) =>
+                $query->where('status', 'active')
+        ])
+        ->get();
+ Giả sử:     
 
- class User extends Model
- {
-    public function orders()
-    {
-        return $this->hasMany(Order::class);
-    }
- }
+      class User extends Model
+      {
+         public function orders()
+         {
+             return $this->hasMany(Order::class);
+         }
+      }
 
  1. whereHas() — lọc theo bảng quan hệ
- Ví dụ: lấy những User có ít nhất một Order trạng thái paid.
- $users = User::whereHas('orders', function ($query) {
-    $query->where('status', 'paid');
- })->get();
- Có thể hiểu:
- users
- │
- └── kiểm tra orders
-       │
-       └── có order status = paid?
-                │
-          ┌─────┴─────┐
-         Có          Không
-          │             │
-      lấy User       bỏ User
+     Ví dụ: lấy những User có ít nhất một Order trạng thái paid.
+     $users = User::whereHas('orders', function ($query) {
+        $query->where('status', 'paid');
+     })->get();
+     Có thể hiểu:
+     users
+     │
+     └── kiểm tra orders
+           │
+           └── có order status = paid?
+                    │
+              ┌─────┴─────┐
+             Có          Không
+              │             │
+          lấy User       bỏ User   
 
- SQL về ý tưởng gần giống:
- SELECT *
- FROM users
- WHERE EXISTS (
-    SELECT 1
-    FROM orders
-    WHERE orders.user_id = users.id
-      AND orders.status = 'paid'
- );
- whereHas() không có nghĩa là load orders
- Đây là điểm rất quan trọng.
- $users = User::whereHas('orders', function ($query) {
-    $query->where('status', 'paid');
- })->get();
- Nó chỉ nói:
- "Chỉ lấy User nào có order paid."
- Nó không yêu cầu Eloquent lấy danh sách orders về cùng.
+     SQL về ý tưởng gần giống:
+     SELECT *
+     FROM users
+     WHERE EXISTS (
+        SELECT 1
+        FROM orders
+        WHERE orders.user_id = users.id
+          AND orders.status = 'paid'
+     );
+     whereHas() không có nghĩa là load orders
+     Đây là điểm rất quan trọng.
+     $users = User::whereHas('orders', function ($query) {
+        $query->where('status', 'paid');
+     })->get();
+     Nó chỉ nói:
+     "Chỉ lấy User nào có order paid."
+     Nó không yêu cầu Eloquent lấy danh sách orders về cùng.
 
  2. with() — Eager Loading
- Ví dụ:
- $users = User::with('orders')->get();
- Nghĩa là:
- Lấy User và load luôn relationship orders.
- Sau đó:
- foreach ($users as $user) {
+  Ví dụ:
+  $users = User::with('orders')->get();
+  Nghĩa là:
+  Lấy User và load luôn relationship orders.
+  Sau đó:
+  foreach ($users as $user) {
     foreach ($user->orders as $order) {
         echo $order->status;
     }
- }
- Không bị query orders riêng cho từng user.
- Không dùng with() :
- $users = User::all();
- foreach ($users as $user) {
+  }
+  Không bị query orders riêng cho từng user.
+  Không dùng with() :
+  $users = User::all();
+  foreach ($users as $user) {
     echo $user->orders;
- }
- Có thể xảy ra:
+  }
+  Có thể xảy ra:
 
- SELECT * FROM users;
+  SELECT * FROM users;
 
- SELECT * FROM orders WHERE user_id = 1;
- SELECT * FROM orders WHERE user_id = 2;
- SELECT * FROM orders WHERE user_id = 3;
- SELECT * FROM orders WHERE user_id = 4;
- ...
- Đây là N+1 Query Problem.
+  SELECT * FROM orders WHERE user_id = 1;
+  SELECT * FROM orders WHERE user_id = 2;
+  SELECT * FROM orders WHERE user_id = 3;
+  SELECT * FROM orders WHERE user_id = 4;
+  ...
+  Đây là N+1 Query Problem.
 
- Dùng with()
- $users = User::with('orders')->get();
+  Dùng with()
+  $users = User::with('orders')->get();
 
- Eloquent về cơ bản làm:
- Query 1:
- SELECT * FROM users;
- 
- Query 2:
- SELECT * FROM orders
- WHERE user_id IN (1, 2, 3, 4, ...);
+  Eloquent về cơ bản làm:
+  Query 1:
+  SELECT * FROM users;
+  
+  Query 2:
+  SELECT * FROM orders
+  WHERE user_id IN (1, 2, 3, 4, ...);
 
- => Thường chỉ cần 2 query thay vì rất nhiều query.
+  => Thường chỉ cần 2 query thay vì rất nhiều query.
 
- 3. Thực tế thường dùng cả hai
- Đây là trường hợp bạn sẽ gặp rất nhiều:
- $users = User::whereHas('orders', function ($query) {
-        $query->where('status', 'paid');
-    })
-    ->with('orders')
-    ->get();
- Nghĩa là:
- whereHas()
-    ↓
- lọc User
-    ↓
- chỉ User có order paid
-    ↓
- with()
-    ↓
- load orders của những User đó
+  3. Thực tế thường dùng cả hai
+  Đây là trường hợp bạn sẽ gặp rất nhiều:
+  $users = User::whereHas('orders', function ($query) {
+         $query->where('status', 'paid');
+     })
+     ->with('orders')
+     ->get();
+  Nghĩa là:
+  whereHas()
+     ↓
+  lọc User
+     ↓
+  chỉ User có order paid
+     ↓
+  with()
+     ↓
+  load orders của những User đó
 
- Nhưng có một điểm dễ nhầm.
+  Nhưng có một điểm dễ nhầm.
 
- Code trên:
- ->whereHas('orders', function ($query) {
-    $query->where('status', 'paid');
- })
- ->with('orders')
+  Code trên:
+  ->whereHas('orders', function ($query) {
+     $query->where('status', 'paid');
+  })
+  ->with('orders')
 
- whereHas() lọc User theo paid, nhưng with('orders') lại load tất cả orders của User đó.
+  whereHas() lọc User theo paid, nhưng with('orders') lại load tất cả orders của User đó.
 
- Ví dụ:
+  Ví dụ:
 
- User A
- ├── Order 1 → paid
- ├── Order 2 → pending
- └── Order 3 → cancelled
+  User A
+  ├── Order 1 → paid
+  ├── Order 2 → pending
+  └── Order 3 → cancelled
 
- User A vượt qua whereHas() vì có Order 1 là paid.
- Nhưng:
- with('orders')
- sẽ lấy:
- Order 1 paid
- Order 2 pending
- Order 3 cancelled
+  User A vượt qua whereHas() vì có Order 1 là paid.
+  Nhưng:
+  with('orders')
+  sẽ lấy:
+  Order 1 paid
+  Order 2 pending
+  Order 3 cancelled
 
- 4. Muốn chỉ load paid orders
- Phải thêm điều kiện vào with():
+  4. Muốn chỉ load paid orders
+  Phải thêm điều kiện vào with():
 
- $users = User::whereHas('orders', function ($query) {
-        $query->where('status', 'paid');
-    })
-    ->with([
-        'orders' => function ($query) {
-            $query->where('status', 'paid');
-        }
-    ])
-    ->get();
+  $users = User::whereHas('orders', function ($query) {
+         $query->where('status', 'paid');
+     })
+     ->with([
+         'orders' => function ($query) {
+             $query->where('status', 'paid');
+         }
+     ])
+     ->get();
 
- Bây giờ:
+  Bây giờ:
 
- User A
- └── Order 1 → paid
+  User A
+  └── Order 1 → paid
 
- pending và cancelled không được load.
+  pending và cancelled không được load.
 
  5. Laravel có withWhereHas()
 
@@ -41806,7 +41806,7 @@ Dispatch sau commit
  Laravel chỉ cho một Job unique tồn tại tại thời điểm đó.
  Nhưng nhớ:
  ShouldBeUnique không thay thế database unique constraint hoặc idempotency business logic.
-* Job chaining và batching                      <
+* Job chaining và batching     | Chain :     Job sau chỉ chạy khi job trước thành công:  |   Batch :     Nhiều job có thể chạy song song và theo dõi tiến độ:                 <
  Chain :     Job sau chỉ chạy khi job trước thành công:
  Bus::chain([
     new ValidatePayrollRun($id),
