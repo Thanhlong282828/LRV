@@ -42061,7 +42061,7 @@ Cache = bộ nhớ tạm, dùng để giữ lại dữ liệu đã tính/lấy t
           Cache::forget('key');    // xóa       
 
           Cache::remember(...);    // chưa có → tạo; có rồi → lấy
-* Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version thay forget > Các key cũ tự hết TTL.                    <
+* Cache invalidation :   sau khi tạo - cho nó tự  Cache::forget - Dùng: version+time thay forget > Các key cũ tự hết TTL.                    <
  Đây là phần khó nhất.
 
  Ví dụ cache:
