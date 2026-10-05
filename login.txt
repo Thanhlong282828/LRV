@@ -41902,12 +41902,414 @@ Dispatch sau commit
 
  Cache tags
  = nhóm nhiều key để xóa chung
-
+         v
  Version key
  = đổi version để vô hiệu hóa cache cũ
 
  Redis
  = cache store phổ biến production
+-------------------------------
+ Đúng hướng. Cache không nên mặc định nhét vào Provider để “tự chạy”. Provider chủ yếu để đăng ký/bind dependency, boot cấu hình. Với cache nghiệp vụ, thường bạn đặt đọc cache ở Query/Service, còn xóa cache hoặc tăng cache version khi dữ liệu thay đổi ở write-side hoặc Observer/Event tùy kiến trúc.
+       Giả sử dashboard có cache:
+                   $key = "dashboard:company:{$companyId}:v{$version}"; 
+
+       và mỗi khi Employee/Salary/Attendance thay đổi thì tăng version:
+                   Cache::increment("dashboard:company:{$companyId}:version"); 
+
+ Kiểu 1 — Module + Service
+    Ví dụ:
+              Modules/
+              └── Employee/
+                  ├── Services/
+                  │   └── EmployeeService.php
+                  ├── Repositories/
+                  ├── Observers/
+                  │   └── EmployeeObserver.php
+                  └── Models/
+                      └── Employee.php 
+
+    Đọc cache: để trong Service
+                 final class DashboardService
+                 {
+                     public function getDashboard(int $companyId): array
+                     {
+                         $version = Cache::get(
+                             "dashboard:company:{$companyId}:version",
+                             1
+                         ); 
+
+                         $key = "dashboard:company:{$companyId}:v{$version}"; 
+
+                         return Cache::lock("lock:{$key}", 10)
+                             ->block(5, function () use ($key, $companyId) {
+                                 return Cache::remember(
+                                     $key,
+                                     300,
+                                     fn () => $this->buildDashboard($companyId)
+                                 );
+                             });
+                     }
+                 } 
+
+    Controller chỉ gọi:
+                 public function index(DashboardService $service)
+                 {
+                     return $service->getDashboard(
+                         auth()->user()->company_id
+                     );
+                 } 
+
+    Luồng:
+                Controller
+                   ↓
+                DashboardService
+                   ↓
+                Cache
+                   ├── có → trả cache
+                   │
+                   └── không
+                        ↓
+                      Repository
+                        ↓
+                        DB
+                        ↓
+                      lưu Cache 
+
+    Khi dữ liệu thay đổi: Observer có thể tăng version
+    Ví dụ Employee thay đổi thì dashboard cũ không còn chính xác:
+                  final class EmployeeObserver
+                  {
+                      public function saved(Employee $employee): void
+                      {
+                          Cache::increment(
+                              "dashboard:company:{$employee->company_id}:version"
+                          );
+                      } 
+
+                      public function deleted(Employee $employee): void
+                      {
+                          Cache::increment(
+                              "dashboard:company:{$employee->company_id}:version"
+                          );
+                      }
+                  } 
+
+    Sau đó đăng ký Observer trong Provider:
+                   public function boot(): void
+                   {
+                       Employee::observe(EmployeeObserver::class);
+                   } 
+
+    Ở đây cần phân biệt:
+                    Provider
+                       ↓
+                    chỉ ĐĂNG KÝ Observer 
+
+                    Employee thay đổi
+                       ↓
+                    Observer thực sự chạy
+                       ↓
+                    increment cache version 
+
+    Tức là logic cache không nằm trong Provider. Provider chỉ nối:
+                     Employee → EmployeeObserver 
+
+ Kiểu 2 — Module + CQRS
+   Với project lớn của bạn, cách này thường rõ hơn.
+                       Modules/
+                       └── Employee/
+                           ├── Application/
+                           │   ├── Commands/
+                           │   │   └── UpdateEmployeeCommand.php
+                           │   ├── Queries/
+                           │   │   └── GetDashboardQuery.php
+                           │   └── Handlers/
+                           │       ├── UpdateEmployeeHandler.php
+                           │       └── GetDashboardHandler.php
+                           │
+                           ├── Domain/
+                           └── Infrastructure/
+                               ├── Repositories/
+                               └── Cache/ 
+
+   CQRS đã chia sẵn:
+                         QUERY
+                         = đọc
+                         = dùng cache rất nhiều 
+
+                         COMMAND
+                         = ghi
+                         = làm cache cũ mất hiệu lực 
+
+   Query Handler đọc cache
+                         final class GetDashboardHandler
+                         {
+                             public function handle(GetDashboardQuery $query): array
+                             {
+                                 $companyId = $query->companyId; 
+
+                                 $version = Cache::get(
+                                     "dashboard:company:{$companyId}:version",
+                                     1
+                                 ); 
+
+                                 $key = "dashboard:company:{$companyId}:v{$version}"; 
+
+                                 return Cache::lock("lock:{$key}", 10)
+                                     ->block(5, function () use ($key, $companyId) { 
+
+                                         return Cache::remember(
+                                             $key,
+                                             300,
+                                             fn () => $this->repository
+                                                 ->dashboard($companyId)
+                                         );
+                                     });
+                             }
+                         } 
+
+   Luồng:
+                         GET /dashboard
+                               ↓
+                         GetDashboardQuery
+                               ↓
+                         GetDashboardHandler
+                               ↓
+                         Cache
+                          ├───────────────┐
+                          có             không
+                          ↓                ↓
+                         return          lock
+                                           ↓
+                                      Repository
+                                           ↓
+                                           DB
+                                           ↓
+                                      build cache 
+
+   Command Handler thay đổi dữ liệu
+                          final class UpdateEmployeeHandler
+                          {
+                              public function handle(UpdateEmployeeCommand $command): void
+                              {
+                                  DB::transaction(function () use ($command) { 
+
+                                      $this->repository->update(
+                                          $command->employeeId,
+                                          $command->data
+                                      );
+                                  }); 
+
+                                  Cache::increment(
+                                      "dashboard:company:{$command->companyId}:version"
+                                  );
+                              }
+                          } 
+
+   Luồng:
+                       UpdateEmployeeCommand
+                               ↓
+                       UpdateEmployeeHandler
+                               ↓
+                       Repository
+                               ↓
+                       UPDATE DB
+                               ↓
+                       COMMIT
+                               ↓
+                       increment cache version 
+
+   Lần request tiếp theo:
+                      version cũ = 5 
+
+                      dashboard:company:1:v5
+                              ↓
+                      Employee thay đổi
+                              ↓
+                      version 5 → 6
+                              ↓
+                      request dashboard tiếp theo
+                              ↓
+                      dashboard:company:1:v6
+                              ↓
+                      chưa có
+                              ↓
+                      BUILD CACHE MỚI 
+
+   Cache v5 có thể vẫn còn Redis nhưng không còn được sử dụng, rồi tự hết TTL.
+   Nhưng project lớn: đừng để mọi Command tự viết Cache::increment()
+   Ví dụ:
+                      Employee thay đổi
+                      Salary thay đổi
+                      Attendance thay đổi
+                      Contract thay đổi
+                      Payroll thay đổi 
+
+   đều ảnh hưởng dashboard.
+   Nếu mỗi Handler viết:
+                      Cache::increment(...); 
+
+   thì cache logic bị rải khắp project.
+   Lúc đó có thể tách thành một service:
+                       final class CacheVersionService
+                       {
+                           public function bumpDashboard(int $companyId): void
+                           {
+                               Cache::increment(
+                                   "dashboard:company:{$companyId}:version"
+                               );
+                           }
+                       } 
+
+   Command Handler:
+                       $this->cacheVersion->bumpDashboard($companyId); 
+
+   Hoặc kiến trúc event-driven:
+                        UpdateEmployeeCommand
+                                ↓
+                        UpdateEmployeeHandler
+                                ↓
+                        DB UPDATE
+                                ↓
+                        EmployeeUpdated Event
+                                ↓
+                        InvalidateDashboardCache Listener
+                                ↓
+                        Cache Version +1 
+
+   Ví dụ:
+                       final class InvalidateDashboardCache
+                       {
+                           public function handle(EmployeeUpdated $event): void
+                           {
+                               Cache::increment(
+                                   "dashboard:company:{$event->companyId}:version"
+                               );
+                           }
+                       } 
+
+   Cách này rất hợp với CQRS:
+                        WRITE SIDE 
+
+                        Command
+                          ↓
+                        Handler
+                          ↓
+                        DB
+                          ↓
+                        Domain/Application Event
+                          ↓
+                        Listener
+                          ↓
+                        invalidate/bump cache 
+                        
+
+                        READ SIDE 
+
+                        Query
+                          ↓
+                        QueryHandler
+                          ↓
+                        Cache
+                          ├── HIT → return
+                          └── MISS
+                               ↓
+                              Lock
+                               ↓
+                            Repository
+                               ↓
+                               DB
+                               ↓
+                            Cache::remember() 
+
+   Observer hay Event/Listener?
+   Observer rất tiện nếu yêu cầu đơn giản:
+                       Employee Model
+                            ↓
+                       saved/deleted
+                            ↓
+                       EmployeeObserver
+                            ↓
+                       invalidate cache 
+
+   Nhưng Observer chỉ biết kiểu:
+                       "Employee vừa được update." 
+
+   Trong nghiệp vụ lớn, Event có thể diễn đạt rõ hơn:
+                  EmployeeTransferred
+                  PayrollFinalized
+                  AttendanceApproved
+                  ContractRenewed 
+
+   rồi từng Listener quyết định cache nào cần invalidate.
+   Ví dụ:
+                   PayrollFinalized
+                         │
+                         ├──→ InvalidatePayrollDashboardCache
+                         │
+                         ├──→ WriteAuditLog
+                         │
+                         └──→ GeneratePayslip 
+
+   Vì vậy với Module + Service đơn giản, Observer để invalidate cache là hợp lý.
+   Với Module + CQRS + Event Driven như ERP của bạn, mình sẽ tổ chức theo hướng:                 <
+                   Command Handler
+                         ↓
+                   thay đổi DB
+                         ↓
+                   Event
+                         ↓
+                   Listener
+                         ↓
+                   Cache Version / Forget 
+                   
+
+                   Query Handler
+                         ↓
+                   Cache::remember()
+                         +
+                   Cache::lock()
+                         ↓
+                   Repository 
+
+   Còn ServiceProvider chỉ nên làm những việc kiểu:                             <  
+                   public function register(): void
+                   {
+                       $this->app->bind(
+                           EmployeeRepositoryInterface::class,
+                           EloquentEmployeeRepository::class
+                       );
+                   } 
+
+                   public function boot(): void
+                   {
+                       Employee::observe(EmployeeObserver::class);
+                   } 
+
+   chứ không nên:
+                    public function boot()
+                    {
+                        // ❌ request nào boot app cũng chạy logic nghiệp vụ cache
+                        Cache::increment('dashboard:version');
+                    } 
+
+   Cách nhớ:
+                    Provider  = đăng ký / cấu hình 
+
+                    Service / QueryHandler
+                              = ĐỌC cache 
+
+                    CommandHandler
+                              = thay đổi dữ liệu 
+
+                    Observer hoặc Event Listener
+                              = báo cache cũ / invalidate 
+
+                    Redis
+                              = nơi giữ cache + lock + version 
+
+   Với kiến trúc CQRS của project bạn, mô hình Query Handler đọc cache + Event/Listener bump version sau write là cách rất dễ quản lý khi hệ thống lớn lên.
+
 Cache = bộ nhớ tạm, dùng để giữ lại dữ liệu đã tính/lấy trước đó để lần sau không phải truy vấn DB hoặc tính lại, nhờ vậy hệ thống nhanh hơn.
 
    Ví dụ Dashboard HRM phải tính:     
@@ -42282,7 +42684,7 @@ Cache = bộ nhớ tạm, dùng để giữ lại dữ liệu đã tính/lấy t
    DB bị spike
  Đây gọi là:
    Cache Stampede
-* Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,10)->block(5,...   =  Request khác chờ lock   |   10: Lock có thời hạn tối đa 10 giây.  |  5: Request sẵn sàng chờ tối đa 5 giây để lấy lock.               <
+* Chống Cache Stampede bằng Lock :Dashboard / report :       Cache::lock(...,10)->block(5,...   =  Request khác chờ lock   |   10: Lock có thời hạn tối đa 10 giây.  |  5: Request sẵn sàng chờ tối đa 5 giây để lấy lock.     | Cache::remember(..., 300) CACHE sống 300s  > A build/time sống 300s / nhả lock > B,C,D lấy A > hết time sống 300s E build mới /time sống 300s > F,G,H lấy E          <
  Đúng nhưng chỉ đối với đoạn code/resource đang bị lock, không phải toàn bộ hệ thống xử lý từng request một.
  Trong ví dụ:
  Cache::lock(                                              <
@@ -42500,6 +42902,177 @@ Cache = bộ nhớ tạm, dùng để giữ lại dữ liệu đã tính/lấy t
  B/C/D lấy cache A vừa tạo
 
  Nên dashboard chỉ là ví dụ về dữ liệu đọc nhiều nhưng tính toán/query tương đối nặng. Cache cũng có thể áp dụng tương tự cho employee list, report, permission, thống kê payroll, cấu hình hệ thống...
+-------------------------------
+ Gần đúng, nhưng bạn đang nhầm giữa thời gian chờ lock và thời gian sống của cache.
+ Ví dụ code:
+      return Cache::lock(
+          "lock:dashboard:{$companyId}",
+          10
+      )->block(5, function () use ($companyId) { 
+
+          return Cache::remember(
+              "dashboard:{$companyId}",
+              300,
+              fn () => $this->buildDashboard($companyId)
+          );
+      }); 
+
+ Ở đây có 3 thời gian khác nhau:
+      10 giây  = lock tồn tại tối đa
+      5 giây   = request chờ lấy lock tối đa
+      300 giây = cache sống 
+
+ Giả sử ban đầu cache chưa có:
+           Request A
+              ↓
+           lấy LOCK
+              ↓
+           cache chưa có
+              ↓
+           buildDashboard()
+              ↓
+           lưu CACHE trong 300 giây
+              ↓
+           nhả LOCK 
+
+ Trong lúc A đang build:
+           A → đang giữ LOCK 
+
+           B → chờ LOCK
+           C → chờ LOCK
+           D → chờ LOCK 
+
+ Khi A build xong và nhả lock:
+                 A
+                 ↓
+                 CACHE đã có
+                 ↓
+                 nhả LOCK 
+
+                 B lấy LOCK
+                 ↓
+                 Cache::remember()
+                 ↓
+                 "Ủa cache có rồi"
+                 ↓
+                 LẤY CACHE CỦA A
+                 ↓
+                 không build
+                 ↓
+                 nhả LOCK 
+
+                 C lấy LOCK
+                 ↓
+                 cache có rồi
+                 ↓
+                 lấy cache
+                 ↓
+                 nhả LOCK 
+
+                 D cũng vậy 
+
+ Cho nên D không build lại chỉ vì nó chờ sau B/C.
+ Nó chỉ build lại khi cache hết TTL 300 giây.
+ Ví dụ:
+                  09:00:00
+                  Cache chưa có 
+
+                  A → BUILD
+                  ↓
+                  cache được tạo
+                  TTL = 300 giây 
+                  
+
+                  09:00:01
+                  B → lấy cache A 
+
+                  09:00:02
+                  C → lấy cache A 
+
+                  09:03:00
+                  D → lấy cache A 
+
+                  09:04:59
+                  E → vẫn lấy cache A 
+                  
+
+                  09:05:00
+                  🔥 CACHE HẾT HẠN 
+
+ Lúc này giả sử đồng thời có:
+            F
+            G
+            H
+            I 
+
+ thì:
+         F → lấy LOCK
+            → cache hết hạn
+            → BUILD CACHE MỚI
+            → lưu thêm 300 giây
+            → nhả LOCK 
+
+         G → chờ
+            ↓
+            lấy LOCK
+            ↓
+            thấy cache F vừa build
+            ↓
+            dùng cache F 
+
+         H → tương tự 
+
+         I → tương tự 
+
+ Chu kỳ sẽ là:
+              Cache hết hạn
+                   ↓
+              A build
+                   ↓
+              ████ CACHE 300s █████████████
+              B C D E F... → dùng cache A
+                   ↓
+              300s hết hạn
+                   ↓
+              G build
+                   ↓
+              ████ CACHE 300s █████████████
+              H I J K... → dùng cache G
+                   ↓
+              300s hết hạn
+                   ↓
+              ... 
+
+ Nhưng có một trường hợp bạn nói đúng: request hết thời gian chờ 5 giây
+ Giả sử A build cực lâu:
+             A giữ lock
+             ↓
+             build mất 8 giây 
+
+             B
+             ↓
+             block(5)
+             ↓
+             chờ 5 giây
+             ↓
+             A vẫn chưa nhả lock
+             ↓
+             ❌ B timeout khi chờ lock             
+ B không tự động build lại. Với block(5), nếu không lấy được lock trong thời gian đó thì Laravel có thể ném LockTimeoutException.
+ Vì vậy nhớ 3 con số:
+        Cache::lock(..., 10)
+                          ↑
+                  LOCK tối đa 10s 
+
+        ->block(5)
+                 ↑
+           CHỜ lock tối đa 5s 
+
+        Cache::remember(..., 300)
+                               ↑
+                       CACHE sống 300s 
+
+ Cách nhớ: lock quyết định ai được build, block quyết định chờ người đang build bao lâu, còn remember TTL quyết định bao lâu mới cần build cache lại.
 * Stale-While-Revalidate (SWR) :Dashboard / report :        Cache::flexible()          = cache hết hạn mềm → request khác vẫn lấy CACHE CŨ trong lúc cache mới được build                       <
  Stale-While-Revalidate (SWR) hiểu cực ngắn:
  Cache cũ hết “thời gian tươi” vẫn tạm trả cho user, trong lúc hệ thống tạo cache mới ở phía sau.

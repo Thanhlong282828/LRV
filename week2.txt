@@ -1,0 +1,1331 @@
+# Week 2
+
+# Tuần 2 — SQL + Database + PHP/MySQL
+
+## Mục tiêu của tuần
+
+Tuần 1 đã làm Mini Shop với dữ liệu nằm trong array/JSON. Tuần 2 chuyển chính bài toán đó sang **relational database**.
+
+Kết thúc tuần, em cần làm được luồng:
+
+**Requirement → thiết kế bảng → tạo database → INSERT dữ liệu → SELECT → JOIN → GROUP BY → PHP đọc/ghi MySQL → debug query**
+
+Song song, tiếp tục quan sát thị trường và **bắt đầu apply nhẹ**. Không chờ đủ Laravel mới gửi CV. Mục tiêu của những application đầu tiên là lấy tín hiệu thật từ thị trường.
+
+>   **Nguyên tắc tuần 2:** SQL không phải một danh sách câu lệnh để học thuộc. Mỗi query phải trả lời một câu hỏi business cụ thể.
+
+---
+
+# 1. Weekly Summary
+
+| Ngày    | Chủ đề chính        | Coding / Database Output                                                | Job Search / Career Output                    | GitHub Output           | Definition of Done                      |
+| ------- | ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- | ----------------------- | --------------------------------------- |
+| **D8**  | Database Design     | Thiết kế DB Mini Shop: users, categories, products, orders, order_items | Tìm thêm 5 JD, tập trung yêu cầu Database/SQL | `day08-database-design` | Schema hợp lý + giải thích relationship |
+| **D9**  | SQL CRUD            | CREATE/INSERT/SELECT/UPDATE/DELETE                                      | Phân tích cách 20 JD nhắc tới SQL/MySQL       | `day09-sql-crud`        | ≥20 queries chạy đúng                   |
+| **D10** | Filtering & Sorting | WHERE, LIKE, IN, BETWEEN, ORDER BY, LIMIT                               | Tìm thêm 5 JD → tổng 25                       | `day10-querying`        | Giải được ≥12 business questions        |
+| **D11** | JOIN                | Query xuyên nhiều tables                                                | Chọn 3 JD tương đối gần năng lực hiện tại     | `day11-joins`           | Tự viết INNER/LEFT JOIN cơ bản          |
+| **D12** | GROUP BY & Reports  | Revenue, order count, best-selling products                             | **Apply 2 jobs đầu tiên**                     | `day12-reporting`       | ≥8 report queries + 2 applications      |
+| **D13** | PHP + MySQL         | PHP đọc/thêm/sửa/xóa Product trong MySQL                                | Apply thêm 2 jobs + cập nhật tracker          | `day13-php-mysql`       | CRUD từ PHP chạy thật                   |
+| **D14** | **Week 2 Exam**     | Database + 15 SQL tasks + PHP report page                               | Apply thêm 1 job + Market Review              | `day14-week2-exam`      | ≥80/100 + tổng 5 applications           |
+
+### Đầu ra bắt buộc cuối tuần
+
+    - Một Mini Shop relational database hoàn chỉnh.
+    - Có file tạo toàn bộ database từ đầu.
+    - Có dataset đủ để query.
+    - Ít nhất **40 SQL queries do em tự viết** xuyên suốt tuần.
+    - PHP kết nối MySQL và CRUD được Product.
+    - Week 2 Exam có commit trước khi dùng AI.
+    - Job Tracker tăng từ 15 → **25 JD**.
+    - Đã gửi **5 applications đầu tiên**.
+    - Có Week 2 Market Review.
+
+---
+
+# 2. Quy tắc sử dụng ChatGPT trong Week 2
+
+Không hỏi:
+
+>   “Viết SQL lấy doanh thu theo customer cho tôi.”
+
+Hãy hỏi để **tự viết query**.
+
+## SQL Coach Prompt
+
+>   Tôi đang luyện SQL để ứng tuyển Junior Backend Developer.
+>
+>   Business question:
+>
+>   **[PASTE REQUIREMENT]**
+>
+>   Database schema:
+>
+>   **[PASTE TABLES]**
+>
+>   Query hiện tại của tôi:
+>
+>   **[PASTE QUERY hoặc ghi CHƯA VIẾT ĐƯỢC]**
+>
+>   Không viết query hoàn chỉnh cho tôi.
+>
+>   Hãy giúp tôi theo thứ tự:
+>
+>   1. Tôi cần dữ liệu từ table nào?
+>   2. Relationship nào cần sử dụng?
+>   3. Cần filter/group/sort gì?
+>   4. Cho tôi đúng một hint tiếp theo.
+>
+>   Sau đó dừng lại để tôi tự viết.
+>
+>   Chỉ đưa solution nếu tôi nói chính xác: **“Cho tôi đáp án.”**
+
+## SQL Error Debugger Prompt
+
+>   Query SQL của tôi đang lỗi.
+>
+>   Requirement:
+>
+>   [...]
+>
+>   Query:
+>
+>   [...]
+>
+>   Error:
+>
+>   [...]
+>
+>   Expected:
+>
+>   [...]
+>
+>   Không sửa query cho tôi.
+>
+>   Mỗi lần yêu cầu tôi kiểm tra đúng **một vấn đề**.
+>
+>   Có thể kiểm tra:
+>
+>   - syntax;
+>   - table/column;
+>   - data;
+>   - JOIN condition;
+>   - WHERE;
+>   - GROUP BY;
+>   - aggregate.
+>
+>   Giải thích tại sao cần kiểm tra rồi chờ tôi trả kết quả.
+
+---
+
+# D8 — Database Design: Từ JSON → Relational Database
+
+## Mục tiêu
+
+Hiểu **tại sao cần database** và biết biến business objects thành tables.
+
+Không mở MySQL tạo table ngay.
+
+**Design trước.**
+
+---
+
+## Requirement
+
+Mini Shop cần lưu:
+
+    - Customers
+    - Categories
+    - Products
+    - Orders
+    - Products nằm trong từng Order
+
+Một Customer có thể có nhiều Orders.
+
+Một Category có nhiều Products.
+
+Một Order có nhiều Products.
+
+Một Product có thể nằm trong nhiều Orders.
+
+---
+
+## Phase 1 — Thiết kế bằng giấy/Markdown
+
+Tạo:
+
+`database-design.md`
+
+Điền:
+
+| Entity      | Fields dự kiến | Primary Key | Relationship |
+| ----------- | -------------- | ----------- | ------------ |
+| users       | ?              | ?           | ?            |
+| categories  | ?              | ?           | ?            |
+| products    | ?              | ?           | ?            |
+| orders      | ?              | ?           | ?            |
+| order_items | ?              | ?           | ?            |
+
+### Bắt buộc tự giải quyết câu hỏi
+
+Order có nhiều Product và Product nằm trong nhiều Order.
+
+>   **Vậy đặt `product_id` trực tiếp trong `orders` có đủ không?**
+
+Đây là lý do xuất hiện `order_items`.
+
+---
+
+## Schema mục tiêu
+
+Không xem phần này trước khi tự thiết kế.
+
+Cuối ngày schema cần tương đương:
+
+```
+users
+- id
+- name
+- email
+
+categories
+- id
+- name
+
+products
+- id
+- category_id
+- name
+- price
+- stock
+
+orders
+- id
+- user_id
+- status
+- created_at
+
+order_items
+- id
+- order_id
+- product_id
+- quantity
+- unit_price
+```
+
+Không cần giống tên 100%, nhưng relationship phải đúng.
+
+---
+
+## Câu hỏi quan trọng: Vì sao `unit_price` nằm trong order_items?
+
+Giả sử hôm nay:
+
+```
+Keyboard = 350,000
+```
+
+Minh mua 1 cái.
+
+Tháng sau Product đổi giá:
+
+```
+Keyboard = 400,000
+```
+
+Order cũ phải vẫn thể hiện:
+
+```
+350,000
+```
+
+Đây là một business problem thật.
+
+---
+
+## Prompt ChatGPT D8
+
+>   Tôi đang tự thiết kế database cho Mini Shop.
+>
+>   Business requirement:
+>
+>   - Customer có nhiều Orders.
+>   - Category có nhiều Products.
+>   - Order có nhiều Products.
+>   - Product có thể nằm trong nhiều Orders.
+>
+>   Đây là schema tôi tự thiết kế:
+>
+>   [PASTE]
+>
+>   Không đưa schema chuẩn.
+>
+>   Đóng vai Backend Developer review database design.
+>
+>   Hãy hỏi tôi từng câu về:
+>
+>   - primary key;
+>   - foreign key;
+>   - one-to-many;
+>   - many-to-many;
+>   - dữ liệu nên nằm table nào.
+>
+>   Mỗi lần chỉ hỏi một câu.
+>
+>   Sau câu trả lời của tôi, đánh giá Correct / Partial / Incorrect rồi hỏi tiếp.
+
+---
+
+## Job Search D8
+
+Tìm thêm **5 JD**.
+
+Nhưng lần này đặc biệt ghi chính xác phần database.
+
+Ví dụ JD ghi:
+
+`MySQL`
+
+→ ghi MySQL.
+
+JD ghi:
+
+`SQL Server`
+
+→ SQL Server.
+
+JD ghi:
+
+`relational database`
+
+→ Relational DB.
+
+Không tự biến tất cả thành “SQL”.
+
+Job Tracker = **20 JD**.
+
+---
+
+## Knowledge Check D8
+
+    1. Database giải quyết vấn đề gì so với JSON?
+    2. Table là gì?
+    3. Row là gì?
+    4. Column là gì?
+    5. Primary Key dùng làm gì?
+    6. Foreign Key dùng làm gì?
+    7. One-to-many là gì? Cho ví dụ trong project.
+    8. Category → Products là relationship gì?
+    9. Order ↔ Product là relationship gì?
+    10. Vì sao cần `order_items`?
+    11. Vì sao quantity nằm trong `order_items`?
+    12. Vì sao nên lưu `unit_price` trong `order_items`?
+
+### DoD D8
+
+    - Có `database-design.md`.
+    - 5 tables.
+    - Relationships đúng.
+    - Giải thích được `order_items`.
+    - ≥10/12 Knowledge Check.
+    - +5 JD → tổng 20.
+    - GitHub push.
+
+---
+
+# D9 — SQL CRUD
+
+## Mục tiêu
+
+Biết tự tạo và thay đổi dữ liệu bằng SQL.
+
+Hôm nay chưa JOIN.
+
+---
+
+## Task 1 — CREATE
+
+Tự viết:
+
+`database.sql`
+
+Có:
+
+```
+CREATE DATABASE
+CREATE TABLE users
+CREATE TABLE categories
+CREATE TABLE products
+CREATE TABLE orders
+CREATE TABLE order_items
+```
+
+---
+
+## Task 2 — Seed Data
+
+Tạo ít nhất:
+
+    - 5 users
+    - 5 categories
+    - 20 products
+    - 10 orders
+    - 25 order_items
+
+Không cần nhập tay 100 dòng nếu biết cách tạo nhanh, nhưng phải hiểu dữ liệu.
+
+---
+
+## Task 3 — Viết 20 queries
+
+Tạo:
+
+`practice.sql`
+
+Bắt buộc có ít nhất:
+
+**5 SELECT**
+
+**5 INSERT**
+
+**5 UPDATE**
+
+**5 DELETE**
+
+Không chạy DELETE bừa rồi mất dataset. Có thể dùng data test riêng hoặc rollback/reset.
+
+---
+
+## Challenge
+
+Không Google syntax trước.
+
+Viết:
+
+>   Tăng stock của Product ID 5 thêm 10.
+
+Sau đó:
+
+>   Giảm price toàn bộ products category X đi 10%.
+
+---
+
+## Prompt ChatGPT D9
+
+>   Tôi đang luyện SQL CRUD.
+>
+>   Requirement:
+>
+>   **[ví dụ: tăng stock Product ID 5 thêm 10]**
+>
+>   Query tôi tự viết:
+>
+>   **[...]**
+>
+>   Không đưa query đúng.
+>
+>   Hãy:
+>
+>   1. Nói query của tôi đang đúng hay có vấn đề.
+>   2. Nếu sai, nói tôi cần kiểm tra phần nào.
+>   3. Không sửa trực tiếp.
+>
+>   Sau khi tôi sửa, tôi sẽ gửi lại.
+
+---
+
+## Knowledge Check D9
+
+    1. `SELECT` làm gì?
+    2. `INSERT` làm gì?
+    3. `UPDATE` làm gì?
+    4. `DELETE` làm gì?
+    5. `WHERE` quan trọng thế nào với UPDATE?
+    6. Chuyện gì xảy ra nếu `DELETE FROM products` không WHERE?
+    7. `NULL` có giống `0` không?
+    8. `VARCHAR` dùng cho gì?
+    9. Price nên lưu dạng string không?
+    10. Foreign key sai thì có vấn đề gì?
+
+### DoD D9
+
+    - `database.sql` dựng DB từ đầu được.
+    - Seed đủ data.
+    - ≥20 CRUD queries.
+    - Không copy solution từ AI.
+    - ≥8/10 questions.
+    - GitHub push.
+
+---
+
+# D10 — WHERE, LIKE, BETWEEN, ORDER BY, LIMIT
+
+## Mục tiêu
+
+Từ:
+
+>   “Em biết SELECT.”
+
+thành:
+
+>   “Anh hỏi một câu business, em lấy đúng dữ liệu ra được.”
+
+---
+
+## 12 Business Questions
+
+Viết query trả lời:
+
+    1. Tất cả products.
+    2. Products giá >500k.
+    3. Products stock <10.
+    4. Products giá 100k–500k.
+    5. Product có chữ `phone` trong name.
+    6. Products thuộc Category ID 3.
+    7. Products hết hàng.
+    8. 5 products đắt nhất.
+    9. 5 products rẻ nhất.
+    10. Products mới nhất nếu có timestamp.
+    11. Products stock >0 và price <1M.
+    12. Products thuộc một trong 3 categories.
+
+Tạo:
+
+`business_queries.sql`
+
+Mỗi query có comment:
+
+```
+-- Q1: Get all products
+SELECT ...
+```
+
+---
+
+## Job Search D10
+
+Tìm thêm **5 JD**.
+
+Tổng = **25 JD**.
+
+Update Skill Frequency.
+
+Đặc biệt ghi:
+
+    - MySQL
+    - PostgreSQL
+    - SQL Server
+    - MongoDB
+    - Redis
+
+thành **các skill riêng**.
+
+---
+
+## Knowledge Check D10
+
+    1. `WHERE` và `HAVING` có biết khác nhau chưa? Nếu chưa biết, ghi “chưa học”, không đoán.
+    2. `LIKE` dùng khi nào?
+    3. `%phone%` nghĩa là gì?
+    4. `BETWEEN` dùng để làm gì?
+    5. `ORDER BY price DESC` làm gì?
+    6. `LIMIT 5` làm gì?
+    7. Có thể dùng nhiều conditions cùng lúc không?
+    8. `AND` khác `OR` thế nào?
+    9. Nếu search keyword do user nhập, nối thẳng vào SQL có nguy cơ gì?
+    10. SQL Injection là gì ở mức em hiểu hiện tại?
+
+Câu 9–10 chỉ cần hiểu concept. Chưa cần security chuyên sâu.
+
+### DoD D10
+
+    - 12/12 queries đúng.
+    - ≥8/10 Knowledge Check.
+    - Job Tracker = **25 JD**.
+    - Skill Frequency updated.
+    - GitHub push.
+
+---
+
+# D11 — JOIN: Kết nối dữ liệu
+
+## Mục tiêu
+
+Đây là một trong những phần SQL quan trọng nhất cho Junior Backend.
+
+Phải hiểu:
+
+>   **Tại sao cần JOIN**, không chỉ nhớ syntax.
+
+---
+
+## Bắt đầu bằng câu hỏi
+
+`orders` có:
+
+```
+user_id = 5
+```
+
+Nhưng màn hình cần:
+
+```
+Customer: Nguyễn Văn A
+```
+
+Tên nằm ở đâu?
+
+→ `users`.
+
+Đó là lúc JOIN xuất hiện.
+
+---
+
+## Task
+
+Tự viết query cho:
+
+    1. Product + Category Name.
+    2. Order + Customer Name.
+    3. OrderItem + Product Name.
+    4. Order + Customer + OrderItems.
+    5. Order + Customer + Product + Quantity + Unit Price.
+    6. Tính line total = quantity × unit_price.
+
+Expected dạng:
+
+| Order | Customer | Product  | Qty | Price | Line Total |
+| ----- | -------- | -------- | --- | ----- | ---------- |
+| 101   | Minh     | Keyboard | 2   | 350k  | 700k       |
+| 101   | Minh     | Mouse    | 1   | 200k  | 200k       |
+
+---
+
+## INNER JOIN vs LEFT JOIN Exercise
+
+Tạo một Category **chưa có Product**.
+
+Sau đó query:
+
+**INNER JOIN Category → Product**
+
+và:
+
+**LEFT JOIN Category → Product**
+
+So sánh output.
+
+Tự viết vào:
+
+`join-notes.md`
+
+>   INNER JOIN trả...
+>
+>   LEFT JOIN trả...
+
+---
+
+## Job Task D11
+
+Từ 25 JD, chọn **3 job gần năng lực hiện tại nhất**.
+
+Không apply hôm nay.
+
+Với mỗi job ghi:
+
+```
+Job:
+Company:
+
+Requirements I already have:
+-
+
+Requirements currently learning:
+-
+
+Requirements I don't have:
+-
+
+Hard requirement that may block me:
+-
+
+Would I apply?
+YES / NO
+
+Why?
+```
+
+Không dùng ChatGPT quyết định thay.
+
+---
+
+## Knowledge Check D11
+
+    1. JOIN dùng để làm gì?
+    2. JOIN dựa trên cái gì?
+    3. Primary/Foreign key liên quan JOIN thế nào?
+    4. INNER JOIN trả dữ liệu gì?
+    5. LEFT JOIN khác gì?
+    6. Vì sao Product không lưu Category Name trực tiếp?
+    7. Một query JOIN 4 tables có được không?
+    8. Nếu JOIN condition sai có chuyện gì?
+    9. Vì sao một Order có thể xuất hiện nhiều rows sau JOIN?
+    10. `order_items` đóng vai trò gì giữa Order và Product?
+
+### DoD D11
+
+    - 6 business queries chạy đúng.
+    - INNER vs LEFT experiment hoàn thành.
+    - Tự giải thích JOIN bằng project.
+    - ≥8/10 questions.
+    - Có 3 Target Jobs được phân tích.
+    - GitHub push.
+
+---
+
+# D12 — GROUP BY + Aggregate + Reporting
+
+## Mục tiêu
+
+Backend không chỉ CRUD.
+
+Business sẽ hỏi:
+
+>   Hôm nay bán bao nhiêu tiền?
+
+>   Customer nào mua nhiều nhất?
+
+>   Product nào bán chạy?
+
+SQL phải trả lời được.
+
+---
+
+## Functions cần học
+
+```
+COUNT
+SUM
+AVG
+MIN
+MAX
+GROUP BY
+```
+
+---
+
+## 8 Reporting Questions
+
+    1. Tổng số products.
+    2. Tổng số customers.
+    3. Tổng số orders.
+    4. Average product price.
+    5. Tổng inventory value.
+    6. Tổng revenue từng order.
+    7. Tổng revenue từng customer.
+    8. Top 5 best-selling products.
+
+Bonus:
+
+    1. Revenue theo ngày.
+    2. Category có doanh thu cao nhất.
+
+---
+
+## Prompt ChatGPT Reporting
+
+>   Tôi cần viết SQL trả lời business question:
+>
+>   **[QUESTION]**
+>
+>   Schema:
+>
+>   **[SCHEMA]**
+>
+>   Query hiện tại:
+>
+>   **[QUERY]**
+>
+>   Không viết query hoàn chỉnh.
+>
+>   Hãy hỏi tôi lần lượt:
+>
+>   1. Tôi cần rows nào?
+>   2. Tôi cần group theo entity nào?
+>   3. Tôi cần aggregate function nào?
+>   4. Tôi cần JOIN table nào?
+>
+>   Mỗi lần chỉ hỏi một câu.
+
+---
+
+# Job Application D12 — Apply lần đầu
+
+Hôm nay gửi **2 applications**.
+
+Chọn trong Target Jobs.
+
+Không cần chờ:
+
+>   “Em thấy mình đủ 100% rồi.”
+
+Nếu match phần lớn core stack Junior → apply.
+
+Update:
+
+```
+Status = Applied
+Applied Date =
+CV Version =
+Notes =
+```
+
+### Sau khi apply
+
+Không ngồi refresh email.
+
+Tiếp tục học.
+
+---
+
+## Knowledge Check D12
+
+    1. `COUNT` làm gì?
+    2. `SUM` làm gì?
+    3. `AVG` làm gì?
+    4. `GROUP BY` dùng khi nào?
+    5. Muốn revenue theo customer thì group theo gì?
+    6. Revenue của order tính từ table nào?
+    7. Vì sao không dùng giá hiện tại trong Products để tính historical revenue?
+    8. Aggregate khác row-level calculation thế nào?
+    9. Top-selling product cần SUM cái gì?
+    10. `ORDER BY SUM(...) DESC` có ý nghĩa gì?
+
+### DoD D12
+
+    - 8/8 required reports.
+    - ≥8/10 questions.
+    - **2 applications sent.**
+    - Job Tracker updated.
+    - GitHub push.
+
+---
+
+# D13 — PHP + MySQL
+
+## Mục tiêu
+
+Nối hai thế giới:
+
+**PHP ↔ Database**
+
+Hôm nay chưa Laravel.
+
+---
+
+## Part 1 — Database Connection
+
+PHP kết nối MySQL.
+
+Config không hard-code password trực tiếp vào GitHub.
+
+---
+
+## Part 2 — Product List
+
+Tạo:
+
+```
+/products.php
+```
+
+Browser hiển thị:
+
+| ID  | Name | Category | Price | Stock |
+| --- | ---- | -------- | ----- | ----- |
+
+Data **phải đọc từ MySQL**.
+
+Không array.
+
+---
+
+## Part 3 — Add Product
+
+```
+/create-product.php
+```
+
+Form:
+
+```
+Name
+Category
+Price
+Stock
+```
+
+Submit → INSERT database.
+
+Refresh Product List → thấy Product mới.
+
+---
+
+## Part 4 — Edit
+
+```
+/edit-product.php?id=5
+```
+
+Load data hiện tại.
+
+Edit → UPDATE DB.
+
+---
+
+## Part 5 — Delete
+
+Delete Product.
+
+Phải có ID cụ thể.
+
+Không được vô tình:
+
+```
+DELETE FROM products;
+```
+
+---
+
+## Security introduction
+
+User input **không concatenate trực tiếp vào SQL**.
+
+Học và dùng:
+
+**Prepared Statements.**
+
+Không cần học security sâu hơn trong ngày này.
+
+---
+
+## Prompt ChatGPT D13
+
+>   Tôi đang học PHP kết nối MySQL mà chưa dùng framework.
+>
+>   Feature:
+>
+>   **[LIST / CREATE / EDIT / DELETE]**
+>
+>   Code hiện tại:
+>
+>   **[...]**
+>
+>   Expected:
+>
+>   **[...]**
+>
+>   Actual:
+>
+>   **[...]**
+>
+>   Không rewrite code.
+>
+>   Hãy review flow:
+>
+>   Browser Request
+>
+>   → PHP
+>
+>   → Validation
+>
+>   → SQL
+>
+>   → MySQL
+>
+>   → Result
+>
+>   → HTML
+>
+>   Hỏi tôi từng bước xem dữ liệu đang đi tới đâu và có thể lỗi ở đâu.
+>
+>   Mỗi response chỉ hỏi một câu.
+
+---
+
+# Job Application D13
+
+Apply thêm **2 jobs**.
+
+Tổng applications = **4**.
+
+Nếu chưa có response → bình thường.
+
+Nếu có response → ghi chính xác status.
+
+Không thay đổi toàn bộ roadmap chỉ vì một rejection.
+
+---
+
+## Knowledge Check D13
+
+    1. PHP kết nối database để làm gì?
+    2. Query được gửi từ đâu tới đâu?
+    3. `SELECT` trả về gì?
+    4. Form POST đi đâu?
+    5. Khi Create Product, flow từ browser tới DB thế nào?
+    6. Khi Edit, làm sao biết product nào?
+    7. Prepared Statement để làm gì?
+    8. SQL Injection là gì?
+    9. Tại sao DB password không commit GitHub?
+    10. Nếu DB connection fail, em kiểm tra gì đầu tiên?
+    11. Nếu INSERT chạy nhưng Product List không thấy data, em debug thế nào?
+    12. PHP error và SQL error có giống nhau không?
+
+### DoD D13
+
+Browser thực hiện được:
+
+**List → Create → Edit → Delete**
+
+Dữ liệu thực sự thay đổi trong MySQL.
+
+Prepared Statement được sử dụng với user input.
+
+≥10/12 Knowledge Check.
+
+4 applications.
+
+GitHub push.
+
+---
+
+# D14 — WEEK 2 EXAM
+
+## Part 1 — Database Exam
+
+### Scenario: Mini Book Store
+
+Không dùng database Mini Shop.
+
+Thiết kế database mới.
+
+Entities:
+
+```
+customers
+books
+authors
+orders
+order_items
+```
+
+Một Author có nhiều Books.
+
+Một Customer có nhiều Orders.
+
+Order có nhiều Books.
+
+---
+
+## Phase 1 — Design: 20 phút
+
+Tự xác định:
+
+    - Columns
+    - Primary keys
+    - Foreign keys
+    - Relationships
+
+Không AI.
+
+---
+
+## Phase 2 — SQL: 100 phút
+
+Tạo database + seed data.
+
+Sau đó giải 15 câu:
+
+    1. List all books.
+    2. Books >200k.
+    3. Search book name.
+    4. Sort expensive → cheap.
+    5. Books by author.
+    6. Orders by customer.
+    7. Order detail.
+    8. Order + Customer Name.
+    9. Order + Book + Quantity.
+    10. Total per Order.
+    11. Orders per Customer.
+    12. Revenue per Customer.
+    13. Best-selling Book.
+    14. Average Book Price.
+    15. Top 3 customers by revenue.
+
+**Không ChatGPT.**
+
+---
+
+## Commit bắt buộc
+
+Sau 120 phút:
+
+```
+git commit -m "week 2 sql exam - unaided"
+```
+
+---
+
+# Part 2 — PHP Challenge
+
+Tạo:
+
+```
+report.php
+```
+
+Browser hiển thị:
+
+```
+BOOK STORE REPORT
+
+Total Customers: X
+Total Books: X
+Total Orders: X
+Total Revenue: X
+
+TOP 5 BOOKS
+...
+```
+
+Data phải đến từ MySQL.
+
+Timebox:
+
+**60 phút.**
+
+Không AI.
+
+Sau đó commit:
+
+```
+git commit -m "week 2 php mysql exam - unaided"
+```
+
+---
+
+# Part 3 — ChatGPT Review
+
+Sau khi đã commit:
+
+>   Tôi vừa hoàn thành Week 2 SQL + PHP/MySQL Exam không sử dụng AI.
+>
+>   Database schema:
+>
+>   [PASTE]
+>
+>   SQL answers:
+>
+>   [PASTE]
+>
+>   PHP report:
+>
+>   [PASTE]
+>
+>   Đóng vai Technical Interviewer tuyển Junior PHP Backend.
+>
+>   Không rewrite solution.
+>
+>   PHASE 1:
+>
+>   Kiểm tra database design.
+>
+>   PHASE 2:
+>
+>   Chấm 15 SQL questions PASS/FAIL.
+>
+>   PHASE 3:
+>
+>   Review PHP/MySQL flow.
+>
+>   PHASE 4:
+>
+>   Hỏi tôi 15 câu technical dựa trực tiếp trên bài.
+>
+>   Hỏi từng câu một.
+>
+>   Sau mỗi câu đánh giá:
+>
+>   Correct / Partial / Incorrect.
+>
+>   Nếu sai, giải thích concept rồi chuyển câu tiếp.
+>
+>   Cuối cùng liệt kê 3 weaknesses quan trọng nhất cần sửa.
+>
+>   Bắt đầu Phase 1.
+
+Fix sau review → commit:
+
+```
+git commit -m "week 2 exam - fixes after review"
+```
+
+---
+
+# Part 4 — Job Application
+
+Apply thêm **1 job**.
+
+Tổng Week 2:
+
+>   **5 applications.**
+
+Đây chưa phải KPI săn việc mạnh.
+
+Mục tiêu là bắt đầu trải nghiệm:
+
+**JD → CV → Apply → Response → Interview Pipeline**
+
+---
+
+# Part 5 — Week 2 Market Review
+
+Update:
+
+## Market Snapshot
+
+| Skill      | # / 25 JD | Current Level 0–3 | Evidence |
+| ---------- | --------- | ----------------- | -------- |
+| PHP        |           |                   | GitHub   |
+| Laravel    |           |                   |          |
+| MySQL      |           |                   | Week 2   |
+| REST API   |           |                   |          |
+| Git        |           |                   |          |
+| JavaScript |           |                   |          |
+| Node.js    |           |                   |          |
+| Docker     |           |                   |          |
+| English    |           |                   |          |
+
+Sau đó trả lời:
+
+**1. MySQL/SQL xuất hiện bao nhiêu /25 jobs?**
+
+**2. Node.js xuất hiện bao nhiêu /25?**
+
+**3. Laravel xuất hiện bao nhiêu /25?**
+
+**4. Skill nào xuất hiện nhiều nhưng mình chưa có evidence?**
+
+**5. Trong 5 applications, bao nhiêu job match core stack ≥ tương đối?**
+
+**6. Có response nào chưa?**
+
+Nếu chưa:
+
+>   Ghi `0`.
+
+Không suy luận:
+
+>   “CV em chắc dở.”
+
+Sample size còn quá nhỏ.
+
+---
+
+# Week 2 Final Mentor Check
+
+Chuẩn bị share screen.
+
+Mentor có thể hỏi:
+
+    1. PK là gì?
+    2. FK là gì?
+    3. One-to-many?
+    4. Many-to-many?
+    5. Tại sao Order/Product cần OrderItem?
+    6. Tại sao lưu unit_price?
+    7. SELECT/INSERT/UPDATE/DELETE?
+    8. UPDATE không WHERE có chuyện gì?
+    9. WHERE dùng để làm gì?
+    10. LIKE?
+    11. INNER JOIN?
+    12. LEFT JOIN?
+    13. JOIN condition sai thì sao?
+    14. GROUP BY?
+    15. COUNT?
+    16. SUM?
+    17. Revenue từng customer query cần những tables nào?
+    18. Prepared Statement để làm gì?
+    19. SQL Injection là gì?
+    20. PHP → MySQL flow diễn ra thế nào?
+
+---
+
+## Live SQL Test — 15 phút
+
+Không ChatGPT.
+
+Dùng Book Store database:
+
+>   **“Cho anh danh sách 5 customers có tổng tiền mua hàng cao nhất, nhưng chỉ tính orders đã Completed.”**
+
+Không cần code đẹp.
+
+Phải biết tự breakdown:
+
+**Customer → Order → OrderItem → quantity × unit_price → status → GROUP BY → SUM → ORDER BY → LIMIT**
+
+Nếu chưa viết hoàn chỉnh nhưng breakdown đúng và tiến gần solution, mentor ghi nhận partial.
+
+---
+
+# Week 2 Scorecard
+
+| Category                  | Weight   |
+| ------------------------- | -------- |
+| D14 SQL Exam              | **30%**  |
+| PHP/MySQL Exam            | **15%**  |
+| Live SQL Test             | **15%**  |
+| Technical Q&A             | **15%**  |
+| Daily SQL exercises       | **10%**  |
+| Database Design           | **5%**   |
+| Job Search + Applications | **10%**  |
+| **TOTAL**                 | **100%** |
+
+**≥80:** PASS → Week 3.
+
+**65–79:** CONDITIONAL PASS → Week 3 + Remedial Backlog.
+
+**<65:** dành 2–3 ngày sửa đúng weakness rồi retest bằng database khác.
+
+---
+
+# Definition of Done — WEEK 2
+
+    - [ ]  Mini Shop relational database.
+    - [ ]  5 tables + correct relationships.
+    - [ ]  `database.sql` dựng DB từ đầu.
+    - [ ]  Seed dataset.
+    - [ ]  ≥40 SQL queries trong cả tuần.
+    - [ ]  WHERE / LIKE / BETWEEN / ORDER BY / LIMIT.
+    - [ ]  INNER JOIN.
+    - [ ]  LEFT JOIN.
+    - [ ]  GROUP BY.
+    - [ ]  COUNT / SUM / AVG.
+    - [ ]  PHP đọc MySQL.
+    - [ ]  PHP Create/Edit/Delete Product.
+    - [ ]  Prepared Statements.
+    - [ ]  Book Store Exam.
+    - [ ]  Unaided SQL commit.
+    - [ ]  Unaided PHP/MySQL commit.
+    - [ ]  After-review commit.
+    - [ ]  Job Tracker = **25 JD**.
+    - [ ]  Skill Frequency updated.
+    - [ ]  **5 applications sent.**
+    - [ ]  Application statuses tracked.
+    - [ ]  Week 2 Market Review.
+    - [ ]  Week 2 Score ≥80 hoặc Conditional Pass.
+
+>   **Kết thúc Week 2, em chưa cần trở thành người giỏi SQL.** Chuẩn cần đạt là: khi nghe một câu hỏi business đơn giản, em biết dữ liệu nằm ở đâu, các bảng liên quan với nhau thế nào và có thể tự viết SQL để lấy câu trả lời.
+>
+>   Từ Week 3, những kiến thức PHP + SQL này sẽ được đưa vào **Laravel**. Lúc đó Laravel không còn là một đống magic phải học thuộc: em đã hiểu phía dưới Controller/Model đang cố giải quyết vấn đề gì.

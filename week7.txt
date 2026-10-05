@@ -1,0 +1,1670 @@
+# Week 7
+
+# Tuần 7 — Adaptive Sprint: Node.js Bridge + Application Scale
+
+## Mục tiêu của tuần
+
+Week 7 **không mặc định là “tuần học Node.js”**.
+
+Từ Week 6, roadmap bắt đầu adaptive theo dữ liệu tuyển dụng thật.
+
+Trước khi bắt đầu D43, nhìn lại:
+
+- 60 applications;
+- HR contacts;
+- coding tests;
+- technical interviews;
+- Error Log;
+- 45 JD đã phân tích;
+- những skill thực sự xuất hiện trong target jobs.
+
+Sau đó chọn **Track A hoặc Track B**.
+
+| Tình trạng sau W6                                  | Week 7                                |
+| -------------------------------------------------- | ------------------------------------- |
+| PHP/SQL/Laravel coding test còn fail thường xuyên | **Track A — Core Remediation**        |
+| Core stack ổn + Node xuất hiện đáng kể trong target JD | **Track B — Node.js Bridge**      |
+| Có nhiều interview thật trong tuần                | **Interview Track ưu tiên cao nhất**  |
+
+> **Không học Node vì FOMO.**
+>
+> Node chỉ đáng học lúc này nếu nó mở thêm job phù hợp. Mục tiêu vẫn là **landing a developer job**, không phải collect technology.
+
+---
+
+# 1. Weekly Summary
+
+Bảng dưới đây giả định **Track B — Node.js Bridge**, vì đây là hướng mặc định nếu Week 6 đã đạt chuẩn.
+
+Nếu đang Track A, thay block technical mỗi ngày bằng đúng gap PHP/SQL/Laravel trong Error Log; phần Job Campaign giữ nguyên.
+
+| Ngày    | Trọng tâm                    | Technical Output                       | Job/Career Output                         | Evidence                    | Definition of Done                              |
+| ------- | ----------------------------- | -------------------------------------- | ----------------------------------------- | --------------------------- | ----------------------------------------------- |
+| **D43** | JS → Node Mental Model        | JS fundamentals + Node CLI             | Re-segment 45 JD + Apply 4                | `week07/day43-node-basics`  | Hiểu JS/Node khác PHP/Laravel ở đâu             |
+| **D44** | Express REST API              | Product CRUD API                       | Apply 4                                   | `day44-express-api`         | CRUD API chạy                                   |
+| **D45** | Node + Database               | MySQL + Product/Category               | Apply 4 + follow-up pipeline              | `day45-node-db`             | API đọc/ghi DB thật                             |
+| **D46** | Async + Error Handling        | Async flow + centralized errors        | Apply 4                                   | `day46-async-errors`        | Giải thích async/await bằng code mình           |
+| **D47** | Auth + Mini API               | Login + protected endpoints            | Apply 4 + CV targeting                    | `day47-node-auth`           | Auth flow hoạt động                             |
+| **D48** | Node Coding Test + PHP Retention | Fresh Node API ≤3h + PHP/SQL drill  | Apply 5                                   | `day48-node-exam`           | Build được không tutorial                       |
+| **D49** | **Market Conversion Day**     | PHP vs Node defense + gap repair       | Apply 5 + funnel review                   | Week 7 Scorecard            | Node là skill phụ có evidence, không làm yếu core |
+
+### Target cuối Week 7
+
+- **30 applications trong tuần**.
+- Cumulative: **90 applications**.
+- Không tìm thêm JD chỉ để tăng số liệu.
+- Applications được chia thành Tier A/B/C.
+- Có follow-up process.
+- Có Node mini-project nếu Track B.
+- Không xây e-commerce thứ hai bằng Node.
+- PHP/Laravel vẫn là **primary positioning**.
+- Node.js là **secondary skill**, trừ khi market feedback cho thấy nên pivot.
+- Có quyết định rõ cho Week 8 dựa trên funnel.
+
+---
+
+# 2. Gate trước khi học Node
+
+Trước D43, tự trả lời 4 câu:
+
+```text
+1. Week 6 PHP Coding Test ≥80%?
+2. SQL Coding Test ≥80%?
+3. Laravel Coding Test ≥80%?
+4. Technical Mock ≥80% hoặc interview thật cho thấy core tương đối ổn?
+```
+
+### Nếu ≥3/4 đạt
+
+Đi **Track B — Node.js Bridge**.
+
+### Nếu <3/4 đạt
+
+Đi **Track A — Core Remediation**.
+
+Không có chuyện:
+
+> “Roadmap tới Node rồi nên em phải học Node.”
+
+---
+
+# 3. Nếu đi Track A — Core Remediation
+
+Không cần viết lại cả tuần.
+
+Mỗi ngày dùng structure:
+
+```text
+45 min   Weakness #1
+45 min   Weakness #2
+45 min   Coding Test
+30 min   Technical Q&A
+90 min   Applications / Interview Prep
+```
+
+Ví dụ Error Log:
+
+```text
+HAVING            fail 3 lần
+LEFT JOIN         fail 2 lần
+Laravel lifecycle fail 2 lần
+```
+
+Thì Week 7 tập trung đúng ba thứ này.
+
+### Exit Condition
+
+Khi:
+
+- retest ≥80%;
+- giải thích được;
+- không lặp lại cùng lỗi trong mock;
+
+mới chuyển thời gian còn lại sang Node.
+
+---
+
+# D43 — JavaScript → Node.js Mental Model
+
+## Mục tiêu
+
+Không học JavaScript từ số 0 như một khóa frontend 30 giờ.
+
+Em đã biết programming.
+
+Hôm nay học **difference mapping**.
+
+---
+
+# Part 1 — PHP → JavaScript Mapping
+
+Tạo:
+
+`php-vs-js.md`
+
+| Concept          | PHP | JavaScript |
+| ---------------- | --- | ---------- |
+| Variable         |     |            |
+| Array            |     |            |
+| Associative data |     |            |
+| Function         |     |            |
+| Loop             |     |            |
+| Condition        |     |            |
+| Class            |     |            |
+| Exception        |     |            |
+| Module/import    |     |            |
+| Null handling    |     |            |
+
+Tự điền bằng code nhỏ.
+
+---
+
+# Part 2 — 8 JS Exercises
+
+Làm lại bằng JavaScript:
+
+1. Filter Products.
+2. Find highest price.
+3. Total stock.
+4. Inventory value.
+5. Search Product.
+6. Revenue by Customer.
+7. Top Customer.
+8. Sort Products.
+
+Không copy PHP rồi translate bằng AI.
+
+Mục tiêu:
+
+> Cùng problem-solving, syntax khác.
+
+---
+
+# Part 3 — Node CLI
+
+Tạo:
+
+```text
+node-product-analyzer
+```
+
+Input:
+
+```text
+products.json
+```
+
+Output:
+
+```text
+Total Products
+Total Stock
+Inventory Value
+Most Expensive Product
+```
+
+---
+
+# Part 4 — npm
+
+Phải hiểu:
+
+```text
+package.json
+dependencies
+scripts
+npm install
+node_modules
+```
+
+Không cần thuộc npm internals.
+
+---
+
+## Prompt ChatGPT D43
+
+> Tôi đã biết PHP/Laravel và đang học Node.js để mở rộng job pool.
+>
+> Tôi không muốn học JavaScript như beginner từ đầu.
+>
+> Tôi sẽ gửi từng PHP concept/code tôi đã biết.
+>
+> Với mỗi concept:
+>
+> 1. Hỏi tôi đoán JavaScript equivalent.
+> 2. Cho tôi một exercise nhỏ.
+> 3. Không đưa solution.
+> 4. Sau khi tôi code, review difference giữa PHP và JavaScript.
+>
+> Tập trung backend JavaScript.
+>
+> Không dạy DOM, CSS hoặc frontend framework.
+>
+> Bắt đầu với variable/data types.
+
+---
+
+# Career Task D43 — Re-segment Job Market
+
+Không collect thêm JD.
+
+Lấy 45 JD đã có và chia:
+
+### Tier A
+
+> PHP/Laravel match tốt.
+
+### Tier B
+
+> Backend role match phần lớn nhưng có Node/JS là preferred/additional.
+
+### Tier C
+
+> Node-heavy role mà PHP background vẫn có khả năng chuyển.
+
+### Skip
+
+> Senior / unrelated / requirement quá xa.
+
+Sau đó apply **4 jobs**.
+
+Cumulative:
+
+> **64**
+
+---
+
+## Knowledge Check D43
+
+1. JavaScript và Node.js có phải một thứ không?
+2. Node.js là gì?
+3. Node khác browser JavaScript ở đâu?
+4. `package.json` dùng làm gì?
+5. `node_modules` là gì?
+6. Dependency là gì?
+7. Object JS gần concept PHP nào?
+8. Function JS khác PHP ở điểm nào em đã gặp?
+9. `const` và `let` khác nhau cơ bản thế nào?
+10. Vì sao không cần học React trong tuần này?
+
+### DoD D43
+
+- `php-vs-js.md`.
+- 8 JS exercises.
+- Node CLI.
+- Read JSON.
+- `package.json`.
+- ≥8/10 questions.
+- JD segmentation.
+- +4 applications.
+
+---
+
+# D44 — Express REST API
+
+## Mục tiêu
+
+Tận dụng REST knowledge từ Laravel.
+
+Không học lại:
+
+> GET là gì?
+
+Bây giờ hỏi:
+
+> **Node/Express implement cùng concept thế nào?**
+
+---
+
+# Project
+
+Tạo:
+
+```text
+node-inventory-api
+```
+
+Không port toàn bộ Mini Shop.
+
+Chỉ build API nhỏ.
+
+---
+
+# Endpoints
+
+```text
+GET    /api/products
+GET    /api/products/:id
+POST   /api/products
+PUT    /api/products/:id
+DELETE /api/products/:id
+```
+
+Ngày đầu có thể dùng in-memory data.
+
+---
+
+# Structure
+
+Tự tìm cách tách ít nhất:
+
+```text
+routes
+controllers
+```
+
+Không bắt buộc architecture phức tạp.
+
+---
+
+# Validation
+
+Product:
+
+```text
+name required
+price > 0
+stock >= 0
+```
+
+Response phải có status code phù hợp.
+
+---
+
+# Laravel Comparison
+
+Tạo:
+
+`laravel-vs-express.md`
+
+Điền:
+
+| Laravel     | Express |
+| ----------- | ------- |
+| Route       |         |
+| Controller  |         |
+| Middleware  |         |
+| Request     |         |
+| Response    |         |
+| Validation  |         |
+| Environment |         |
+
+---
+
+## Prompt ChatGPT D44
+
+> Tôi đã build REST API bằng Laravel.
+>
+> Bây giờ tôi đang implement cùng Product API bằng Node.js + Express.
+>
+> Không viết API cho tôi.
+>
+> Với mỗi Laravel concept tôi đưa:
+>
+> Route
+>
+> Controller
+>
+> Middleware
+>
+> Validation
+>
+> JSON Response
+>
+> hãy hỏi tôi tìm equivalent trong Express.
+>
+> Sau đó review implementation của tôi.
+>
+> Nếu có nhiều cách làm, giải thích trade-off ở mức Junior thay vì bảo chỉ có một cách đúng.
+
+---
+
+# Job Campaign D44
+
+Apply **4 jobs**.
+
+Ít nhất:
+
+- 2 PHP/Laravel target jobs.
+- tối đa 2 Node-compatible jobs nếu match hợp lý.
+
+Không pivot toàn bộ application sang Node sau **một ngày học Node**.
+
+Cumulative:
+
+> **68**
+
+---
+
+## Knowledge Check D44
+
+1. Express giải quyết việc gì?
+2. Route trong Express?
+3. Controller?
+4. Middleware?
+5. `req`?
+6. `res`?
+7. Route parameter?
+8. Query parameter?
+9. Request body?
+10. Vì sao API concept không thay đổi chỉ vì đổi Laravel → Express?
+
+### DoD D44
+
+- 5 Product endpoints.
+- Validation.
+- Correct basic statuses.
+- Route/controller separation.
+- Comparison notes.
+- ≥8/10 questions.
+- +4 applications.
+
+---
+
+# D45 — Node + MySQL
+
+## Mục tiêu
+
+Bỏ in-memory data.
+
+API phải sử dụng database thật.
+
+---
+
+# Schema
+
+Không copy Mini Shop DB.
+
+Chỉ cần:
+
+```text
+categories
+products
+```
+
+Relationship:
+
+```text
+Category 1 → N Product
+```
+
+---
+
+# Requirements
+
+Product API:
+
+- list;
+- detail;
+- create;
+- update;
+- delete.
+
+Category:
+
+- list;
+- create.
+
+Product List support:
+
+```text
+search
+category filter
+pagination
+```
+
+---
+
+# Important Exercise — SQL vẫn là SQL
+
+Trả lời:
+
+> Đổi Laravel sang Node thì database fundamentals có thay đổi không?
+
+Không.
+
+Đây là lý do Week 2 quan trọng.
+
+Framework đổi.
+
+Core knowledge giữ lại.
+
+---
+
+# Database Error Cases
+
+Test:
+
+1. DB offline.
+2. Invalid category.
+3. Duplicate constraint nếu có.
+4. Product missing.
+5. Invalid query parameter.
+
+Không cần hide mọi error hoàn hảo, nhưng API không được crash vô nghĩa.
+
+---
+
+## Prompt ChatGPT D45
+
+> Tôi đang connect Node/Express với MySQL.
+>
+> Tôi đã biết MySQL từ PHP/Laravel.
+>
+> Không viết query/code cho tôi.
+>
+> Hãy review flow:
+>
+> Request
+>
+> → Route
+>
+> → Controller
+>
+> → Database
+>
+> → Response.
+>
+> Mỗi lần cho tôi một scenario.
+>
+> Tôi phải nói:
+>
+> 1. Data đi qua đâu?
+> 2. SQL operation gì?
+> 3. Failure có thể xảy ra đâu?
+> 4. HTTP response nên là gì?
+>
+> Sau đó review reasoning.
+
+---
+
+# Career Task D45
+
+Apply **4 jobs**.
+
+Cumulative:
+
+> **72**
+
+### Follow-up Pipeline
+
+Review applications từ **7–10 ngày trước**.
+
+Nếu company/channel cho phép follow-up hợp lý và có contact phù hợp:
+
+Gửi **một** follow-up ngắn.
+
+Không spam recruiter.
+
+Tracker thêm:
+
+```text
+Follow-up Date
+Follow-up Channel
+Response
+```
+
+---
+
+## Knowledge Check D45
+
+1. Node đổi thì MySQL có đổi không?
+2. Foreign key?
+3. Relationship Category/Product?
+4. Search query cần input gì?
+5. Pagination giải quyết vấn đề gì?
+6. DB connection fail nên trả gì?
+7. Query parameter invalid xử lý thế nào?
+8. SQL Injection có biến mất khi đổi PHP sang Node không?
+9. Parameterized query/prepared statement vẫn quan trọng không?
+10. Vì sao backend fundamentals transfer được giữa framework?
+
+### DoD D45
+
+- MySQL connected.
+- Category/Product schema.
+- Product CRUD.
+- Category basic API.
+- Search.
+- Filter.
+- Pagination.
+- DB error cases.
+- ≥8/10 questions.
+- +4 applications.
+- Follow-up pipeline started.
+
+---
+
+# D46 — Async + Error Handling
+
+## Mục tiêu
+
+Đây là phần Node khác PHP/Laravel rõ nhất trong tuần.
+
+Phải hiểu đủ để giải thích:
+
+> **Tại sao code này cần `async/await`?**
+
+Không học event loop ở mức internals sâu.
+
+---
+
+# Part 1 — Async Experiment
+
+Viết ba thao tác:
+
+```text
+Read file
+Database query
+Fake delay
+```
+
+Quan sát khi dùng:
+
+```text
+Promise
+async
+await
+```
+
+---
+
+# Part 2 — Failure Experiment
+
+Cố tình làm:
+
+```text
+DB query fail
+```
+
+Quan sát:
+
+- Promise reject;
+- thrown error;
+- request behavior.
+
+Không để request treo hoặc process crash vô nghĩa.
+
+---
+
+# Part 3 — Centralized Error Handling
+
+Tạo error handling phù hợp để API không lặp lại `try/catch` vô tổ chức ở mọi nơi nếu structure hiện tại cho phép.
+
+Không bắt buộc architecture “chuẩn production”.
+
+Mục tiêu:
+
+> hiểu error đi từ đâu → đâu.
+
+---
+
+# Part 4 — PHP Comparison
+
+Tạo:
+
+`php-node-async-notes.md`
+
+Trả lời:
+
+```text
+PHP request model tôi đã quen là gì?
+
+Node xử lý I/O async khác chỗ nào?
+
+await đang chờ cái gì?
+
+Nếu quên await có thể xảy ra gì?
+
+try/catch bắt async error thế nào trong code tôi?
+```
+
+---
+
+## Prompt ChatGPT D46
+
+> Tôi đã biết PHP/Laravel và đang học async/await trong Node.
+>
+> Tôi không muốn học thuộc event loop diagram.
+>
+> Đây là code Node hiện tại:
+>
+> [CODE]
+>
+> Hãy dùng chính code này để hỏi tôi:
+>
+> 1. Dòng nào trả Promise?
+> 2. `await` đang làm gì?
+> 3. Nếu bỏ `await` thì biến nhận được là gì?
+> 4. Error đi đâu?
+> 5. `try/catch` bắt phần nào?
+>
+> Hỏi từng câu.
+>
+> Nếu tôi trả lời được, mới giải thích event loop ở mức vừa đủ cho Junior interview.
+>
+> Không đi sâu libuv internals.
+
+---
+
+# Job Campaign D46
+
+Apply **4 jobs**.
+
+Cumulative:
+
+> **76**
+
+### DoD D46
+
+- Promise experiment.
+- async/await.
+- DB async.
+- Error experiment.
+- Centralized error handling.
+- PHP comparison notes.
+- Giải thích async bằng code của mình.
+- +4 applications.
+
+---
+
+# D47 — Authentication + Protected API
+
+## Mục tiêu
+
+Build một auth flow nhỏ bằng Node để chứng minh:
+
+> Auth concept transfer được từ Laravel.
+
+Không build OAuth platform.
+
+---
+
+# User
+
+```text
+id
+name
+email
+password
+role
+```
+
+Roles:
+
+```text
+user
+admin
+```
+
+---
+
+# Endpoints
+
+```text
+POST /api/register
+POST /api/login
+GET  /api/profile
+```
+
+Product write endpoints:
+
+```text
+POST
+PUT
+DELETE
+```
+
+Admin only.
+
+---
+
+# Password
+
+Không lưu plain text.
+
+---
+
+# Authentication
+
+Dùng token approach phù hợp với mini API.
+
+Không tự viết crypto.
+
+Phải hiểu flow:
+
+```text
+Login
+↓
+Verify credentials
+↓
+Issue token
+↓
+Client stores/sends token
+↓
+Middleware verifies
+↓
+Authenticated request
+```
+
+---
+
+# Authorization
+
+Normal User:
+
+```text
+DELETE /api/products/1
+```
+
+→ Reject.
+
+Admin:
+
+→ Success.
+
+---
+
+# Security Notes
+
+Tạo:
+
+`node-auth-notes.md`
+
+Trả lời:
+
+```text
+Password stored how?
+
+Token contains/represents what?
+
+Where is token sent?
+
+What happens if token missing?
+
+What happens if token invalid?
+
+401 vs 403?
+
+Where are secrets stored?
+```
+
+---
+
+## Prompt ChatGPT D47
+
+> Tôi đã implement authentication trong Laravel trước đây.
+>
+> Bây giờ tôi đang làm Node API auth.
+>
+> Không viết auth code.
+>
+> Hãy interview tôi bằng cách so sánh:
+>
+> Laravel auth concept
+>
+> vs
+>
+> Node API token auth.
+>
+> Tập trung:
+>
+> - password hashing;
+> - login;
+> - token/session concept;
+> - middleware;
+> - authenticated user;
+> - role authorization;
+> - 401/403.
+>
+> Với mỗi câu, yêu cầu tôi giải thích concept trước rồi mới nói implementation.
+>
+> Nếu tôi chỉ nhớ syntax/library mà không giải thích được flow, đánh dấu Partial.
+
+---
+
+# Career Task D47
+
+Apply **4 jobs**.
+
+Cumulative:
+
+> **80**
+
+### CV Targeting
+
+Không đổi headline thành:
+
+> Node.js Developer
+
+sau 5 ngày.
+
+Primary CV:
+
+> **Junior Backend Developer — PHP/Laravel**
+
+Có thể thêm:
+
+```text
+Additional Backend Exposure:
+Node.js / Express
+```
+
+nếu đã có evidence.
+
+Nếu apply Node-compatible role, tạo variant CV nhấn mạnh:
+
+- REST;
+- SQL;
+- API;
+- auth;
+- backend fundamentals;
+- fast stack transfer.
+
+Không nói:
+
+> 1 year Node experience.
+
+---
+
+## Knowledge Check D47
+
+1. Authentication flow?
+2. Password hash?
+3. Token?
+4. Middleware?
+5. 401?
+6. 403?
+7. Role authorization?
+8. Secret lưu đâu?
+9. Token có phải password không?
+10. Auth concept giữa Laravel và Node giống nhau ở đâu?
+
+### DoD D47
+
+- Register.
+- Login.
+- Password hashed.
+- Token.
+- Profile protected.
+- Admin product writes.
+- 401/403.
+- Security notes.
+- CV targeting.
+- +4 applications.
+
+---
+
+# D48 — NODE CODING EXAM + CORE RETENTION
+
+## Part 1 — Node Exam
+
+Timebox:
+
+> **180 phút — không AI**
+
+Fresh project.
+
+Không copy `node-inventory-api`.
+
+---
+
+# Requirement — Task Management API
+
+Entities:
+
+```text
+users
+tasks
+```
+
+Task:
+
+```text
+title
+description
+status
+priority
+due_date
+user_id
+```
+
+Status:
+
+```text
+todo
+doing
+done
+```
+
+Priority:
+
+```text
+low
+medium
+high
+```
+
+---
+
+# Features
+
+### Auth
+
+```text
+register
+login
+```
+
+### Task CRUD
+
+Authenticated user:
+
+```text
+GET    /api/tasks
+POST   /api/tasks
+GET    /api/tasks/:id
+PUT    /api/tasks/:id
+DELETE /api/tasks/:id
+```
+
+User chỉ access own Tasks.
+
+### Search
+
+```text
+title
+```
+
+### Filter
+
+```text
+status
+priority
+```
+
+### Pagination
+
+```text
+10/page
+```
+
+Validation:
+
+```text
+title required
+status valid
+priority valid
+due_date valid
+```
+
+---
+
+# Timebox
+
+```text
+00–15    Requirement
+15–30    DB
+30–55    Project structure/auth
+55–125   Task CRUD
+125–145  Search/filter/page
+145–165  Authorization/validation
+165–180  Test/cleanup
+```
+
+Commit:
+
+```text
+week 7 node exam - unaided
+```
+
+---
+
+# Part 2 — Core Retention
+
+Sau Node Exam nghỉ ngắn.
+
+Sau đó **45 phút không AI**:
+
+### PHP — 15 phút
+
+Viết function:
+
+> Revenue by Category.
+
+### SQL — 15 phút
+
+Query:
+
+> Top 3 Categories by completed revenue.
+
+### Laravel — 15 phút
+
+Giải thích bằng miệng:
+
+> Request từ `/api/orders/10` đi qua Laravel app như thế nào?
+
+Mục đích:
+
+> **Node không được làm core stack rơi mất.**
+
+---
+
+# ChatGPT Review D48
+
+> Tôi vừa làm Node.js/Express Coding Exam sau 5 ngày học Node.
+>
+> Trước đó stack chính của tôi là PHP/Laravel.
+>
+> Requirement:
+>
+> [...]
+>
+> Code:
+>
+> [...]
+>
+> Không rewrite project.
+>
+> Review theo:
+>
+> 1. JavaScript fundamentals.
+> 2. Node/Express.
+> 3. Async handling.
+> 4. Database.
+> 5. Authentication.
+> 6. Authorization.
+> 7. API design.
+> 8. Error handling.
+>
+> Phân biệt rõ:
+>
+> - concept tôi đã hiểu nhưng quên syntax;
+> - concept tôi chưa hiểu.
+>
+> Sau đó cho tôi tối đa 5 remediation items.
+>
+> Không đề xuất học framework Node mới.
+
+---
+
+# Job Campaign D48
+
+Apply **5 jobs**.
+
+Cumulative:
+
+> **85**
+
+### DoD D48
+
+- Fresh Node API.
+- ≤180 phút.
+- No AI.
+- Auth.
+- CRUD.
+- Ownership.
+- Search/filter/page.
+- ≥75% requirements.
+- PHP retention.
+- SQL retention.
+- Laravel explanation.
+- +5 applications.
+
+> Node mới học 5 ngày nên threshold **75%** là đủ.
+>
+> Không yêu cầu Node ngang Laravel.
+
+---
+
+# D49 — Market Conversion Day
+
+## Mục tiêu
+
+Ngày cuối Week 7 không build thêm.
+
+Trả lời:
+
+> **Việc mình học và apply đang tạo tín hiệu gì từ thị trường?**
+
+---
+
+# Part 1 — PHP vs Node Technical Defense
+
+Không AI.
+
+Trả lời:
+
+1. PHP và Node khác nhau lớn nhất ở đâu?
+2. Laravel và Express khác nhau thế nào?
+3. Route concept có đổi không?
+4. Controller concept?
+5. Middleware?
+6. Database?
+7. REST?
+8. Authentication?
+9. Async khác gì?
+10. Error handling?
+11. Dependency management?
+12. Environment config?
+13. Testing approach?
+14. Khi nào em chọn Laravel?
+15. Khi nào em chọn Node?
+
+Không cần tuyên bố framework nào “tốt hơn”.
+
+---
+
+# Part 2 — Portfolio Decision
+
+Portfolio cuối Week 7:
+
+### Primary
+
+> **Mini Shop — Laravel/MySQL**
+
+Flagship.
+
+### Secondary
+
+> **Task Management API — Node/Express/MySQL**
+
+Chứng minh:
+
+> có khả năng transfer backend fundamentals sang stack mới.
+
+Không dành ba ngày polish Node project như flagship.
+
+README vừa đủ:
+
+```text
+Overview
+API
+Tech Stack
+Setup
+Auth
+Endpoints
+```
+
+---
+
+# Part 3 — Application Funnel
+
+Sau D49:
+
+> **90 cumulative applications**
+
+Update:
+
+| Stage                | Count | Conversion |
+| -------------------- | ----- | ---------- |
+| Applications         | 90    | 100%       |
+| HR Contacts          |       |            |
+| Coding Tests         |       |            |
+| Technical Interviews |       |            |
+| Finals               |       |            |
+| Offers               |       |            |
+| Rejected             |       |            |
+| Pending              |       |            |
+
+Sau đó chia thêm:
+
+| Stack               | Applications | HR | Test | Technical | Final |
+| ------------------- | ------------ | -- | ---- | --------- | ----- |
+| PHP/Laravel         |              |    |      |           |       |
+| PHP + mixed backend |              |    |      |           |       |
+| Node-compatible     |              |    |      |           |       |
+
+Bây giờ có thể bắt đầu hỏi:
+
+> Node có thực sự mở thêm cửa không?
+
+Dựa trên **data**, không cảm giác.
+
+---
+
+# Part 4 — Source Analysis
+
+Thêm:
+
+| Source         | Applied | Responses | Interviews |
+| -------------- | ------- | --------- | ---------- |
+| LinkedIn       |         |           |            |
+| TopDev         |         |           |            |
+| ITviec         |         |           |            |
+| Company Career |         |           |            |
+| Referral       |         |           |            |
+| Other          |         |           |            |
+
+Không chỉ tối ưu CV.
+
+Có thể vấn đề nằm ở **channel**.
+
+---
+
+# Part 5 — Application Quality Audit
+
+Random chọn **10 applications**.
+
+Với mỗi job, tự trả lời:
+
+```text
+Tại sao tôi apply job này?
+
+Must-have nào match?
+
+Must-have nào chưa match?
+
+CV version nào đã gửi?
+
+Project nào chứng minh match?
+
+Job còn fresh khi apply không?
+
+Có cover note/customization không?
+```
+
+Nếu không trả lời được:
+
+> application campaign đang trở thành spam.
+
+---
+
+# Job Campaign D49
+
+Apply **5 jobs chất lượng**.
+
+Không chạy số cho đủ KPI.
+
+Cumulative:
+
+> **90**
+
+---
+
+# 4. Application Strategy từ Week 7
+
+Từ hôm nay mỗi job chia:
+
+## Tier A — High Match
+
+Khoảng:
+
+> **70%+ core requirements phù hợp**, đặc biệt PHP/Laravel/SQL/backend fundamentals.
+
+Action:
+
+- Apply sớm.
+- Tailor CV.
+- Company research.
+- Prepare project evidence.
+
+---
+
+## Tier B — Transferable Match
+
+Ví dụ:
+
+> PHP experience preferred, Node acceptable.
+
+hoặc:
+
+> Backend fundamentals + SQL + REST, framework flexible.
+
+Action:
+
+- Apply.
+- Highlight transferable backend skill.
+- Node project có thể dùng làm supporting evidence.
+
+---
+
+## Tier C — Stretch
+
+Có gap nhưng Junior/fresher và core problem-solving vẫn relevant.
+
+Apply có chọn lọc.
+
+---
+
+## Skip
+
+Ví dụ:
+
+```text
+Senior Backend
+5+ years required
+Lead architecture
+Deep Kubernetes
+Java/Spring specialist
+```
+
+Không dùng application quota cho job rõ ràng sai level chỉ để đạt 90.
+
+---
+
+# 5. Follow-up Strategy
+
+Không follow-up mọi application sau 24 giờ.
+
+Với application đáng quan tâm:
+
+### Sau khoảng một tuần làm việc, nếu có channel phù hợp
+
+Một follow-up ngắn:
+
+> Applied → role → continued interest → GitHub/Live Demo → thank you.
+
+Chỉ **một lần** nếu không có response.
+
+Không biến job search thành spam recruiter.
+
+---
+
+# 6. Interview Overrides Roadmap
+
+Nếu D45 có company gọi:
+
+> Technical interview D47.
+
+Thì D46–D47 không nhất thiết học Node.
+
+Thay bằng:
+
+```text
+JD Analysis
+↓
+Company Research
+↓
+Relevant Technical Review
+↓
+Mock Interview
+↓
+Project Defense
+↓
+Interview
+↓
+Post-interview Error Log
+```
+
+**Interview thật luôn có priority cao hơn curriculum giả lập.**
+
+---
+
+# 7. Week 7 Final Interview
+
+Dùng ChatGPT:
+
+> Tôi đang kết thúc Week 7 của roadmap Junior Backend.
+>
+> Primary stack:
+>
+> PHP/Laravel/MySQL.
+>
+> Secondary exposure:
+>
+> Node.js/Express/MySQL.
+>
+> Hãy interview tôi như một company tuyển Junior Backend và muốn kiểm tra khả năng học stack mới.
+>
+> Không hỏi trivia.
+>
+> Hỏi 20 câu.
+>
+> Khoảng:
+>
+> - 40% backend fundamentals;
+> - 25% PHP/Laravel;
+> - 20% Node/Express;
+> - 15% problem solving.
+>
+> Đặc biệt hỏi tôi so sánh cách cùng một backend problem được giải quyết trong Laravel và Express.
+>
+> Hỏi từng câu.
+>
+> Follow-up khi câu trả lời mơ hồ.
+>
+> Cuối cùng phân loại:
+>
+> - Core strength;
+> - Transferable knowledge;
+> - Node-specific gaps;
+> - Interview communication gaps.
+>
+> Không kết luận tôi cần đổi stack chỉ dựa trên một mock interview.
+
+---
+
+# 8. Week 7 Scorecard
+
+| Category                              | Weight   |
+| ------------------------------------- | -------- |
+| Node Exam hoặc Core Remediation Exam  | **20%**  |
+| PHP/SQL/Laravel Retention             | **15%**  |
+| Backend Transfer Understanding        | **15%**  |
+| Technical Interview                   | **10%**  |
+| Application Quality                   | **15%**  |
+| Application Volume                    | **10%**  |
+| Funnel Analysis                       | **10%**  |
+| Portfolio/CV accuracy                 | **5%**   |
+| **TOTAL**                             | **100%** |
+
+### ≥80
+
+Sang Week 8.
+
+### 70–79
+
+Sang Week 8 + repair top 2 gaps.
+
+### <70
+
+**Vẫn sang Week 8.**
+
+Đây là điểm khác các tuần đầu.
+
+Không delay job campaign thêm một tuần chỉ vì score thấp.
+
+Week 8 sẽ vừa interview vừa remediate.
+
+---
+
+# Definition of Done — WEEK 7
+
+### Technical — Track B
+
+- [ ]  PHP → JS mapping.
+- [ ]  JavaScript backend fundamentals.
+- [ ]  Node runtime basic.
+- [ ]  npm/package.json.
+- [ ]  Express.
+- [ ]  REST API.
+- [ ]  MySQL.
+- [ ]  Search/filter/pagination.
+- [ ]  Async/await.
+- [ ]  Promise/error handling.
+- [ ]  Authentication.
+- [ ]  Authorization.
+- [ ]  Environment secrets.
+- [ ]  Node Exam.
+- [ ]  Secondary Node project.
+
+### Core Retention
+
+- [ ]  PHP retest.
+- [ ]  SQL retest.
+- [ ]  Laravel explanation.
+- [ ]  No major regression.
+- [ ]  Error Log updated.
+
+### Career
+
+- [ ]  45 JD re-segmented.
+- [ ]  Tier A/B/C.
+- [ ]  **30 applications Week 7**.
+- [ ]  **90 cumulative applications**.
+- [ ]  Applications tracked by stack.
+- [ ]  Applications tracked by source.
+- [ ]  Follow-up process.
+- [ ]  10-application quality audit.
+- [ ]  Interview feedback captured.
+
+### Portfolio
+
+- [ ]  Mini Shop remains flagship.
+- [ ]  Node project secondary.
+- [ ]  CV does not exaggerate Node experience.
+- [ ]  GitHub clean.
+- [ ]  Live Laravel project still working.
+- [ ]  README links working.
+
+---
+
+# Cột mốc cuối Week 7
+
+Đến đây em không nên tự giới thiệu:
+
+> **“Em biết PHP, Laravel, Node, GCP, Cloudflare...”**
+
+như một danh sách technology.
+
+Câu chuyện mạnh hơn phải là:
+
+> **“Stack chính của em là PHP/Laravel/MySQL. Em đã build và deploy một application hoàn chỉnh có business flow, REST API và automated tests. Sau khi nắm backend fundamentals, em học thêm Node/Express và tự build lại một API với database, authentication và authorization. Việc đó giúp em thấy framework có thể đổi nhưng các concept như HTTP, database, validation, authorization và API design vẫn transfer được.”**
+
+Đó mới là lý do Node xuất hiện ở Week 7.
+
+**Không phải để biến em thành Node Developer trong 7 ngày.**
+
+Mà để chứng minh một điều đặc biệt quan trọng đối với một ứng viên **không có bằng đại học và mới chuyển nghề**:
+
+> **Em không chỉ học thuộc một framework. Em có khả năng học nhanh, hiểu nền tảng và chuyển kiến thức sang stack mới.**
+
+---
+
+# Trước khi bước vào Week 8
+
+Từ giờ không còn một roadmap kỹ thuật cố định nữa.
+
+Week 8 sẽ chạy gần giống một **job-search war room**:
+
+```text
+Application Funnel
+        ↓
+Where am I losing?
+        ↓
+┌────────────┬─────────────┬─────────────┐
+↓            ↓             ↓             ↓
+CV         Coding       Technical      Final
+↓            ↓             ↓             ↓
+Fix CV    Drill Gap     Mock Gap     HR/Story
+└────────────┴──────┬──────┴─────────────┘
+                    ↓
+             Apply Again
+                    ↓
+              Interview
+                    ↓
+                Offer
+```
+
+**Week 8 không còn mục tiêu “học xong”. Mục tiêu duy nhất là biến toàn bộ 7 tuần vừa rồi thành interview opportunities — và biến interview opportunities thành offer.**

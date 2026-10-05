@@ -1,0 +1,1668 @@
+# Week 6
+
+# Tuần 6 — Candidate Mode: Coding Test + Technical Interview + Project Defense
+
+## Mục tiêu của tuần
+
+Đến cuối Week 5, phần **build skill** chính đã hoàn thành.
+
+Em đã đi qua:
+
+| Tuần   | Trọng tâm                        | Evidence                                     |
+| ------ | -------------------------------- | -------------------------------------------- |
+| W1     | PHP Core                         | PHP exercises + OOP                          |
+| W2     | SQL                              | Database + queries                           |
+| W3     | Laravel                          | CRUD từ project trắng                        |
+| W4     | Business Logic                   | Auth → Cart → Checkout → Order               |
+| W5     | API + Test + Deploy              | Mini Shop `v1.0.0` live                      |
+| **W6** | **Interview Readiness**          | **Pass coding test + technical interview**   |
+| W7     | Node.js Basic + Application Scale | Mở rộng job pool có chọn lọc                |
+| W8     | Interview Sprint                 | Tối ưu funnel → Offer                        |
+
+> **Từ Week 6, không còn học theo syllabus.**
+>
+> Interview và coding test bắt đầu quyết định em cần học gì tiếp theo.
+
+Một coding test thật hỏi SQL JOIN mà em fail → tối nay luyện JOIN.
+
+Một interviewer hỏi Laravel lifecycle mà em không trả lời được → tối nay review lifecycle.
+
+Không thấy Docker trong interview/JD target → **không tự nhiên dành ba ngày học Docker vì thấy nó “hay”.**
+
+---
+
+# 1. Weekly Summary
+
+| Ngày    | Trọng tâm                    | Technical Output                       | Job/Career Output                 | Evidence                 | Definition of Done                          |
+| ------- | ----------------------------- | -------------------------------------- | --------------------------------- | ------------------------ | ------------------------------------------- |
+| **D36** | PHP Coding Test               | 12 bài PHP timeboxed                   | Apply 3 jobs                      | `week06/php-test`        | ≥80%, không AI                              |
+| **D37** | SQL Coding Test               | 15 SQL business queries                | Apply 3 jobs                      | `week06/sql-test`        | ≥80%, không AI                              |
+| **D38** | Laravel Coding Test           | Build Employee CRUD ≤3h                | Apply 3 jobs                      | `week06/laravel-test`    | Working CRUD từ project trắng               |
+| **D39** | Debugging Test                | Diagnose + fix 10 bugs                 | Apply 3 jobs                      | `debugging-report.md`    | ≥8/10 root causes                           |
+| **D40** | Technical Interview           | PHP + OOP + SQL + Laravel mock         | Apply 3 jobs                      | Interview Scorecard      | ≥80% core questions                         |
+| **D41** | Project Defense + HR Story    | Defend Mini Shop + kể career story     | Apply 3 jobs                      | Recorded/self-reviewed mock | Project explanation ≤5 phút              |
+| **D42** | **Full Interview Simulation** | Coding + Technical + Live Change       | Apply 4 jobs + Funnel Review      | Week 6 Scorecard         | Candidate-ready hoặc remedial plan rõ       |
+
+### Target cuối Week 6
+
+- **22 applications trong tuần.**
+- Cumulative applications: **60**.
+- ≥3 coding tests mô phỏng hoàn chỉnh.
+- ≥2 technical interview mocks.
+- Có Error Log ghi lại mọi câu fail.
+- Mini Shop có thể trình bày trong **3–5 phút**.
+- Có thể code khi **không có AI**.
+- Có thể debug code chưa từng thấy.
+- Có thể nói rõ cái gì **biết / chưa biết / sẽ tìm thế nào**.
+- Nếu có interview thật → ưu tiên interview thật hơn bài trong giáo án.
+
+---
+
+# 2. Quy tắc mới từ Week 6
+
+## Rule 1 — AI OFF trong Test Mode
+
+Trong:
+
+- coding test;
+- mock interview;
+- live coding;
+- project defense;
+- debugging exam;
+
+**không dùng ChatGPT.**
+
+Sau khi hoàn thành mới bật AI để review.
+
+---
+
+## Rule 2 — Không học thuộc 300 câu interview
+
+Không dành cả ngày đọc:
+
+> “100 PHP interview questions.”
+
+Thay vào đó:
+
+```text
+Question
+↓
+Answer from memory
+↓
+Example from own project
+↓
+Follow-up question
+↓
+Find weakness
+↓
+Review weakness
+```
+
+---
+
+## Rule 3 — Mọi lỗi phải vào Error Log
+
+Tạo:
+
+`interview-error-log.md`
+
+| Date | Area | Question/Task | Why I Failed | Correct Concept | Retested? |
+| ---- | ---- | ------------- | ------------ | --------------- | --------- |
+|      | SQL  | LEFT JOIN     | confused INNER/LEFT | ...       |           |
+|      | Laravel | Middleware | vague explanation | ...         |           |
+
+Không ghi:
+
+> “Cần học SQL thêm.”
+
+Phải ghi chính xác:
+
+> “Không biết dùng HAVING sau GROUP BY.”
+
+---
+
+# 3. Prompt chuẩn — Mock Interview
+
+Dùng prompt này xuyên Week 6:
+
+> Tôi đang ứng tuyển Junior PHP/Laravel Backend Developer.
+>
+> Stack thực tế của tôi:
+>
+> PHP, OOP, MySQL, Laravel, REST API, Git.
+>
+> Project chính:
+>
+> Laravel Mini Shop với authentication, authorization, Product/Category, Cart, Checkout, Orders, REST API, automated tests và deployment.
+>
+> Hãy đóng vai Technical Interviewer.
+>
+> Quy tắc:
+>
+> - Không dạy tôi trước khi hỏi.
+> - Hỏi từng câu một.
+> - Không multiple choice.
+> - Sau câu trả lời, đánh giá:
+>     - Correct
+>     - Partial
+>     - Incorrect
+> - Nếu Partial/Incorrect, không đưa đáp án ngay. Hỏi một follow-up để tôi tự sửa.
+> - Sau follow-up mới giải thích.
+> - Thỉnh thoảng đào sâu câu trả lời thay vì đổi topic.
+> - Ưu tiên kiến thức Junior thực tế, không hỏi trivia hiếm.
+>
+> Ghi mọi câu tôi fail vào Error Log cuối interview.
+>
+> Không đánh giá dựa trên việc dùng thuật ngữ hoa mỹ. Đánh giá xem tôi có hiểu và áp dụng được không.
+>
+> Bắt đầu với câu đầu tiên.
+
+---
+
+# D36 — PHP Coding Test
+
+## Mục tiêu
+
+Kiểm tra:
+
+> Bỏ Laravel và AI đi, em còn code được bằng PHP không?
+
+Timebox:
+
+> **120 phút**
+
+Không Google solution.
+
+Được xem PHP documentation nếu quên syntax cụ thể.
+
+---
+
+# Part 1 — Warm-up: 30 phút
+
+### Q1
+
+Cho:
+
+```text
+[3, 7, 2, 9, 4, 7, 3]
+```
+
+Trả array không duplicate.
+
+---
+
+### Q2
+
+Tìm số lớn thứ hai.
+
+---
+
+### Q3
+
+Đếm frequency:
+
+```text
+["php", "sql", "php", "laravel", "php", "sql"]
+```
+
+Expected concept:
+
+```text
+php = 3
+sql = 2
+laravel = 1
+```
+
+---
+
+### Q4
+
+Reverse string **không dùng built-in reverse function**.
+
+---
+
+# Part 2 — Data Processing: 45 phút
+
+Cho:
+
+```text
+orders = [
+    [
+        customer => "A",
+        status => "completed",
+        total => 500000
+    ],
+    ...
+]
+```
+
+### Q5
+
+Total completed revenue.
+
+### Q6
+
+Revenue theo Customer.
+
+### Q7
+
+Customer có revenue cao nhất.
+
+### Q8
+
+Filter Orders >500k.
+
+---
+
+# Part 3 — OOP: 45 phút
+
+Requirement:
+
+```text
+PaymentInterface
+
+CashPayment
+BankTransferPayment
+```
+
+Order có:
+
+```text
+items
+customer
+paymentMethod
+```
+
+Implement:
+
+```text
+calculateTotal()
+checkout()
+```
+
+Không cần framework.
+
+---
+
+# Self Review
+
+Sau 120 phút tự đánh:
+
+| Item                | PASS/PARTIAL/FAIL |
+| ------------------- | ----------------- |
+| Array manipulation  |                   |
+| Loop                |                   |
+| Function            |                   |
+| Data transformation |                   |
+| OOP                 |                   |
+| Interface           |                   |
+| Naming              |                   |
+| Edge cases          |                   |
+
+Commit:
+
+```text
+week 6 php coding test - unaided
+```
+
+---
+
+# ChatGPT Review D36
+
+> Tôi vừa làm PHP Coding Test 120 phút không AI.
+>
+> Đây là requirement:
+>
+> [PASTE]
+>
+> Đây là solution:
+>
+> [PASTE]
+>
+> Không rewrite toàn bộ solution.
+>
+> Chấm từng question PASS/PARTIAL/FAIL.
+>
+> Với mỗi lỗi:
+>
+> 1. Bug ở đâu?
+> 2. Concept nào tôi chưa chắc?
+> 3. Complexity có vấn đề rõ ràng không?
+> 4. Cho tôi một bài tương tự nhưng khác dữ liệu để retest.
+>
+> Không cho solution bài retest.
+>
+> Cuối cùng ghi tối đa 5 weaknesses vào Error Log.
+
+---
+
+# Job Campaign D36
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **41**
+
+### DoD D36
+
+- 8 tasks + OOP challenge.
+- 120 phút.
+- Không AI.
+- Unaided commit.
+- ≥80%.
+- Failed concepts vào Error Log.
+- Retest failed questions.
+- +3 applications.
+
+---
+
+# D37 — SQL Coding Test
+
+## Mục tiêu
+
+SQL Week 2 đã qua khá lâu.
+
+Hôm nay kiểm tra xem skill còn thực sự dùng được không.
+
+---
+
+# Database
+
+Dùng schema mới:
+
+```text
+customers
+products
+categories
+orders
+order_items
+```
+
+Không dùng query cũ của Mini Shop.
+
+Seed đủ data.
+
+---
+
+# Test — 90 phút
+
+Viết query:
+
+1. List active products.
+2. Products thuộc Category `Laptop`.
+3. Top 5 expensive products.
+4. Orders của Customer X.
+5. Order Detail.
+6. Total của từng Order.
+7. Total revenue.
+8. Revenue theo Customer.
+9. Top 5 Customers by revenue.
+10. Best-selling Products.
+11. Revenue theo Category.
+12. Orders chưa có payment/completed state theo schema.
+13. Customers chưa từng đặt Order.
+14. Average Order Value.
+15. Revenue theo tháng.
+
+---
+
+# Follow-up — 30 phút
+
+Không code.
+
+Giải thích bằng miệng:
+
+### Q1
+
+INNER JOIN vs LEFT JOIN?
+
+### Q2
+
+WHERE vs HAVING?
+
+### Q3
+
+GROUP BY?
+
+### Q4
+
+Index là gì?
+
+### Q5
+
+Index có phải càng nhiều càng tốt?
+
+### Q6
+
+Transaction?
+
+### Q7
+
+Primary Key?
+
+### Q8
+
+Foreign Key?
+
+### Q9
+
+N+1 liên quan DB thế nào?
+
+### Q10
+
+SQL Injection?
+
+---
+
+# SQL Debug Challenge
+
+Cho query cố tình sai:
+
+```sql
+SELECT customers.name, SUM(order_items.quantity * order_items.unit_price)
+FROM customers
+JOIN orders
+JOIN order_items
+GROUP BY customers.id
+WHERE orders.status = 'completed';
+```
+
+Không chỉ sửa.
+
+Phải giải thích:
+
+> **Có những lỗi gì và vì sao?**
+
+---
+
+# Prompt Review D37
+
+> Đây là SQL Coding Test tôi vừa làm không AI.
+>
+> Schema:
+>
+> [...]
+>
+> Queries:
+>
+> [...]
+>
+> Không chỉ kiểm tra syntax.
+>
+> Review từng query theo:
+>
+> - Correctness
+> - JOIN logic
+> - Filtering
+> - Aggregation
+> - Edge cases
+>
+> Sau đó chọn 5 query tôi yếu nhất và tạo 5 business questions mới có độ khó tương đương.
+>
+> Không đưa solution.
+>
+> Cuối cùng update Error Log.
+
+---
+
+# Job Campaign
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **44**
+
+### DoD D37
+
+- 15 queries.
+- 90 phút.
+- 10 oral questions.
+- Debug challenge.
+- ≥80%.
+- Retest failures.
+- Error Log updated.
+- +3 applications.
+
+---
+
+# D38 — Laravel Coding Test
+
+## Mục tiêu
+
+Đây là simulation gần với bài tuyển Junior PHP/Laravel nhất.
+
+Timebox:
+
+> **180 phút**
+
+Không Mini Shop.
+
+Không copy code cũ.
+
+Không AI.
+
+---
+
+# Requirement — Employee Management
+
+Build Laravel app quản lý:
+
+```text
+departments
+employees
+```
+
+Employee:
+
+```text
+name
+email
+phone
+salary
+status
+department_id
+joined_at
+```
+
+---
+
+# Required Features
+
+### Department
+
+- List.
+- Create.
+
+### Employee
+
+- List.
+- Create.
+- Edit.
+- Delete.
+
+### Validation
+
+- email unique;
+- salary >0;
+- department exists;
+- status valid.
+
+### Listing
+
+Search:
+
+```text
+name/email
+```
+
+Filter:
+
+```text
+department
+status
+```
+
+Sort:
+
+```text
+salary
+joined_at
+```
+
+Pagination:
+
+```text
+10/page
+```
+
+---
+
+# Bonus nếu còn thời gian
+
+API:
+
+```text
+GET /api/employees
+```
+
+Không hy sinh core CRUD để làm bonus.
+
+---
+
+# Time Management
+
+```text
+00–15    Requirement
+15–35    DB design + migrations
+35–50    Models + relationships
+50–80    Routes/controllers
+80–135   CRUD
+135–155  Search/filter/pagination
+155–170  Validation/testing
+170–180  Cleanup
+```
+
+---
+
+# Commit
+
+Đúng 180 phút:
+
+```text
+week 6 laravel coding test - unaided
+```
+
+Dù chưa xong.
+
+---
+
+# Post-test Questions
+
+Tự trả lời:
+
+1. Em mất nhiều thời gian nhất ở đâu?
+2. Có stuck vì concept hay syntax?
+3. Có requirement nào bị bỏ?
+4. Có bug nào phát hiện cuối giờ?
+5. Nếu thêm 30 phút, em ưu tiên fix gì?
+6. Có đoạn code nào em không giải thích được không?
+
+---
+
+# Job Campaign D38
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **47**
+
+### DoD D38
+
+- Laravel project từ blank.
+- DB relationship.
+- CRUD.
+- Validation.
+- Search.
+- Filter.
+- Sort.
+- Pagination.
+- ≤180 phút.
+- Không AI.
+- ≥80% requirements.
+- +3 applications.
+
+---
+
+# D39 — Debugging Interview
+
+## Mục tiêu
+
+Developer không dành cả ngày viết code mới.
+
+Rất nhiều công việc thực tế là:
+
+> **“Nó đang lỗi. Tìm xem tại sao.”**
+
+Interviewer cũng có thể đưa code và hỏi:
+
+> “Đoạn này có vấn đề gì?”
+
+---
+
+# Debugging Protocol
+
+Mỗi bug phải đi theo:
+
+```text
+Expected
+↓
+Actual
+↓
+Reproduce
+↓
+Locate layer
+↓
+Hypothesis
+↓
+Evidence
+↓
+Root Cause
+↓
+Fix
+↓
+Retest
+```
+
+Không:
+
+> lỗi → Google → paste code → hết lỗi → không biết tại sao.
+
+---
+
+# 10 Bug Challenges
+
+Mentor hoặc ChatGPT chuẩn bị code lỗi.
+
+Phải có các nhóm:
+
+1. PHP variable/logic bug.
+2. Array loop bug.
+3. Laravel route bug.
+4. Validation bug.
+5. Eloquent relationship bug.
+6. SQL JOIN bug.
+7. Authorization bug.
+8. Checkout transaction bug.
+9. API status/response bug.
+10. Environment/configuration bug.
+
+---
+
+# Prompt tạo Debugging Exam
+
+> Tôi đang luyện debugging cho Junior PHP/Laravel interview.
+>
+> Tạo cho tôi một debugging challenge.
+>
+> Mỗi challenge phải gồm:
+>
+> - Requirement;
+> - Code snippet có 1–3 bugs;
+> - Expected behavior;
+> - Actual behavior/error.
+>
+> Không nói bug nằm đâu.
+>
+> Tôi sẽ trả lời:
+>
+> 1. Tôi cần kiểm tra gì đầu tiên?
+> 2. Hypothesis của tôi?
+> 3. Root cause?
+> 4. Fix?
+> 5. Retest thế nào?
+>
+> Chỉ sau khi tôi trả lời đầy đủ mới đánh giá.
+>
+> Tăng dần difficulty nhưng giữ ở mức Junior PHP/Laravel.
+>
+> Bắt đầu challenge #1.
+
+---
+
+# Debug Report
+
+Mỗi bug:
+
+```text
+BUG #
+
+Expected:
+Actual:
+
+First check:
+
+Hypothesis:
+
+Evidence:
+
+Root Cause:
+
+Fix:
+
+Retest:
+
+Lesson:
+```
+
+---
+
+# Career Task D39
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **50 applications**
+
+Đây là milestone đầu tiên đủ lớn để bắt đầu xem CV funnel nghiêm túc hơn.
+
+### DoD D39
+
+- 10 debugging challenges.
+- ≥8 root causes đúng.
+- Không random-fix.
+- Debug report.
+- Error Log updated.
+- +3 applications.
+
+---
+
+# D40 — Full Technical Interview
+
+## Mục tiêu
+
+Không code nhiều hôm nay.
+
+Phải **nói được cái mình biết**.
+
+Một ứng viên biết nhưng không giải thích được vẫn có thể fail technical interview.
+
+---
+
+# Round 1 — PHP: 10 câu
+
+Các topic interviewer phải cover:
+
+- array;
+- function;
+- scope;
+- OOP;
+- class/object;
+- inheritance;
+- interface;
+- abstract class;
+- exception;
+- dependency concept.
+
+Không cần hỏi trivia PHP obscure.
+
+---
+
+# Round 2 — SQL: 10 câu
+
+- PK/FK;
+- JOIN;
+- INNER/LEFT;
+- GROUP BY;
+- WHERE/HAVING;
+- aggregate;
+- index;
+- transaction;
+- SQL injection;
+- normalization basic.
+
+---
+
+# Round 3 — Laravel: 15 câu
+
+- request lifecycle basic;
+- route;
+- controller;
+- middleware;
+- model;
+- migration;
+- Eloquent;
+- relationship;
+- validation;
+- authentication;
+- authorization;
+- service container basic concept nếu đã gặp;
+- API;
+- error handling;
+- testing.
+
+---
+
+# Round 4 — Scenario: 5 câu
+
+Ví dụ:
+
+> Product List chậm sau khi có 10,000 products. Em kiểm tra gì?
+
+> User báo checkout tạo hai Orders. Em làm gì?
+
+> API trả 500 production nhưng local chạy. Em debug thế nào?
+
+> User A xem được Order User B. Đây là lỗi gì?
+
+> Business muốn thêm Coupon chỉ cho Category A. Em bắt đầu từ đâu?
+
+---
+
+# Interview Answer Framework
+
+Không trả lời như đọc sách.
+
+Dùng:
+
+```text
+1. Definition ngắn
+2. Why/when
+3. Example từ project
+```
+
+Ví dụ:
+
+> “Transaction là cách gom nhiều database operations thành một unit. Nếu một bước fail thì rollback. Trong Mini Shop em dùng nó ở checkout vì em phải tạo Order, OrderItems và update stock; em không muốn Order tồn tại một nửa nếu tạo OrderItem lỗi.”
+
+Đó mạnh hơn rất nhiều so với đọc definition.
+
+---
+
+# Prompt D40
+
+Dùng **Mock Interview Prompt chuẩn** ở đầu Week 6.
+
+Yêu cầu:
+
+> 40 questions total.
+>
+> Không cho tôi biết topic tiếp theo.
+>
+> Follow-up vào những câu tôi trả lời mơ hồ.
+>
+> Cuối cùng chấm riêng PHP / SQL / Laravel / Problem Solving.
+>
+> Ghi toàn bộ Partial/Incorrect vào Error Log.
+
+---
+
+# Job Campaign
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **53**
+
+### DoD D40
+
+- 40-question interview.
+- Không Google.
+- Không notes.
+- ≥80% core questions.
+- Không category nào <70%.
+- Error Log.
+- Failed questions reviewed/retested.
+- +3 applications.
+
+---
+
+# D41 — Project Defense + Career Story
+
+## Mục tiêu
+
+Có project tốt nhưng nói 20 phút vẫn chưa tới trọng tâm là một vấn đề.
+
+Em cần kể Mini Shop trong **3–5 phút**.
+
+---
+
+# 3-Minute Project Story
+
+Cấu trúc:
+
+### 1. Problem — 20 giây
+
+Project là gì?
+
+### 2. Users — 20 giây
+
+Ai dùng?
+
+### 3. Core Flow — 40 giây
+
+```text
+Login
+→ Product
+→ Cart
+→ Checkout
+→ Order
+```
+
+### 4. Technical Decisions — 60 giây
+
+Chọn 2–3 điểm:
+
+- relational DB;
+- transaction;
+- authorization;
+- API;
+- testing.
+
+### 5. Challenge — 40 giây
+
+Một bug/problem thật đã gặp.
+
+### 6. Result — 20 giây
+
+Live Demo + Tests + Deploy.
+
+---
+
+# Project Defense Questions
+
+Mentor đào sâu:
+
+1. Vì sao project này?
+2. Schema thế nào?
+3. Vì sao OrderItem?
+4. Vì sao unit_price?
+5. Checkout transaction?
+6. Nếu stock thay đổi?
+7. Double checkout?
+8. Authentication?
+9. Authorization?
+10. User A xem Order B?
+11. API?
+12. 401/403?
+13. Testing?
+14. Deployment?
+15. Production error debug?
+16. N+1?
+17. Feature khó nhất?
+18. Bug đáng nhớ nhất?
+19. Nếu có thêm một tuần sẽ cải thiện gì?
+20. Nếu traffic tăng 100× em sẽ làm gì đầu tiên?
+
+Câu 20:
+
+Không cần bắn:
+
+> Kubernetes + Kafka + Redis + microservices.
+
+Có thể bắt đầu:
+
+> “Em sẽ đo bottleneck trước, xem DB/query/application layer nào đang chịu tải rồi mới quyết định tối ưu.”
+
+---
+
+# HR Story — Không có bằng Đại học
+
+Đây là phần cần chuẩn bị, nhưng **không defensive**.
+
+Câu hỏi có thể là:
+
+> “Em không có bằng đại học, tại sao công ty nên tuyển em?”
+
+Không học thuộc một câu văn hoa mỹ.
+
+Cấu trúc câu trả lời:
+
+```text
+Acknowledge
+→ Evidence
+→ Learning ability
+→ Current capability
+→ Job readiness
+```
+
+Ví dụ tư duy:
+
+> Đúng, em không có bằng đại học chuyên ngành CNTT. Vì vậy em tập trung tạo evidence bằng sản phẩm và khả năng làm việc thực tế. Trong thời gian học em đã đi từ PHP/SQL tới Laravel, build và deploy một application có authentication, business flow, API và automated tests. Em cũng luyện coding test không AI để đảm bảo mình không chỉ làm theo tutorial. Em biết mình vẫn là Junior và còn nhiều thứ cần học, nhưng em có thể chứng minh những gì hiện tại em làm được qua project và GitHub.
+
+Không:
+
+> “Bằng cấp không quan trọng.”
+
+Đó vừa không cần thiết vừa dễ tạo cảm giác defensive.
+
+---
+
+# Career Change Story
+
+Chuẩn bị trả lời:
+
+> “Tại sao chuyển sang Developer?”
+
+Cấu trúc:
+
+```text
+Past
+↓
+Trigger
+↓
+What I did
+↓
+Evidence
+↓
+Why this role
+```
+
+Không kể biography 10 phút.
+
+---
+
+# Job Campaign D41
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **56**
+
+### DoD D41
+
+- Project pitch ≤5 phút.
+- 20 project questions.
+- Career-change story.
+- No-degree answer.
+- Strength/weakness answer.
+- Không exaggerate experience.
+- +3 applications.
+
+---
+
+# D42 — WEEK 6 FULL INTERVIEW SIMULATION
+
+## Mục tiêu
+
+Hôm nay mô phỏng một tuyển dụng gần thật nhất có thể.
+
+Không ChatGPT trong exam.
+
+Mentor đóng interviewer nếu có thể.
+
+---
+
+# ROUND 1 — Screening: 15 phút
+
+Trả lời:
+
+1. Introduce yourself.
+2. Why backend?
+3. Why PHP/Laravel?
+4. Tell me about your project.
+5. Why no CS degree?
+6. What are you looking for?
+7. When can you start?
+
+---
+
+# ROUND 2 — Coding: 45 phút
+
+## Problem
+
+Cho:
+
+```text
+orders
+```
+
+Mỗi order:
+
+```text
+customer
+status
+items
+```
+
+Mỗi item:
+
+```text
+product
+quantity
+price
+```
+
+Viết PHP function trả:
+
+> Top 3 Customers theo completed revenue.
+
+Output:
+
+```text
+Customer
+Revenue
+Order Count
+```
+
+Phải handle:
+
+- cancelled order;
+- empty orders;
+- multiple items;
+- same customer nhiều orders.
+
+---
+
+# ROUND 3 — SQL: 30 phút
+
+Schema:
+
+```text
+users
+orders
+order_items
+products
+```
+
+Query:
+
+> Top 5 users theo completed revenue trong 30 ngày gần nhất.
+
+Sau đó interviewer thay requirement:
+
+> Chỉ lấy user có ≥3 completed orders.
+
+Ứng viên phải sửa query.
+
+---
+
+# ROUND 4 — Technical: 30 phút
+
+10 questions ngẫu nhiên từ:
+
+```text
+PHP
+OOP
+SQL
+Laravel
+API
+Git
+Testing
+Deployment
+```
+
+Interviewer được follow-up.
+
+---
+
+# ROUND 5 — Project Defense: 20 phút
+
+Mở Mini Shop.
+
+Không slide.
+
+Không script.
+
+Interviewer chọn bất kỳ file/feature nào và hỏi:
+
+> File này làm gì?
+
+> Request đi đâu?
+
+> Tại sao viết thế này?
+
+> Nếu bỏ transaction thì sao?
+
+> Test đâu?
+
+Nếu có code trong flagship project mà em không hiểu:
+
+> đó là red flag cần sửa ngay.
+
+---
+
+# ROUND 6 — Live Change: 30 phút
+
+Requirement:
+
+> Admin Dashboard hiện có total revenue.
+>
+> Business muốn thêm:
+>
+> **Revenue trong 7 ngày gần nhất.**
+
+Yêu cầu:
+
+- API response.
+- Completed orders only.
+- Automated test.
+
+Không AI.
+
+---
+
+# ROUND 7 — Candidate Questions: 10 phút
+
+Ứng viên phải có câu hỏi cho interviewer.
+
+Ví dụ chủ đề:
+
+- Junior onboarding.
+- Team structure.
+- Code review.
+- First 3 months expectation.
+- Product/domain.
+- Development process.
+
+Không chỉ hỏi:
+
+> Lương bao nhiêu?
+
+Compensation có thể hỏi ở đúng stage, nhưng technical interview nên thể hiện sự quan tâm tới công việc.
+
+---
+
+# Week 6 Exam Score
+
+| Section                 | Weight   |
+| ----------------------- | -------- |
+| Screening/Communication | 10%      |
+| PHP Coding              | 15%      |
+| SQL                     | 15%      |
+| Technical Questions     | 20%      |
+| Project Defense         | 15%      |
+| Live Change             | 15%      |
+| Debugging/Reasoning     | 5%       |
+| Candidate Questions     | 5%       |
+| **TOTAL**               | **100%** |
+
+### ≥80
+
+**INTERVIEW READY**
+
+### 70–79
+
+**READY + targeted remediation**
+
+Không delay applications.
+
+### <70
+
+Không quay lại học từ Week 1.
+
+Lấy 3 weakest areas → **3-day repair sprint** → retest.
+
+---
+
+# Job Campaign D42
+
+Apply **4 jobs**.
+
+Week 6:
+
+| Day       | Applications |
+| --------- | ------------ |
+| D36       | 3            |
+| D37       | 3            |
+| D38       | 3            |
+| D39       | 3            |
+| D40       | 3            |
+| D41       | 3            |
+| D42       | 4            |
+| **TOTAL** | **22**       |
+
+Cumulative:
+
+> **60 applications**
+
+---
+
+# 4. Funnel Review — Sau 60 Applications
+
+Đây là lúc funnel bắt đầu trở thành **data để ra quyết định**, thay vì cảm giác.
+
+| Stage                | Count | Conversion |
+| -------------------- | ----- | ---------- |
+| Applications         | 60    | 100%       |
+| HR Contacts          |       |            |
+| Coding Tests         |       |            |
+| Technical Interviews |       |            |
+| Final Interviews     |       |            |
+| Offers               |       |            |
+| Rejected             |       |            |
+| Pending/No Response  |       |            |
+
+Không đặt một “tỷ lệ chuẩn” cứng nhắc vì thị trường, channel, JD và CV khác nhau.
+
+Thay vào đó, tìm **nơi funnel bị nghẽn**.
+
+---
+
+## Case A — 60 Apply → rất ít HR Contact
+
+**Không học thêm framework ngay.**
+
+Review:
+
+```text
+Targeting
+CV
+Headline
+Keywords
+No-degree filtering
+Project positioning
+Application channel
+Job freshness
+```
+
+Week 7 cần tăng chất lượng sourcing/application.
+
+---
+
+## Case B — Có HR → ít Coding Test/Technical
+
+Review:
+
+- screening answers;
+- salary;
+- communication;
+- CV consistency;
+- job fit.
+
+---
+
+## Case C — Có Coding Tests → fail nhiều
+
+Week 7 **không ưu tiên Node**.
+
+Dùng thời gian Node để repair:
+
+```text
+PHP
+SQL
+Laravel
+```
+
+> **Interview data được quyền override roadmap.**
+
+---
+
+## Case D — Coding Test pass → Technical fail
+
+Phân loại câu fail:
+
+```text
+Concept gap?
+Cannot explain?
+Project gap?
+Debugging?
+Communication?
+```
+
+Repair đúng category.
+
+---
+
+## Case E — Technical đi khá tốt
+
+Lúc này Week 7 có thể dùng Node.js Basic để mở thêm nhóm JD.
+
+---
+
+# 5. Interview Error Log — Bắt buộc
+
+Đến cuối Week 6, Error Log có thể trông như:
+
+| Area    | Weakness               | Count | Priority   |
+| ------- | ---------------------- | ----- | ---------- |
+| PHP     | Array manipulation     | 1     | Low        |
+| SQL     | HAVING                 | 3     | **High**   |
+| SQL     | LEFT JOIN edge case    | 2     | High       |
+| Laravel | Middleware explanation | 1     | Medium     |
+| Laravel | Request lifecycle      | 2     | High       |
+| API     | 401 vs 403             | 1     | Low        |
+| Project | Double checkout        | 2     | Medium     |
+
+Priority dựa trên:
+
+> **Frequency × Importance × Interview Evidence**
+
+Không dựa trên:
+
+> “Technology này nghe xịn.”
+
+---
+
+# 6. Daily Routine từ Week 6 trở đi
+
+Nếu không có interview thật, một ngày Candidate Mode nên gần như:
+
+```text
+45 min   Coding/SQL
+45 min   Technical interview
+30 min   Error Log remediation
+60 min   Applications
+30 min   Project defense / communication
+```
+
+Nếu có interview thật ngày mai:
+
+> **Bỏ syllabus.**
+
+Research company/JD → review relevant gaps → mock đúng role → interview.
+
+---
+
+# 7. Cách dùng ChatGPT sau một Interview thật
+
+Ngay sau interview, không hỏi:
+
+> “Em fail chưa?”
+
+Ghi lại toàn bộ câu nhớ được rồi dùng:
+
+> Tôi vừa phỏng vấn Junior PHP/Laravel.
+>
+> Đây là JD:
+>
+> [PASTE]
+>
+> Đây là các câu interviewer đã hỏi:
+>
+> [LIST]
+>
+> Đây là câu trả lời tôi đã đưa:
+>
+> [ANSWERS]
+>
+> Không đoán kết quả tuyển dụng.
+>
+> Với từng câu:
+>
+> 1. Interviewer đang kiểm tra competency gì?
+> 2. Câu trả lời của tôi Correct / Partial / Incorrect?
+> 3. Missing concept là gì?
+> 4. Đây là isolated gap hay recurring gap trong Error Log?
+>
+> Sau đó tạo một Remedial Plan tối đa 3 topics cho 48 giờ tới.
+>
+> Không đề xuất học technology ngoài JD chỉ vì nó liên quan.
+
+---
+
+# Definition of Done — WEEK 6
+
+### Coding
+
+- [ ]  PHP Coding Test.
+- [ ]  SQL Coding Test.
+- [ ]  Laravel Coding Test.
+- [ ]  Tất cả timeboxed.
+- [ ]  Tất cả có unaided attempt.
+- [ ]  Failed tasks được retest.
+
+### Debugging
+
+- [ ]  10 debugging challenges.
+- [ ]  ≥8 root causes đúng.
+- [ ]  Có Debug Reports.
+- [ ]  Không random trial-and-error.
+
+### Interview
+
+- [ ]  ≥2 mock technical interviews.
+- [ ]  PHP questions.
+- [ ]  SQL questions.
+- [ ]  Laravel questions.
+- [ ]  API questions.
+- [ ]  Scenario questions.
+- [ ]  Full D42 Simulation.
+
+### Project Defense
+
+- [ ]  3–5 minute Mini Shop pitch.
+- [ ]  Explain DB design.
+- [ ]  Explain Checkout.
+- [ ]  Explain Transaction.
+- [ ]  Explain Auth/AuthZ.
+- [ ]  Explain API.
+- [ ]  Explain Tests.
+- [ ]  Explain Deployment.
+- [ ]  Không có major code nào trong flagship project mà không giải thích được.
+
+### Career Story
+
+- [ ]  60-second self introduction.
+- [ ]  Why Developer?
+- [ ]  Why PHP/Laravel?
+- [ ]  No-degree answer.
+- [ ]  Project story.
+- [ ]  Strength.
+- [ ]  Genuine weakness + improvement.
+- [ ]  Questions for interviewer.
+
+### Job Campaign
+
+- [ ]  **22 applications Week 6.**
+- [ ]  **60 cumulative applications.**
+- [ ]  Application Funnel updated.
+- [ ]  Every real interview recorded.
+- [ ]  Every coding test recorded.
+- [ ]  Rejection reason chỉ ghi nếu biết.
+- [ ]  Interview Error Log maintained.
+- [ ]  Top 3 weaknesses identified.
+
+---
+
+# Cột mốc sau Week 6
+
+Đến đây câu hỏi không còn là:
+
+> **“Em đã học PHP/Laravel hết chưa?”**
+
+Không bao giờ có ngày học “hết”.
+
+Câu hỏi bây giờ là:
+
+> **“Nếu ngày mai có một công ty gọi em phỏng vấn Junior Backend, em có bước vào interview được không?”**
+
+Nếu câu trả lời là **có**, roadmap đang chạy đúng.
+
+Nếu em fail một câu SQL, một bài coding hay một interview, đó không phải tín hiệu để quay lại xem thêm 50 giờ tutorial. Nó là dữ liệu:
+
+**Fail → ghi Error Log → xác định root cause → luyện đúng gap → retest → tiếp tục apply.**
+
+---
+
+# Quan trọng trước khi sang Week 7
+
+Week 7 ban đầu có Node.js Basic. Nhưng **Node không phải môn bắt buộc chỉ vì roadmap đã viết nó**.
+
+Quyết định cuối Week 6 theo data:
+
+```text
+                    60 Applications
+                           │
+              ┌────────────┴────────────┐
+              ↓                         ↓
+       Core skill đang fail       Core skill đã ổn
+              │                         │
+              ↓                         ↓
+     Repair PHP/SQL/Laravel      Node.js Basic
+              │                         │
+              └────────────┬────────────┘
+                           ↓
+                    Keep Applying
+```
+
+> **Nếu PHP/SQL/Laravel vẫn làm mình fail coding test, học Node lúc này là phân tán.**
+>
+> **Nếu core stack đã đủ ổn và nhiều JD phù hợp thực sự yêu cầu thêm Node/JavaScript, Week 7 mới dùng Node để mở rộng cửa tuyển dụng.**
+>
+> Đó cũng chính là thay đổi lớn của nửa sau roadmap: **thị trường và interview thật bắt đầu điều khiển giáo án, không phải giáo án điều khiển thị trường.**

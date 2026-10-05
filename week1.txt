@@ -1,0 +1,1234 @@
+# Week 1
+
+# Tuần 1 — PHP Core + Bắt đầu quan sát thị trường tuyển dụng
+
+## Mục tiêu của tuần
+
+Tuần này **không học thêm framework mới**. Mục tiêu là kiểm tra và củng cố khả năng biến một yêu cầu đơn giản thành code PHP chạy được mà không phụ thuộc vào tutorial hoặc AI.
+
+Song song với việc học, bắt đầu **quan sát thị trường việc làm ngay từ ngày đầu tiên**. Chưa cần gửi CV hàng loạt. Việc đọc JD trong tuần này nhằm trả lời ba câu hỏi:
+
+1. Công ty đang tuyển Junior/Fresher PHP yêu cầu những gì?
+2. Những kỹ năng nào xuất hiện lặp lại nhiều nhất?
+3. So với những yêu cầu đó, mình đang thiếu gì?
+
+> **Nguyên tắc tuần 1:** Học để đi làm, không học để hoàn thành khóa học.
+
+---
+
+## 1. Weekly Summary
+
+| Ngày   | Chủ đề chính                     | Coding Output                                  | Job Search / Career Output                 | GitHub Output             | Definition of Done                      |
+| ------ | -------------------------------- | ---------------------------------------------- | ------------------------------------------ | ------------------------- | --------------------------------------- |
+| **D1** | PHP Array, Loop, Condition       | Product Analyzer có 7 chức năng                | Tìm 5 JD PHP Intern/Fresher/Junior         | `day01-product-analyzer`  | 7/7 chức năng chạy + lưu 5 JD           |
+| **D2** | Function & Problem Breakdown     | Refactor Product Analyzer thành functions      | Đọc 5 JD mới, bắt đầu bảng Skill Frequency | `day02-product-functions` | Functions hoạt động + tổng 10 JD        |
+| **D3** | OOP cơ bản                       | Mini Shop: Product, Customer, Order, OrderItem | Phân tích 10 JD đầu tiên                   | `day03-oop-shop`          | Order chạy đúng + có Skill Gap v1       |
+| **D4** | Interface & Dependency           | Payment: Cash/Bank/Momo                        | Tìm thêm 5 JD phù hợp nhất                 | `day04-payment-interface` | Giải thích được interface + tổng 15 JD  |
+| **D5** | Validation, Exception, Debugging | 8 test cases + ≥3 bug reports                  | Chọn 5 công ty/job muốn apply sau này      | `day05-debugging`         | 8/8 test pass + shortlist 5 jobs        |
+| **D6** | Git, README, Project Hygiene     | Repo có cấu trúc và README hoàn chỉnh          | Tạo Job Tracker + CV Skeleton              | Cleanup toàn repo         | Clone repo mới và chạy được bằng README |
+| **D7** | **Week 1 Exam**                  | CLI Inventory Manager trong 120 phút không AI  | Review 15 JD + xác định Top 10 skills      | `day07-week1-exam`        | ≥80/100 = PASS                          |
+
+### Đầu ra bắt buộc cuối tuần
+
+Kết thúc D7 phải có **4 sản phẩm nhìn thấy được**:
+
+**A. GitHub:** 1 repository chứa toàn bộ bài Week 1.
+
+**B. Job Tracker:** ít nhất **15 JD thật** đã đọc và phân loại.
+
+**C. Skill Gap:** biết Top skills thị trường đang yêu cầu và bản thân đang ở mức nào.
+
+**D. Week 1 Exam:** một project được code trong 120 phút **không dùng AI**.
+
+---
+
+# 2. Quy tắc sử dụng ChatGPT trong toàn bộ tuần
+
+ChatGPT được sử dụng như **mentor, reviewer và interviewer**.
+
+ChatGPT **không phải người làm bài thay em**.
+
+Trong Week 1, sử dụng 4 mode sau.
+
+### Mode 1 — Tutor
+
+Dùng khi chưa hiểu concept.
+
+Copy prompt:
+
+> Tôi đang học để ứng tuyển Junior PHP Backend Developer.
+>
+> Chủ đề hiện tại của tôi là: **[CHỦ ĐỀ]**.
+>
+> Tôi muốn hiểu để tự code, không muốn nhận đáp án.
+>
+> Quy tắc:
+>
+> - Giải thích ở trình độ Junior.
+> - Dùng ví dụ đơn giản.
+> - Sau khi giải thích, hỏi tôi 3 câu để kiểm tra tôi hiểu chưa.
+> - Không viết solution cho bài tập hiện tại của tôi.
+>
+> Đây là phần tôi chưa hiểu:
+>
+> **[VIẾT CÂU HỎI]**
+
+### Mode 2 — Coding Coach
+
+Dùng khi đang làm bài nhưng bí.
+
+> Tôi đang tự làm bài PHP sau:
+>
+> **[PASTE REQUIREMENT]**
+>
+> Đây là code hiện tại:
+>
+> **[PASTE CODE]**
+>
+> Tôi đang mắc ở:
+>
+> **[MÔ TẢ CHỖ BÍ]**
+>
+> Không viết code hoàn chỉnh cho tôi.
+>
+> Hãy:
+>
+> 1. Kiểm tra cách tôi đang suy nghĩ.
+> 2. Nếu sai, chỉ ra concept tôi đang hiểu sai.
+> 3. Cho tôi đúng **một gợi ý tiếp theo**.
+> 4. Dừng lại để tôi tự sửa.
+>
+> Chỉ đưa code nếu tôi nói: **“Cho tôi đáp án.”**
+
+### Mode 3 — Debugging Partner
+
+> Tôi đang luyện debugging PHP.
+>
+> Expected result:
+>
+> **[...]**
+>
+> Actual result:
+>
+> **[...]**
+>
+> Error:
+>
+> **[...]**
+>
+> Code:
+>
+> **[...]**
+>
+> Không sửa code cho tôi.
+>
+> Mỗi lần chỉ yêu cầu tôi kiểm tra **một thứ** và giải thích tại sao cần kiểm tra nó.
+>
+> Chờ tôi trả kết quả rồi mới đưa bước tiếp theo.
+>
+> Mục tiêu là giúp tôi tự tìm root cause.
+
+### Mode 4 — Interviewer
+
+Chỉ dùng **sau khi hoàn thành bài**.
+
+> Tôi vừa tự hoàn thành bài này:
+>
+> **[REQUIREMENT]**
+>
+> Code:
+>
+> **[CODE]**
+>
+> Đóng vai Technical Interviewer tuyển Junior PHP.
+>
+> Không rewrite code.
+>
+> Hãy:
+>
+> 1. Review correctness.
+> 2. Chỉ ra tối đa 5 vấn đề quan trọng.
+> 3. Hỏi tôi 10 câu dựa trực tiếp trên code.
+> 4. Hỏi từng câu một.
+> 5. Chờ tôi trả lời.
+> 6. Sau mỗi câu, đánh giá `Correct / Partial / Incorrect`.
+> 7. Nếu Partial/Incorrect, giải thích phần kiến thức tôi thiếu.
+>
+> Bắt đầu bằng câu số 1.
+
+---
+
+# D1 — Product Analyzer
+
+## Mục tiêu
+
+Ôn lại:
+
+`Array → foreach → if/else → sort → search → calculation`
+
+Mục tiêu không phải học syntax mới mà kiểm tra:
+
+> **Nhìn requirement → tự nghĩ được code cần làm gì hay chưa?**
+
+### Coding Task
+
+Tạo 10 sản phẩm.
+
+Mỗi sản phẩm có:
+
+```
+id
+name
+category
+price
+stock
+```
+
+Chương trình phải thực hiện được:
+
+1. List toàn bộ products.
+2. Filter products có `price > 100000`.
+3. Tìm product đắt nhất.
+4. Sort price từ cao → thấp.
+5. Tính total stock.
+6. Tính inventory value = `Σ price × stock`.
+7. Search product theo name.
+
+### Quy trình làm
+
+**Bước 1 — 15 phút:** đọc requirement và viết bằng comment mình định làm gì.
+
+**Bước 2 — 60 phút:** tự code, chưa dùng ChatGPT.
+
+**Bước 3 — Nếu bí >15 phút:** sử dụng Coding Coach Prompt.
+
+**Bước 4 — 30 phút:** tự thay data để test.
+
+**Bước 5 — 15 phút:** cleanup code.
+
+### GitHub
+
+```
+week01/
+└── day01-product-analyzer/
+    ├── product_analyzer.php
+    └── README.md
+```
+
+README ghi:
+
+```
+What I built
+How to run
+Features
+Example output
+What I learned
+What I struggled with
+```
+
+---
+
+## Job Search Task D1
+
+Tìm **5 JD thật** với các keyword:
+
+```
+PHP Intern
+PHP Fresher
+Junior PHP Developer
+Junior Backend PHP
+Laravel Fresher
+```
+
+Không cần quan tâm mình đủ tiêu chuẩn chưa.
+
+Tạo file:
+
+`job-tracker.xlsx` hoặc Google Sheet/Notion Database.
+
+Các cột:
+
+| Company | Position | Level | PHP | Laravel | SQL | Git | JS  | Node | English | Experience | Degree | Link | Interested? |
+| ------- | -------- | ----- | --- | ------- | --- | --- | --- | ---- | ------- | ---------- | ------ | ---- | ----------- |
+
+Chỉ ghi **những gì JD thực sự yêu cầu**.
+
+Không tự diễn giải.
+
+### Output D1
+
+**5 JD đã được nhập vào Job Tracker.**
+
+---
+
+## Knowledge Check D1
+
+Tự trả lời, không Google:
+
+1. Array dùng để giải quyết vấn đề gì?
+2. `foreach` dùng để làm gì?
+3. Trong `foreach ($products as $product)`, $product là gì?
+4. Nếu thêm product thứ 11, logic có cần sửa không?
+5. Làm sao tìm product price lớn nhất mà không hard-code?
+6. Search product cần input gì và trả output gì?
+7. `sort` và `filter` khác nhau thế nào?
+8. Inventory value khác total stock thế nào?
+
+### Definition of Done D1
+
+- 7/7 functions hoạt động.
+- `Không hard-code result.
+- Thêm product thứ 11 không phải sửa logic.
+- ≥7/8 Knowledge Check đúng.
+- README hoàn thành.
+- GitHub đã push.
+- Job Tracker có **5 JD**.
+
+---
+
+# D2 — Functions & Problem Breakdown
+
+## Mục tiêu
+
+Học cách biến một chương trình đang chạy thành những phần nhỏ dễ hiểu.
+
+Không tạo project mới.
+
+Lấy Product Analyzer D1 và refactor.
+
+### Coding Task
+
+Tạo ít nhất:
+
+```
+getProductsByMinimumPrice()
+findMostExpensiveProduct()
+calculateTotalStock()
+calculateInventoryValue()
+searchProductsByName()
+sortProductsByPrice()
+```
+
+Trước mỗi function, tự ghi:
+
+```
+INPUT:
+OUTPUT:
+RESPONSIBILITY:
+```
+
+Ví dụ tư duy:
+
+```
+INPUT: products + keyword
+OUTPUT: matching products
+RESPONSIBILITY: search products by name
+```
+
+Không xác định được ba thứ trên → chưa code.
+
+---
+
+## Challenge
+
+Sau khi hoàn thành:
+
+> Thêm `filterProductsByCategory()`.
+
+**Timebox: 10 phút. Không ChatGPT.**
+
+---
+
+## Job Search Task D2
+
+Tìm thêm **5 JD**.
+
+Tổng Job Tracker = **10 jobs**.
+
+Sau đó tạo bảng:
+
+### Skill Frequency v0.1
+
+| Skill      | Số JD yêu cầu |
+| ---------- | ------------- |
+| PHP        |               |
+| Laravel    |               |
+| MySQL      |               |
+| Git        |               |
+| HTML/CSS   |               |
+| JavaScript |               |
+| REST API   |               |
+| Node.js    |               |
+| Docker     |               |
+| English    |               |
+| Degree     |               |
+| Experience |               |
+
+Không kết luận gì cả.
+
+**Chỉ đếm.**
+
+Mục tiêu là bắt đầu nhìn thị trường bằng dữ liệu thay vì cảm giác:
+
+> “Em thấy mấy công ty yêu cầu Node nên chắc phải học Node.”
+
+Có thể đúng. Có thể không.
+
+**Đếm trước.**
+
+---
+
+## Knowledge Check D2
+
+1. Function giải quyết vấn đề gì?
+2. Parameter là gì?
+3. Return value là gì?
+4. Function không `return` thì chuyện gì xảy ra?
+5. Tại sao không để toàn bộ chương trình trong một function?
+6. Khi nào nên tách một đoạn code thành function?
+7. `searchProducts()` nên sửa array gốc hay return result?
+8. Nếu search bị lỗi, em sẽ bắt đầu kiểm tra ở đâu?
+9. Function 150 dòng có dấu hiệu gì đáng xem lại?
+10. Tại sao tên function quan trọng?
+
+### DoD D2
+
+- ≥6 functions hoạt động.
+- Category filter hoàn thành ≤10 phút.
+- ≥8/10 Knowledge Check.
+- GitHub push.
+- Job Tracker = **10 jobs**.
+- Có Skill Frequency v0.1.
+
+---
+
+# D3 — OOP Mini Shop
+
+## Mục tiêu
+
+Hiểu:
+
+**Class / Object / Property / Method / Constructor / Encapsulation**
+
+Không học định nghĩa trước rồi thuộc lòng.
+
+Bắt đầu từ business.
+
+### Requirement
+
+Xây mini shop có:
+
+```
+Product
+Customer
+Order
+OrderItem
+```
+
+Scenario:
+
+```
+Customer: Minh
+
+2 x Keyboard × 350,000
+1 x Mouse × 200,000
+
+Total = 900,000
+```
+
+---
+
+## Phase 1 — Design trước khi code
+
+Tạo:
+
+`design.md`
+
+Tự trả lời:
+
+```
+PRODUCT
+Có dữ liệu gì?
+Có hành vi gì?
+
+CUSTOMER
+Có dữ liệu gì?
+Có hành vi gì?
+
+ORDER
+Có dữ liệu gì?
+Có hành vi gì?
+
+ORDER ITEM
+Có dữ liệu gì?
+Tại sao cần object này?
+```
+
+### Prompt ChatGPT
+
+> Tôi đang thiết kế OOP Mini Shop trước khi code.
+>
+> Tôi có Product, Customer, Order và OrderItem.
+>
+> Đây là thiết kế:
+>
+> [PASTE DESIGN]
+>
+> Không thiết kế lại cho tôi.
+>
+> Hãy đóng vai Senior PHP Developer.
+>
+> Kiểm tra xem tôi có đặt responsibility sai object không.
+>
+> Mỗi lần chỉ hỏi tôi **một câu** kiểu:
+>
+> “Dữ liệu X nên thuộc object nào và tại sao?”
+>
+> Không đưa đáp án trước khi tôi trả lời.
+>
+> Sau mỗi câu đánh giá `Correct / Partial / Incorrect`.
+
+Sau đó mới code.
+
+---
+
+## Job Search Task D3
+
+Không tìm job mới.
+
+Phân tích **10 JD hiện có**.
+
+Tạo:
+
+### My Skill Gap v0.1
+
+| Skill   | Market Frequency | Mức hiện tại | Evidence    | Gap      |
+| ------- | ---------------- | ------------ | ----------- | -------- |
+| PHP     | 10/10            | Basic        | Week 1 repo | Practice |
+| Laravel | 8/10             | ...          | ...         | ...      |
+| SQL     | 9/10             | ...          | ...         | ...      |
+| Git     | ...              | ...          | ...         | ...      |
+
+Mức hiện tại chỉ dùng:
+
+```
+0 = Chưa biết
+1 = Biết concept
+2 = Làm được có hướng dẫn
+3 = Tự làm được bài Junior
+```
+
+**Không tự cho level 4–5.**
+
+Tuần này mục tiêu là biết mình đang đứng đâu.
+
+---
+
+## Knowledge Check D3
+
+1. Class khác Object thế nào?
+2. `new Product()` tạo ra gì?
+3. Property là gì?
+4. Method là gì?
+5. Constructor dùng để làm gì?
+6. `private` để làm gì?
+7. Vì sao quantity khách mua nằm ở OrderItem chứ không phải Product?
+8. Một Product có thể nằm trong nhiều Orders không?
+9. `calculateTotal()` nên thuộc Order hay Product?
+10. Nếu thêm `weight` cho Product, object nào cần thay đổi?
+
+### DoD D3
+
+- `design.md` hoàn thành trước code.
+- 4 classes hoạt động.
+- Total đúng.
+- Đổi quantity → total tự đổi.
+- ≥8/10 questions.
+- GitHub push.
+- `Skill Gap v0.1` hoàn thành.
+
+---
+
+# D4 — Interface qua Payment
+
+## Mục tiêu
+
+Không học:
+
+> “Interface là...”
+
+Mà phải hiểu:
+
+> **Tại sao project của mình cần nó?**
+
+### Phase 1 — Chưa dùng Interface
+
+Implement:
+
+```
+CashPayment
+BankTransferPayment
+```
+
+Cho app chạy.
+
+Sau đó requirement thay đổi:
+
+> Thêm Momo.
+
+Sau đó:
+
+> Tương lai sẽ thêm ZaloPay/CreditCard.
+
+Quan sát code bắt đầu có vấn đề gì.
+
+### Phase 2
+
+Refactor thành:
+
+```
+PaymentInterface
+├── CashPayment
+├── BankTransferPayment
+└── MomoPayment
+```
+
+Sau khi xong:
+
+> Tự thêm `ZaloPayPayment`.
+
+**Timebox: 10 phút.**
+
+---
+
+## Prompt ChatGPT
+
+> Tôi đang học PHP Interface thông qua project của mình.
+>
+> Hiện tại payment code của tôi là:
+>
+> [CODE]
+>
+> Requirement ban đầu:
+>
+> Cash + Bank Transfer.
+>
+> Requirement mới:
+>
+> Momo.
+>
+> Tương lai có thể thêm ZaloPay/Credit Card.
+>
+> Tôi không muốn học thuộc định nghĩa Interface.
+>
+> Không viết code.
+>
+> Hãy dẫn tôi tự trả lời:
+>
+> 1. Thiết kế hiện tại bắt đầu có vấn đề gì?
+> 2. Nếu payment method tăng lên 10 thì điều gì xảy ra?
+> 3. Các payment method có điểm chung gì?
+> 4. Interface có thể tạo ra contract nào?
+>
+> Mỗi lần chỉ hỏi một câu.
+>
+> Sau khi tôi tự nhận ra solution mới được giải thích Interface.
+
+---
+
+## Job Search D4
+
+Tìm thêm **5 JD**.
+
+Tổng = **15 JD**.
+
+Ưu tiên:
+
+```
+Intern PHP
+Fresher PHP
+Junior PHP
+Junior Laravel
+Backend Developer PHP
+```
+
+Nếu JD yêu cầu Node.js → vẫn lưu.
+
+Nếu yêu cầu degree → vẫn lưu.
+
+Nếu yêu cầu 1 năm experience → vẫn lưu.
+
+**Không tự reject.**
+
+Update Skill Frequency.
+
+---
+
+## Knowledge Check D4
+
+1. Interface giải quyết vấn đề gì **trong project này**?
+2. Bỏ interface thì chương trình có chạy được không?
+3. Vậy tại sao vẫn dùng?
+4. `implements` nghĩa là gì?
+5. PaymentInterface yêu cầu class implement điều gì?
+6. Có nên tạo interface cho mọi class không?
+7. Nếu thêm ZaloPay thì cần tạo gì?
+8. Order có cần biết đang dùng Momo hay Cash không?
+9. Interface khác class ở đâu?
+10. Nếu chỉ có đúng một payment method và chắc chắn không thay đổi, interface có nhất thiết cần không?
+
+### DoD D4
+
+- Cash/Bank/Momo chạy.
+- Thêm ZaloPay ≤10 phút.
+- ≥8/10 questions.
+- Tổng **15 JD**.
+- Skill Frequency cập nhật.
+- GitHub push.
+
+---
+
+# D5 — Validation, Exception & Debugging
+
+## Mục tiêu
+
+Học cách xử lý code khi **mọi thứ không diễn ra như mong muốn**.
+
+Hôm nay không thêm feature.
+
+Hôm nay:
+
+> **Phá chương trình.**
+
+### Test Cases
+
+| #   | Input                 | Expected |
+| --- | --------------------- | -------- |
+| 1   | quantity = 0          | Reject   |
+| 2   | quantity = -1         | Reject   |
+| 3   | stock = 3, order = 5  | Reject   |
+| 4   | price = -100          | Reject   |
+| 5   | Product không tồn tại | Reject   |
+| 6   | Empty order checkout  | Reject   |
+| 7   | quantity = stock      | Success  |
+| 8   | Normal order          | Success  |
+
+Tạo `test_cases.md`.
+
+Mỗi bug ghi:
+
+```
+BUG:
+
+EXPECTED:
+
+ACTUAL:
+
+HOW TO REPRODUCE:
+
+WHERE I THINK IT IS:
+
+WHAT I CHECKED:
+
+ROOT CAUSE:
+
+FIX:
+
+RETEST RESULT:
+```
+
+---
+
+## Job Search D5 — Shortlist
+
+Từ 15 jobs, chọn:
+
+### 5 Target Jobs
+
+Tiêu chí:
+
+- Có PHP/backend.
+- Level không quá xa.
+- Stack có phần lớn thứ mình đang học.
+- Job mình thực sự muốn thử apply.
+
+Không yêu cầu phải match 100%.
+
+Tạo thêm:
+
+| Job | Why interested | Match | Missing | Apply now? |
+| --- | -------------- | ----- | ------- | ---------- |
+| A   | PHP/Laravel    | ~70%  | SQL     | Soon       |
+| B   | PHP + Node     | ~60%  | Node    | Later      |
+
+Không cần tính match bằng công thức chính xác.
+
+Mục tiêu chỉ là học cách **đọc JD và nhận diện gap**.
+
+---
+
+## Knowledge Check D5
+
+1. Validation để làm gì?
+2. Validation nên xảy ra trước hay sau khi lưu dữ liệu?
+3. Exception là gì?
+4. `try/catch` dùng để làm gì?
+5. Có phải mọi lỗi đều nên dùng exception?
+6. Expected và Actual khác nhau giúp debug thế nào?
+7. Reproduce bug nghĩa là gì?
+8. Root cause khác symptom thế nào?
+9. Khi user nói “checkout lỗi”, bước đầu tiên em làm gì?
+10. Sau khi fix bug tại sao phải retest?
+
+### DoD D5
+
+- 8/8 cases xử lý đúng.
+- Có ≥3 bug reports hoàn chỉnh.
+- ≥8/10 Knowledge Check.
+- Có shortlist **5 Target Jobs**.
+- GitHub push.
+
+---
+
+# D6 — GitHub + README + CV Skeleton
+
+## Mục tiêu
+
+Code tốt nhưng người khác không chạy được → portfolio chưa có giá trị.
+
+### Git Task
+
+Repo phải thành:
+
+```
+junior-backend-roadmap/
+│
+├── README.md
+├── week01/
+│   ├── day01-product-analyzer/
+│   ├── day02-product-functions/
+│   ├── day03-oop-shop/
+│   ├── day04-payment-interface/
+│   └── day05-debugging/
+│
+└── .gitignore
+```
+
+Clone repository sang một folder mới.
+
+**Không sử dụng folder đang code.**
+
+Làm đúng README để chạy project.
+
+Nếu không chạy được → README chưa đạt.
+
+---
+
+## Career Task D6 — Job Tracker + CV Skeleton
+
+### Part A — Clean Job Tracker
+
+15 JD phải có đủ:
+
+```
+Company
+Position
+Level
+Stack
+Experience
+Degree
+English
+Link
+Status
+Notes
+```
+
+Status dùng:
+
+```
+Saved
+Target
+Applied
+HR Screen
+Test
+Technical
+Final
+Rejected
+Offer
+```
+
+### Part B — CV Skeleton
+
+**Chưa cần viết CV đẹp.**
+
+Tạo document:
+
+```
+NAME
+
+JUNIOR BACKEND DEVELOPER
+PHP / LARAVEL
+
+CONTACT
+...
+
+TECHNICAL SKILLS
+
+PHP
+Laravel
+MySQL
+Git
+REST API
+...
+
+PROJECTS
+
+Project 1:
+- Problem
+- What I built
+- Technology
+- GitHub
+- Demo
+
+Project 2:
+...
+
+EDUCATION / LEARNING
+
+...
+```
+
+Không bịa experience.
+
+Không tự gọi mình:
+
+`Software Architect`
+
+`Senior Backend`
+
+`Full-stack Expert`
+
+Headline mục tiêu:
+
+> **Junior Backend Developer — PHP/Laravel**
+
+---
+
+## Prompt ChatGPT — CV
+
+> Tôi đang chuẩn bị CV để tìm job đầu tiên Junior Backend PHP.
+>
+> Tôi chưa có kinh nghiệm developer chuyên nghiệp và không muốn phóng đại năng lực.
+>
+> Đây là CV skeleton:
+>
+> [PASTE]
+>
+> Đây là những project tôi thực sự đã làm:
+>
+> [PASTE]
+>
+> Không viết CV thay tôi.
+>
+> Hãy đóng vai recruiter tuyển Junior Developer và cho tôi biết:
+>
+> 1. Phần nào recruiter chưa hiểu?
+> 2. Phần nào quá chung chung?
+> 3. Claim nào tôi chưa có evidence?
+> 4. Project nào đáng đưa lên trước?
+> 5. Tôi còn thiếu thông tin gì?
+>
+> Trả về checklist để tôi tự sửa.
+
+---
+
+## Knowledge Check D6
+
+1. Git khác GitHub thế nào?
+2. Commit khác push thế nào?
+3. Repository là gì?
+4. `.gitignore` dùng làm gì?
+5. Tại sao không commit `.env`?
+6. Nếu đã push password rồi sau đó delete file thì secret đã an toàn chưa?
+7. Một commit tốt nên chứa loại thay đổi như thế nào?
+8. README phục vụ ai?
+9. Recruiter mở GitHub thì em muốn họ thấy gì trước?
+10. Tại sao project quan trọng với ứng viên chưa có experience?
+
+### DoD D6
+
+- Clone repo mới → chạy được.
+- README đủ hướng dẫn.
+- `.gitignore` đúng.
+- Không có secret.
+- 15 JD sạch.
+- CV Skeleton có.
+- ≥8/10 questions.
+
+---
+
+# D7 — WEEK 1 EXAM + MARKET REVIEW
+
+## Part 1 — Coding Exam
+
+### CLI Inventory Manager
+
+Product:
+
+```
+id
+name
+category
+price
+stock
+```
+
+Menu:
+
+```
+1. List Products
+2. Add Product
+3. Edit Product
+4. Delete Product
+5. Search Product
+6. Filter Category
+7. Sort By Price
+8. Inventory Summary
+0. Exit
+```
+
+Summary:
+
+```
+Total Products
+Total Stock
+Inventory Value
+Most Expensive Product
+```
+
+Data:
+
+```
+products.json
+```
+
+Restart application → data vẫn còn.
+
+---
+
+## Luật thi
+
+**120 phút đầu không ChatGPT.**
+
+Không xem lại solution cũ.
+
+Timeline:
+
+```
+00–10   Breakdown requirement
+10–90   Coding
+90–110  Testing
+110–120 Cleanup
+```
+
+Đúng phút 120:
+
+```
+git commit -m "week 1 exam - unaided"
+```
+
+**Commit trước khi mở ChatGPT.**
+
+---
+
+# Part 2 — ChatGPT Technical Interview
+
+Sau khi commit:
+
+> Tôi vừa hoàn thành Week 1 PHP Exam trong 120 phút và không dùng AI.
+>
+> Requirement:
+>
+> [PASTE]
+>
+> Code:
+>
+> [PASTE]
+>
+> Đóng vai Technical Interviewer tuyển Junior PHP Developer.
+>
+> Không rewrite code và chưa đưa solution.
+>
+> PHASE 1:
+>
+> - Check từng requirement PASS/FAIL.
+> - Chỉ ra tối đa 5 vấn đề quan trọng.
+>
+> PHASE 2:
+>
+> - Hỏi tôi 10 câu technical dựa trực tiếp trên code.
+> - Hỏi từng câu một.
+> - Chờ tôi trả lời.
+> - Đánh giá Correct / Partial / Incorrect.
+> - Nếu tôi sai, giải thích concept.
+>
+> PHASE 3:
+>
+> - Đưa tôi đúng 2 change requests nhỏ giống interviewer yêu cầu sửa live.
+> - Không hướng dẫn cách làm.
+>
+> Bắt đầu Phase 1.
+
+Sau review và sửa:
+
+```
+git commit -m "week 1 exam - fixes after review"
+```
+
+---
+
+# Part 3 — Job Market Review
+
+Lấy **15 JD** đã thu thập.
+
+Tạo bảng cuối tuần:
+
+## Week 1 Market Snapshot
+
+| Skill      | # / 15 Jobs | Mình đang ở đâu? |
+| ---------- | ----------- | ---------------- |
+| PHP        |             |                  |
+| Laravel    |             |                  |
+| MySQL      |             |                  |
+| REST API   |             |                  |
+| Git        |             |                  |
+| JavaScript |             |                  |
+| Node.js    |             |                  |
+| Docker     |             |                  |
+| English    |             |                  |
+| Degree     |             |                  |
+| Experience |             |                  |
+
+Sau đó tự trả lời 5 câu:
+
+### Career Check
+
+**1. Ba technical skills xuất hiện nhiều nhất là gì?**
+
+**2. Node.js thực sự xuất hiện bao nhiêu /15 JD?**
+
+Đây là dữ liệu để quyết định sau này có cần ưu tiên Node hay không.
+
+**3. Bao nhiêu job yêu cầu degree?**
+
+**4. Bao nhiêu job mình thấy có thể thử apply sau 4–6 tuần nữa?**
+
+**5. Ba gap lớn nhất hiện tại của mình là gì?**
+
+Lưu câu trả lời vào:
+
+`week01-market-review.md`
+
+---
+
+# Week 1 Final Mentor Check
+
+Sau khi hoàn thành toàn bộ tuần, chuẩn bị share screen.
+
+Mentor có thể hỏi bất kỳ câu nào sau đây mà không báo trước:
+
+1. Array là gì?
+2. `foreach` làm gì?
+3. Filter khác search thế nào?
+4. Function để làm gì?
+5. Parameter và return value khác nhau thế nào?
+6. Class và object khác nhau thế nào?
+7. Constructor làm gì?
+8. `private` để làm gì?
+9. Quantity của một order nên nằm ở Product hay OrderItem?
+10. Vì sao?
+11. Interface giải quyết vấn đề gì trong Payment?
+12. Bỏ interface app có chạy không?
+13. Khi nào không cần interface?
+14. Validation để làm gì?
+15. Exception để làm gì?
+16. Khi code cho result sai, em debug theo trình tự nào?
+17. Root cause khác symptom thế nào?
+18. Commit khác push thế nào?
+19. `.gitignore` để làm gì?
+20. Tại sao không được commit secret?
+
+Sau phần hỏi đáp:
+
+> **Live Change — 15 phút**
+>
+> Thêm chức năng:
+>
+> `Filter Product By Price Range`
+>
+> Input:
+>
+> `minPrice`
+>
+> `maxPrice`
+>
+> Không ChatGPT.
+
+---
+
+# Week 1 Scorecard
+
+| Category                    | Weight   |
+| --------------------------- | -------- |
+| D7 unaided coding exam      | **35%**  |
+| Live change                 | **15%**  |
+| Technical Q&A               | **20%**  |
+| Daily exercises/GitHub      | **10%**  |
+| Debugging ability           | **10%**  |
+| Job Tracker + Market Review | **10%**  |
+| **TOTAL**                   | **100%** |
+
+### Kết quả
+
+**≥80 — PASS**
+
+Đi tiếp Week 2.
+
+**65–79 — CONDITIONAL PASS**
+
+Đi tiếp Week 2 nhưng ghi 2–3 weaknesses vào Remedial Backlog.
+
+**<65 — RETEST**
+
+Không học lại toàn bộ Week 1.
+
+Chỉ luyện phần yếu thêm 2–3 ngày rồi làm **một đề mới**, không làm lại Inventory Manager.
+
+---
+
+# Definition of Done — WEEK 1
+
+Chỉ được đánh dấu **Week 1 Complete** khi có đủ:
+
+- [ ]  Product Analyzer.
+- [ ]  Product Functions.
+- [ ]  OOP Mini Shop.
+- [ ]  Payment Interface.
+- [ ]  Validation + 8 test cases.
+- [ ]  ≥3 documented bugs.
+- [ ]  GitHub repository sạch.
+- [ ]  README người khác follow được.
+- [ ]  D7 Exam có **unaided commit**.
+- [ ]  D7 có **after-review commit**.
+- [ ]  15 real job descriptions.
+- [ ]  Job Tracker.
+- [ ]  Skill Frequency.
+- [ ]  Skill Gap v0.1.
+- [ ]  5 Target Jobs.
+- [ ]  CV Skeleton.
+- [ ]  Week 1 Market Review.
+- [ ]  Final Score ≥80 hoặc Conditional Pass.
+
+> **Điều quan trọng nhất:** cuối tuần không cần chứng minh rằng em “đã học PHP”. Em cần chứng minh rằng **khi được đưa một requirement vừa sức Junior, em có thể tự chia nhỏ vấn đề, code, test, debug, giải thích code của mình và đưa kết quả lên GitHub.**
+>
+> Việc tìm việc cũng bắt đầu ngay từ bây giờ. **Không chờ đến lúc cảm thấy “học xong” mới đọc JD.** JD chính là một phần của giáo án: thị trường nói cần gì → mình kiểm chứng → học đúng gap → tạo evidence trên GitHub → rồi apply.

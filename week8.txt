@@ -1,0 +1,2091 @@
+# Week 8
+
+# Tuần 8 — Job Hunt War Room: Interview → Feedback → Offer
+
+## Mục tiêu của tuần
+
+7 tuần vừa qua đã xây đủ nền:
+
+| Tuần   | Trọng tâm                    | Evidence                                   |
+| ------ | ----------------------------- | ------------------------------------------ |
+| W1     | PHP Core                      | Fundamentals + OOP                         |
+| W2     | SQL                           | Database + business queries                |
+| W3     | Laravel                       | CRUD                                       |
+| W4     | Business Flow                 | Auth → Cart → Checkout → Order             |
+| W5     | API + Testing + Deploy        | Flagship `v1.0.0`                          |
+| W6     | Interview                     | Coding + SQL + Technical + Project Defense |
+| W7     | Adaptive / Node               | Transferable backend skill + 90 applications |
+| **W8** | **Conversion**                | **Interview → Next Round → Offer**         |
+
+> **Week 8 không có technology mới.**
+>
+> Không React. Không Docker vì “chắc cần”. Không Redis. Không microservices. Không thêm feature cho Mini Shop.
+>
+> Từ hôm nay, mọi giờ học phải trả lời được:
+>
+> **“Việc này giúp em có thêm interview hoặc giúp em pass interview hiện tại như thế nào?”**
+
+Week 8 cũng **không phải tuần cuối để tìm việc**.
+
+Nó là tuần cuối của **training roadmap**.
+
+Nếu chưa có offer sau D56, tiếp tục lặp lại operating system của Week 8 cho tới khi landing job.
+
+---
+
+# 1. Weekly Summary
+
+| Ngày    | Trọng tâm                         | Output chính                                | Job Campaign                | Definition of Done                            |
+| ------- | ---------------------------------- | ------------------------------------------- | --------------------------- | --------------------------------------------- |
+| **D50** | Funnel Diagnosis                   | Xác định bottleneck tuyển dụng              | Apply 5 Tier A/B            | Biết chính xác đang thua ở stage nào          |
+| **D51** | CV + GitHub Conversion             | CV A/B + portfolio audit                    | Apply 5 tailored jobs       | Application package recruiter-ready           |
+| **D52** | Coding Test Sprint                 | PHP + SQL + Laravel timed drills            | Apply 5                     | Coding test ≥80%                              |
+| **D53** | Technical Interview Sprint         | Mock theo JD thật                           | Apply 5                     | Top gaps được repair/retest                   |
+| **D54** | Company-Specific Interview         | Interview Pack cho target companies         | Apply 5                     | Có thể interview trong 24h                    |
+| **D55** | HR + Behavioral + Offer Readiness  | Career stories + offer checklist            | Apply 5                     | HR/final-round ready                          |
+| **D56** | **Full Hiring Day + Operating System** | Full mock + final funnel review          | Apply 5 high-quality jobs   | Có plan tuần sau dựa trên data                |
+
+### Baseline target
+
+- Week 8: **35 quality applications**.
+- Cumulative baseline: **125 applications**.
+- Nhưng số lượng **không được override interview thật**.
+- Mỗi interview thật → post-mortem trong ngày.
+- Mỗi recurring gap → repair trong 24–48h.
+- Mỗi application phải có target logic.
+- Không chờ “học thêm chút nữa” mới apply.
+
+---
+
+# 2. Priority Rule của Week 8
+
+Mỗi sáng xếp việc theo thứ tự:
+
+```text
+1. Interview / Coding Test thật có deadline
+2. Chuẩn bị cho interview đã schedule
+3. Follow-up / recruiter response
+4. Apply Tier A jobs mới
+5. Repair recurring interview gap
+6. Apply Tier B
+7. Mock interview
+8. Portfolio polish
+9. Learning khác
+```
+
+Nếu ngày mai có technical interview:
+
+> **Không cần hoàn thành task giáo án hôm nay.**
+
+Roadmap phục vụ job hunt.
+
+Job hunt không phục vụ roadmap.
+
+---
+
+# D50 — Funnel Diagnosis Day
+
+## Mục tiêu
+
+Không tiếp tục:
+
+> Apply → Apply → Apply → Apply
+
+mà không biết đang fail ở đâu.
+
+Dùng toàn bộ data 90 applications.
+
+---
+
+# Part 1 — Funnel Dashboard
+
+Update:
+
+| Stage                | Count | Conversion |
+| -------------------- | ----- | ---------- |
+| Applications         | 90    | 100%       |
+| HR Contacts          |       |            |
+| Screening Calls      |       |            |
+| Coding Tests         |       |            |
+| Technical Interviews |       |            |
+| Final Interviews     |       |            |
+| Offers               |       |            |
+| Rejected             |       |            |
+| Pending              |       |            |
+
+Sau đó breakdown.
+
+### Theo Stack
+
+| Stack               | Apply | HR | Test | Tech | Final |
+| ------------------- | ----- | -- | ---- | ---- | ----- |
+| PHP/Laravel         |       |    |      |      |       |
+| Mixed Backend       |       |    |      |      |       |
+| Node-compatible     |       |    |      |      |       |
+
+### Theo Source
+
+| Source         | Apply | Response | Interview |
+| -------------- | ----- | -------- | --------- |
+| LinkedIn       |       |          |           |
+| ITviec         |       |          |           |
+| TopDev         |       |          |           |
+| Company Career |       |          |           |
+| Referral       |       |          |           |
+| Other          |       |          |           |
+
+---
+
+# Part 2 — Find the Bottleneck
+
+## Case A — Ít HR contact
+
+Problem có khả năng nằm trước technical evaluation.
+
+Investigate:
+
+```text
+Target jobs
+CV
+Headline
+No-degree screening
+Keywords
+Project visibility
+Job freshness
+Application channel
+```
+
+Priority Week 8:
+
+> **CV + targeting + sourcing**
+
+Không phải học thêm Node.
+
+---
+
+## Case B — HR nhiều nhưng ít technical
+
+Investigate:
+
+- self-introduction;
+- salary/availability;
+- career-change explanation;
+- communication;
+- mismatch giữa CV và JD.
+
+---
+
+## Case C — Coding Test fail
+
+Priority:
+
+> **Timed coding drills.**
+
+Không polish README.
+
+---
+
+## Case D — Technical Interview fail
+
+Lấy Error Log.
+
+Count recurring gaps.
+
+Ví dụ:
+
+```text
+SQL GROUP BY/HAVING      4
+Laravel lifecycle        3
+Transaction              1
+PHP OOP                  1
+```
+
+Priority:
+
+> GROUP BY/HAVING → Laravel lifecycle.
+
+Không chia đều thời gian cho mọi subject.
+
+---
+
+## Case E — Technical pass nhưng Final fail
+
+Focus:
+
+- communication;
+- behavioral examples;
+- motivation;
+- team fit;
+- expectation alignment;
+- clarity về level hiện tại.
+
+---
+
+# Part 3 — Root Cause Statement
+
+Cuối buổi phải viết được **một câu**:
+
+> **Current primary bottleneck: ________.**
+
+Sau đó:
+
+> **Evidence: ________.**
+
+Sau đó:
+
+> **This week's response: ________.**
+
+Ví dụ:
+
+```text
+Bottleneck:
+Low recruiter response.
+
+Evidence:
+90 applications → 3 HR contacts.
+
+Response:
+Improve CV positioning + increase Tier A applications +
+prioritize company career pages/referrals.
+```
+
+Không được viết:
+
+> “Chắc em chưa đủ giỏi.”
+
+Đó không phải diagnosis.
+
+---
+
+# Job Campaign D50
+
+Apply:
+
+> **5 Tier A/B jobs**
+
+Mỗi job ghi:
+
+```text
+Why fit:
+Top 3 matching requirements:
+Main gap:
+Evidence:
+CV version:
+Source:
+```
+
+Cumulative:
+
+> **95**
+
+---
+
+## DoD D50
+
+- Funnel updated.
+- Stack breakdown.
+- Source breakdown.
+- Primary bottleneck identified.
+- Evidence recorded.
+- Response strategy written.
+- 5 applications.
+
+---
+
+# D51 — CV + GitHub Conversion Day
+
+## Mục tiêu
+
+CV không phải biography.
+
+CV có một job:
+
+> **Đưa em từ Application → Interview.**
+
+---
+
+# Part 1 — 10-Second CV Test
+
+Đưa CV cho người khác.
+
+Cho xem **10 giây**.
+
+Đóng lại.
+
+Hỏi:
+
+1. Em đang apply role gì?
+2. Stack chính?
+3. Có project thật không?
+4. Có deploy không?
+5. Điểm đáng nhớ nhất?
+
+Nếu người xem không trả lời được:
+
+> CV positioning chưa rõ.
+
+---
+
+# Part 2 — CV A/B
+
+Tạo hai version.
+
+### CV-A — PHP/Laravel
+
+Headline:
+
+> **Junior Backend Developer — PHP/Laravel**
+
+Project bullets ưu tiên:
+
+- Laravel;
+- MySQL;
+- business flow;
+- REST API;
+- testing;
+- deployment.
+
+---
+
+### CV-B — Backend / Flexible Stack
+
+Headline có thể rộng hơn:
+
+> **Junior Backend Developer**
+
+Project vẫn Laravel flagship.
+
+Node secondary project chứng minh:
+
+> transferable backend skill.
+
+Không biến CV-B thành keyword soup.
+
+---
+
+# Part 3 — No Degree Problem
+
+Không cố giấu.
+
+Nhưng cũng không dành 1/3 CV để giải thích.
+
+CV phải đưa recruiter nhìn thấy trước:
+
+```text
+Skills
+↓
+Projects
+↓
+Evidence
+↓
+GitHub / Live Demo
+```
+
+Điểm yếu credential được counter bằng **evidence**, không bằng paragraph biện hộ.
+
+---
+
+# Part 4 — GitHub Recruiter Test
+
+Mở GitHub như người chưa biết em.
+
+Trong **30 giây** phải tìm được:
+
+- flagship;
+- README;
+- Live Demo;
+- screenshots;
+- tech stack;
+- setup;
+- API;
+- tests.
+
+Click mọi link.
+
+Không có:
+
+> broken demo.
+
+> README link 404.
+
+> secret.
+
+> test account chết.
+
+---
+
+# Part 5 — Live Demo Test
+
+Mở bằng:
+
+- Incognito.
+- Device/browser khác nếu có thể.
+
+Test:
+
+```text
+Register
+Login
+Product
+Cart
+Checkout
+Order
+Admin
+API
+```
+
+---
+
+## Prompt ChatGPT D51 — Recruiter Review
+
+> Tôi ứng tuyển Junior PHP/Laravel Backend.
+>
+> Tôi không có bằng đại học CNTT và đang chuyển nghề.
+>
+> Đây là JD:
+>
+> [JD]
+>
+> Đây là CV:
+>
+> [CV]
+>
+> Đây là evidence thực tế tôi có:
+>
+> [PROJECT FEATURES]
+>
+> Không invent experience.
+>
+> Không thêm technology tôi chưa dùng.
+>
+> Đóng vai recruiter review CV trong 15 giây.
+>
+> Trả lời:
+>
+> 1. Bạn hiểu tôi đang apply vị trí gì không?
+> 2. 3 evidence mạnh nhất?
+> 3. 3 điểm khiến bạn do dự?
+> 4. Keyword nào trong JD có evidence nhưng CV chưa thể hiện rõ?
+> 5. Bullet nào quá chung chung?
+>
+> Sau đó cho checklist chỉnh sửa.
+>
+> Không rewrite toàn bộ CV cho tới khi tôi tự sửa version tiếp theo.
+
+---
+
+# Job Campaign D51
+
+Apply **5 jobs**, dùng CV A/B phù hợp.
+
+Cumulative:
+
+> **100 applications**
+
+### DoD D51
+
+- CV-A.
+- CV-B.
+- 10-second test.
+- GitHub audit.
+- Live Demo audit.
+- All links working.
+- 5 tailored applications.
+
+---
+
+# D52 — Coding Test Sprint
+
+## Mục tiêu
+
+Coding test phải trở thành:
+
+> **routine**, không phải event gây hoảng.
+
+---
+
+# Round 1 — PHP: 45 phút
+
+### Problem
+
+Cho list transactions:
+
+```text
+customer
+type
+amount
+status
+created_at
+```
+
+Output:
+
+> Top 5 customers theo successful net transaction amount.
+
+Rules:
+
+- `credit` cộng;
+- `refund` trừ;
+- failed ignored;
+- same customer aggregate;
+- sort descending.
+
+Sau đó interviewer đổi requirement:
+
+> Chỉ tính transaction trong 30 ngày gần nhất.
+
+---
+
+# Round 2 — SQL: 45 phút
+
+Schema:
+
+```text
+users
+orders
+order_items
+products
+categories
+```
+
+Query:
+
+> Top 5 categories theo completed revenue trong tháng hiện tại.
+
+Follow-up:
+
+> Chỉ lấy category có ít nhất 10 completed orders.
+
+Follow-up:
+
+> Vẫn muốn category không có sales xuất hiện với revenue = 0.
+
+Phải nhận ra JOIN strategy thay đổi.
+
+---
+
+# Round 3 — Laravel: 60 phút
+
+Requirement:
+
+> Add Product Review feature.
+
+Fields:
+
+```text
+user_id
+product_id
+rating
+comment
+```
+
+Rules:
+
+- logged user only;
+- rating 1–5;
+- user chỉ review Product một lần;
+- Product Detail hiển thị average rating.
+
+Không cần UI đẹp.
+
+---
+
+# Rule
+
+**Không AI trong cả 3 rounds.**
+
+Sau mỗi round:
+
+```text
+What slowed me down?
+Concept?
+Syntax?
+Requirement misunderstanding?
+Debugging?
+```
+
+---
+
+# ChatGPT Review
+
+> Đây là coding test tôi vừa hoàn thành không AI.
+>
+> Requirement:
+>
+> [...]
+>
+> Solution:
+>
+> [...]
+>
+> Time used:
+>
+> [...]
+>
+> Review theo tiêu chuẩn Junior interview.
+>
+> Phân biệt:
+>
+> - Wrong concept
+> - Correct concept but syntax issue
+> - Poor time management
+> - Missed requirement
+> - Edge case
+>
+> Với mỗi recurring weakness, tạo đúng một retest question.
+>
+> Không cho solution.
+
+---
+
+# Job Campaign D52
+
+Apply **5 jobs**.
+
+Cumulative:
+
+> **105**
+
+### DoD D52
+
+- PHP timed test.
+- SQL timed test.
+- Laravel timed change.
+- No AI.
+- ≥80% overall.
+- Weakness classified.
+- Retest recurring gaps.
+- +5 applications.
+
+---
+
+# D53 — Technical Interview Sprint
+
+## Mục tiêu
+
+Không mock interview chung chung nữa.
+
+Mock phải dựa trên **JD thật**.
+
+---
+
+# Part 1 — Chọn 3 JD
+
+Chọn:
+
+```text
+1 Tier A
+1 Tier B
+1 job đã có recruiter response nếu có
+```
+
+Với mỗi JD extract:
+
+```text
+Must-have
+Nice-to-have
+Likely interview topics
+Evidence I have
+Gap
+```
+
+---
+
+# Part 2 — Build Interview Map
+
+Ví dụ JD:
+
+```text
+PHP
+Laravel
+MySQL
+REST API
+Git
+Basic JavaScript
+```
+
+Map:
+
+| JD Requirement | Evidence | Likely Question |
+| -------------- | -------- | --------------- |
+| PHP            | W1/W6    | OOP/array       |
+| Laravel        | Mini Shop | Middleware/Eloquent |
+| MySQL          | W2       | JOIN/index      |
+| REST           | W5       | HTTP/401/403    |
+| Git            | Project  | branch/commit   |
+| JS             | W7       | fundamentals    |
+
+---
+
+# Part 3 — 3 Mock Interviews
+
+Mỗi mock:
+
+> **30–45 phút**
+
+Không notes.
+
+Không Google.
+
+Không AI ngoài interviewer role.
+
+---
+
+## Prompt D53 — JD-Specific Interview
+
+> Tôi có technical interview cho Junior Backend.
+>
+> Đây là JD:
+>
+> [PASTE JD]
+>
+> Đây là CV/evidence thật của tôi:
+>
+> [PASTE]
+>
+> Đóng vai interviewer của chính role này.
+>
+> Không hỏi random question ngoài JD trừ khi nó là backend fundamental hợp lý.
+>
+> Hỏi từng câu một.
+>
+> Follow-up vào câu trả lời của tôi.
+>
+> Nếu tôi nói project có feature X, được phép đào sâu implementation.
+>
+> Đánh giá Correct / Partial / Incorrect.
+>
+> Cuối interview:
+>
+> 1. Top 3 strengths.
+> 2. Top 3 gaps.
+> 3. Gap nào có khả năng ảnh hưởng interview nhất?
+> 4. Tạo retest cho đúng 3 gaps đó.
+>
+> Không đoán khả năng được tuyển.
+
+---
+
+# Part 4 — Repair
+
+Chỉ repair:
+
+> **Top 3 gaps.**
+
+Không học cả framework.
+
+---
+
+# Job Campaign D53
+
+Apply **5 jobs**.
+
+Cumulative:
+
+> **110**
+
+### DoD D53
+
+- 3 JD analyzed.
+- 3 mock interviews.
+- Error Log updated.
+- Top 3 gaps.
+- Repair.
+- Retest.
+- +5 applications.
+
+---
+
+# D54 — Company-Specific Interview Day
+
+## Mục tiêu
+
+Nếu recruiter gọi:
+
+> “Ngày mai phỏng vấn được không?”
+
+Câu trả lời không nên là:
+
+> “Cho em một tuần để học.”
+
+Phải có khả năng chuẩn bị trong **24 giờ**.
+
+---
+
+# Interview Pack
+
+Với mỗi company đang active, tạo:
+
+```text
+Company:
+Role:
+Product:
+Industry:
+Stack:
+JD:
+Interview stage:
+Interview date:
+
+Top requirements:
+1.
+2.
+3.
+
+My evidence:
+1.
+2.
+3.
+
+My gaps:
+1.
+2.
+3.
+
+Likely questions:
+1.
+2.
+3.
+
+Questions I will ask:
+1.
+2.
+3.
+```
+
+---
+
+# Company Research
+
+Không cần research 3 giờ.
+
+Khoảng **20–30 phút**:
+
+- company làm gì;
+- product;
+- customer;
+- role;
+- team nếu public;
+- tech nếu public;
+- recent relevant information.
+
+Mục tiêu:
+
+> Không bước vào interview mà không biết company làm gì.
+
+---
+
+# Project Selection
+
+Nếu interviewer hỏi:
+
+> “Tell me about a project.”
+
+Mặc định:
+
+> **Mini Shop Laravel**
+
+Không nhảy qua 5 project.
+
+Nếu role Node-compatible:
+
+Có thể nói:
+
+> Laravel flagship + Node secondary project.
+
+---
+
+# 24-Hour Prep
+
+Nếu interview ngày mai:
+
+```text
+30m   JD breakdown
+30m   Company research
+45m   Core technical review
+30m   Project defense
+30m   Mock interview
+15m   Questions for interviewer
+```
+
+Sau đó nghỉ.
+
+Không thức tới 4h sáng học thêm 100 câu.
+
+---
+
+# Job Campaign D54
+
+Apply **5 jobs**.
+
+Nếu có interview thật cần 2–3 giờ prep:
+
+> giảm application target.
+
+Interview thật có priority cao hơn quota.
+
+Cumulative baseline:
+
+> **115**
+
+### DoD D54
+
+- Interview Pack template.
+- Packs cho active companies.
+- Company research.
+- JD-specific review.
+- Project evidence mapped.
+- Candidate questions.
+- 5 applications hoặc adjusted vì interview thật.
+
+---
+
+# D55 — HR + Behavioral + Offer Readiness
+
+## Mục tiêu
+
+Technical tốt nhưng communication tệ vẫn fail.
+
+Hôm nay chuẩn bị phần thường bị developer bỏ qua.
+
+---
+
+# 1. Self Introduction
+
+Target:
+
+> **60–90 giây**
+
+Structure:
+
+```text
+Current direction
+↓
+Background
+↓
+What I learned/built
+↓
+Flagship project
+↓
+Why this role
+```
+
+Không kể từ tiểu học.
+
+---
+
+# 2. Career Change
+
+Question:
+
+> Why did you move into software development?
+
+Structure:
+
+```text
+Past
+↓
+Trigger
+↓
+Action
+↓
+Evidence
+↓
+Why backend
+```
+
+---
+
+# 3. No Degree
+
+Không xin lỗi.
+
+Không công kích degree.
+
+Structure:
+
+```text
+Acknowledge
+↓
+Evidence
+↓
+Learning discipline
+↓
+Current capability
+↓
+Growth mindset
+```
+
+---
+
+# 4. Weakness
+
+Không:
+
+> “Em cầu toàn.”
+
+Chọn weakness thật nhưng manageable.
+
+Ví dụ structure:
+
+```text
+Weakness
+↓
+Impact
+↓
+What I am doing
+↓
+Evidence of improvement
+```
+
+---
+
+# 5. Conflict / Difficult Situation
+
+Nếu chưa có software team experience:
+
+Không invent.
+
+Có thể dùng:
+
+- project problem;
+- learning collaboration;
+- previous work situation;
+
+miễn là thật.
+
+Dùng STAR:
+
+```text
+Situation
+Task
+Action
+Result
+```
+
+---
+
+# 6. Failure Story
+
+Có thể dùng:
+
+> Coding test fail.
+
+> Production deploy bug.
+
+> Project design sai rồi refactor.
+
+Quan trọng:
+
+> What changed after failure?
+
+---
+
+# 7. Salary
+
+Không cần tự hạ giá vì không có degree.
+
+Research market/role/company.
+
+Trả lời theo:
+
+```text
+Role
+Level
+Market
+My evidence
+Total package
+```
+
+Không đưa một con số random chỉ vì sợ mất job.
+
+---
+
+# 8. Availability
+
+Chuẩn bị rõ:
+
+```text
+Can start:
+Notice:
+Interview availability:
+```
+
+Không mơ hồ.
+
+---
+
+# 9. Offer Checklist
+
+Nếu có offer, không chỉ nhìn monthly salary.
+
+Review:
+
+```text
+Role title
+Actual responsibilities
+Probation
+Probation salary
+Official salary
+Working hours
+Overtime
+Insurance
+Contract
+Equipment
+Remote/hybrid
+Training
+Team
+Manager
+Tech stack
+Growth
+Start date
+```
+
+Không cần optimize mọi thứ ở job đầu.
+
+Nhưng phải biết mình đang accept gì.
+
+---
+
+# Behavioral Mock Prompt
+
+> Tôi đang chuẩn bị HR/final interview cho Junior Backend Developer.
+>
+> Background thật:
+>
+> - career switch;
+> - không có bằng đại học CNTT;
+> - tự học PHP/Laravel;
+> - có deployed portfolio;
+> - đang apply Junior.
+>
+> Đóng vai HR interviewer.
+>
+> Hỏi từng câu một.
+>
+> Topics:
+>
+> - introduction;
+> - why developer;
+> - why this company;
+> - no degree;
+> - strength;
+> - weakness;
+> - failure;
+> - difficult situation;
+> - learning;
+> - salary;
+> - availability;
+> - 2-year goal.
+>
+> Không viết câu trả lời cho tôi trước.
+>
+> Sau mỗi answer:
+>
+> 1. Có rõ không?
+> 2. Có defensive không?
+> 3. Có exaggerate không?
+> 4. Có evidence không?
+> 5. Có quá dài không?
+>
+> Sau đó yêu cầu tôi trả lời lại nếu cần.
+
+---
+
+# Job Campaign D55
+
+Apply **5 jobs**.
+
+Cumulative baseline:
+
+> **120**
+
+### DoD D55
+
+- Introduction.
+- Career-change story.
+- No-degree answer.
+- Strength.
+- Weakness.
+- Failure story.
+- STAR example.
+- Salary framework.
+- Availability.
+- Offer checklist.
+- Behavioral mock.
+- +5 applications.
+
+---
+
+# D56 — FULL HIRING DAY
+
+## Mục tiêu
+
+Mô phỏng một ngày tuyển dụng hoàn chỉnh.
+
+Không AI trong simulation.
+
+---
+
+# ROUND 1 — HR Screen: 15 phút
+
+Questions:
+
+1. Introduce yourself.
+2. Why developer?
+3. Why PHP/Laravel?
+4. Why our company?
+5. No degree?
+6. Salary?
+7. Availability?
+
+---
+
+# ROUND 2 — Coding: 45 phút
+
+PHP problem.
+
+Requirement:
+
+> Cho danh sách Orders.
+>
+> Tìm Top 3 Products theo completed revenue.
+
+Phải handle:
+
+```text
+cancelled orders
+multiple items
+same product
+quantity
+unit price
+```
+
+Follow-up:
+
+> Chỉ tính 30 ngày gần nhất.
+
+---
+
+# ROUND 3 — SQL: 30 phút
+
+Query:
+
+> Top 5 Customers theo completed revenue.
+
+Follow-up:
+
+> Chỉ customer có ≥3 completed orders.
+
+Follow-up:
+
+> Include customer không có order với revenue = 0.
+
+---
+
+# ROUND 4 — Technical: 30 phút
+
+Random:
+
+```text
+PHP
+OOP
+SQL
+Laravel
+HTTP
+API
+Auth
+Testing
+Git
+Deployment
+```
+
+Không biết topic trước.
+
+---
+
+# ROUND 5 — Debugging: 20 phút
+
+Cho một Laravel bug.
+
+Ứng viên phải đi:
+
+```text
+Expected
+↓
+Actual
+↓
+Layer
+↓
+Hypothesis
+↓
+Evidence
+↓
+Root Cause
+↓
+Fix
+↓
+Retest
+```
+
+---
+
+# ROUND 6 — Project Defense: 20 phút
+
+Interviewer mở GitHub.
+
+Chọn random:
+
+```text
+migration
+controller
+model
+test
+API route
+checkout
+authorization
+```
+
+Hỏi:
+
+> “Explain this.”
+
+---
+
+# ROUND 7 — Live Change: 30 phút
+
+Requirement:
+
+> Admin Dashboard API cần thêm:
+>
+> **Top 5 selling products trong 30 ngày.**
+
+Requirements:
+
+- completed orders only;
+- JSON;
+- Admin only;
+- automated test.
+
+---
+
+# ROUND 8 — Behavioral: 15 phút
+
+Questions:
+
+- biggest challenge;
+- failure;
+- no degree;
+- learning;
+- why company;
+- weakness.
+
+---
+
+# ROUND 9 — Candidate Questions: 10 phút
+
+Ứng viên hỏi interviewer.
+
+---
+
+# Full Hiring Score
+
+| Area              | Weight |
+| ----------------- | ------ |
+| HR Communication  | 10%    |
+| PHP Coding        | 15%    |
+| SQL               | 15%    |
+| Technical         | 15%    |
+| Debugging         | 10%    |
+| Project Defense   | 10%    |
+| Live Change       | 15%    |
+| Behavioral        | 5%     |
+| Candidate Questions | 5%   |
+| **TOTAL**         | **100%** |
+
+### ≥80
+
+**Candidate-ready.**
+
+### 70–79
+
+Ready, nhưng repair top gaps.
+
+### <70
+
+Không restart roadmap.
+
+Top 3 gaps → repair → repeat simulation.
+
+---
+
+# Job Campaign D56
+
+Apply:
+
+> **5 high-quality jobs**
+
+Cumulative:
+
+> **125 applications**
+
+Nhưng nhớ:
+
+> **125 không phải magic number.**
+
+Nếu 70 applications đã tạo 8 interviews, không cần spam thêm 55 job tệ chỉ để hoàn thành roadmap.
+
+Ngược lại, nếu 125 applications tạo gần như zero recruiter response, **application volume không còn là solution chính**.
+
+Phải sửa funnel.
+
+---
+
+# 3. Decision Tree sau 8 tuần
+
+Đây là phần quan trọng nhất toàn roadmap.
+
+## Scenario 1 — Không có HR Contact
+
+```text
+Applications
+     ↓
+   [FAIL]
+     ↓
+CV / Targeting / Channel
+```
+
+**Action tuần sau:**
+
+- CV A/B test;
+- tighter job targeting;
+- company career pages;
+- referrals/networking;
+- application freshness;
+- portfolio positioning.
+
+Không học framework mới.
+
+---
+
+## Scenario 2 — HR Contact nhưng không qua Screening
+
+```text
+Application
+   ↓
+ HR ✓
+   ↓
+Screen ✗
+```
+
+Focus:
+
+- introduction;
+- career story;
+- communication;
+- salary/availability;
+- role fit.
+
+---
+
+## Scenario 3 — Fail Coding Tests
+
+```text
+HR
+ ↓
+Test ✗
+```
+
+Lấy tất cả coding tests thật.
+
+Tag:
+
+```text
+PHP
+Algorithm/Data Processing
+SQL
+Laravel
+Debugging
+Time Management
+```
+
+Top 2 → daily drills.
+
+---
+
+## Scenario 4 — Fail Technical
+
+```text
+Test ✓
+ ↓
+Technical ✗
+```
+
+Dùng Error Log.
+
+Không học broad.
+
+Repair recurring questions.
+
+---
+
+## Scenario 5 — Technical qua, Final chưa qua
+
+Focus:
+
+- project ownership;
+- behavioral;
+- communication;
+- team fit;
+- business reasoning;
+- motivation.
+
+---
+
+## Scenario 6 — Có Offer
+
+Không dừng learning.
+
+Nhưng roadmap hoàn thành mục tiêu:
+
+> **Landing a Developer Job.**
+
+Từ đây learning chuyển sang:
+
+> **How to succeed in first 90 days.**
+
+---
+
+# 4. Daily Operating System sau D56
+
+Nếu chưa có offer, từ tuần sau **không cần Week 9, Week 10 syllabus**.
+
+Dùng vòng lặp:
+
+```text
+           JOB MARKET
+               ↓
+          Applications
+               ↓
+            Response
+               ↓
+        Test / Interview
+               ↓
+           Feedback
+               ↓
+          Error Log
+               ↓
+       Targeted Practice
+               ↓
+             Retest
+               ↓
+          Applications
+               ↺
+```
+
+Một ngày bình thường:
+
+| Time | Activity                      |
+| ---- | ----------------------------- |
+| 45m  | Coding/SQL maintenance        |
+| 45m  | Current top technical gap     |
+| 60m  | Tier A applications           |
+| 30m  | Follow-ups/networking         |
+| 45m  | Interview preparation         |
+| 15m  | Tracker/Error Log             |
+
+Nếu có interview:
+
+> Schedule thay đổi theo interview.
+
+---
+
+# 5. Rule: 48-Hour Repair
+
+Mọi lỗi lặp lại trong interview thật phải được xử lý trong:
+
+> **48 giờ.**
+
+Ví dụ interviewer hỏi:
+
+> `WHERE` vs `HAVING`
+
+và fail.
+
+Trong 48h:
+
+```text
+Understand
+↓
+5 queries
+↓
+Explain aloud
+↓
+Mock question
+↓
+Retest
+```
+
+Không chỉ đọc đáp án rồi đánh dấu:
+
+> “Đã học.”
+
+---
+
+# 6. Rule: Three Strikes
+
+Nếu cùng một concept fail **3 lần**:
+
+> Nó trở thành **Priority Gap**.
+
+Ví dụ:
+
+```text
+Laravel Service Container
+Interview 1: Fail
+Mock: Fail
+Interview 2: Fail
+```
+
+Không được nói:
+
+> “Chắc lần sau không hỏi.”
+
+Block 1–2 giờ xử lý đến khi:
+
+- explain;
+- code/example;
+- answer follow-up.
+
+---
+
+# 7. Rule: Không Fake Experience
+
+Đặc biệt vì em đang career switch.
+
+Không biến:
+
+> 8 tuần project
+
+thành:
+
+> “1 year Laravel professional experience.”
+
+Không biến:
+
+> Node 5 ngày
+
+thành:
+
+> “Experienced Node.js Developer.”
+
+Thứ em bán không phải fake tenure.
+
+Thứ em bán là:
+
+> **Evidence + fundamentals + learning velocity + coachability + ability to ship.**
+
+---
+
+# 8. Final Portfolio Structure
+
+Đến cuối roadmap, GitHub không cần 30 repo.
+
+## Repo 1 — Flagship
+
+### Mini Shop — Laravel
+
+Evidence:
+
+```text
+PHP
+Laravel
+MySQL
+OOP
+Auth
+Authorization
+Business Logic
+Transactions
+REST API
+Testing
+Git
+Deployment
+```
+
+---
+
+## Repo 2 — Secondary
+
+### Node Task API
+
+Evidence:
+
+```text
+JavaScript
+Node
+Express
+REST
+MySQL
+Auth
+Async
+```
+
+---
+
+## Repo 3 — Fundamentals
+
+PHP/SQL exercises hoặc Coding Tests.
+
+Evidence:
+
+> Không phụ thuộc framework.
+
+---
+
+# 9. Final CV Positioning
+
+Primary identity:
+
+> **Junior Backend Developer — PHP/Laravel**
+
+Không:
+
+> Junior PHP/Laravel/Node/React/Cloud/DevOps/AI Engineer
+
+CV phải có một **center of gravity**.
+
+Node là evidence rằng:
+
+> em học stack mới được.
+
+GCP/Cloudflare/deployment là supporting evidence.
+
+---
+
+# 10. Final Technical Baseline
+
+Sau 8 tuần, không cần biết mọi thứ.
+
+Nhưng phải **thật sự làm được**:
+
+### PHP
+
+- [ ]  Array/data manipulation.
+- [ ]  Functions.
+- [ ]  OOP.
+- [ ]  Interface.
+- [ ]  Exceptions.
+- [ ]  Debugging.
+
+### SQL
+
+- [ ]  CRUD.
+- [ ]  JOIN.
+- [ ]  GROUP BY.
+- [ ]  HAVING.
+- [ ]  Aggregate.
+- [ ]  Subqueries/basic reporting.
+- [ ]  Index concept.
+- [ ]  Transaction.
+
+### Laravel
+
+- [ ]  Route.
+- [ ]  Controller.
+- [ ]  Model.
+- [ ]  Migration.
+- [ ]  Eloquent.
+- [ ]  Relationships.
+- [ ]  Validation.
+- [ ]  Auth.
+- [ ]  Authorization.
+- [ ]  Business flow.
+- [ ]  REST API.
+- [ ]  Tests.
+
+### Engineering
+
+- [ ]  Git.
+- [ ]  README.
+- [ ]  Debugging.
+- [ ]  Logging.
+- [ ]  Environment config.
+- [ ]  Deployment.
+- [ ]  HTTP.
+- [ ]  API.
+- [ ]  Security basics.
+
+### Node — Secondary
+
+- [ ]  JS backend fundamentals.
+- [ ]  Express.
+- [ ]  Async/await.
+- [ ]  MySQL.
+- [ ]  API.
+- [ ]  Authentication.
+
+---
+
+# 11. Final Career Baseline
+
+Không chỉ technical.
+
+Phải làm được:
+
+- [ ]  Đọc JD và quyết định có apply không.
+- [ ]  Tailor CV trong 10–15 phút.
+- [ ]  Self-introduction ≤90 giây.
+- [ ]  Project pitch ≤5 phút.
+- [ ]  Live coding không AI.
+- [ ]  SQL live.
+- [ ]  Debug code lạ.
+- [ ]  Technical Q&A.
+- [ ]  Nói “em chưa biết” đúng cách.
+- [ ]  Career-change story.
+- [ ]  No-degree answer.
+- [ ]  Behavioral interview.
+- [ ]  Research company.
+- [ ]  Hỏi interviewer câu có chất lượng.
+- [ ]  Follow-up.
+- [ ]  Review offer.
+
+---
+
+# 12. Cách trả lời khi không biết trong Interview
+
+Không bluff.
+
+Không:
+
+> “Dạ em biết.”
+
+rồi bắt đầu đoán.
+
+Dùng structure:
+
+> **“Phần này em chưa trực tiếp implement nên em không muốn đoán. Theo hiểu biết hiện tại của em thì X. Nếu gặp task này, em sẽ bắt đầu kiểm tra Y và documentation Z, sau đó làm một implementation nhỏ để verify.”**
+
+Một Junior không biết một thứ là bình thường.
+
+**Không biết mà giả vờ biết nguy hiểm hơn nhiều.**
+
+---
+
+# 13. Final Job Tracker
+
+Đến đây Tracker phải đủ để quản lý pipeline:
+
+| Field                  | Required |
+| ---------------------- | -------- |
+| Company                | ✓        |
+| Role                   | ✓        |
+| URL                    | ✓        |
+| Stack                  | ✓        |
+| Tier                   | ✓        |
+| Source                 | ✓        |
+| Applied Date           | ✓        |
+| CV Version             | ✓        |
+| Status                 | ✓        |
+| HR Contact             |          |
+| Coding Test            |          |
+| Technical              |          |
+| Final                  |          |
+| Follow-up              |          |
+| Known Rejection Reason |          |
+| Lessons                |          |
+| Next Action            | ✓        |
+
+**Next Action** rất quan trọng.
+
+Mỗi active application phải trả lời:
+
+> **“Tiếp theo mình phải làm gì?”**
+
+---
+
+# 14. Weekly Dashboard sau Roadmap
+
+Mỗi cuối tuần:
+
+```text
+APPLICATIONS
+New:
+Total:
+
+FUNNEL
+HR:
+Tests:
+Technical:
+Final:
+Offers:
+
+CONVERSION
+Apply → HR:
+HR → Test/Tech:
+Tech → Final:
+
+TOP ERROR LOG
+1.
+2.
+3.
+
+NEXT WEEK PRIORITY
+1.
+2.
+3.
+```
+
+Không cần dashboard đẹp.
+
+Cần dashboard **ra quyết định được**.
+
+---
+
+# 15. Definition of Done — WEEK 8
+
+### Funnel
+
+- [ ]  Funnel 90 applications được phân tích.
+- [ ]  Primary bottleneck identified.
+- [ ]  Stack conversion analyzed.
+- [ ]  Source conversion analyzed.
+- [ ]  Response strategy defined.
+
+### Application Package
+
+- [ ]  CV-A PHP/Laravel.
+- [ ]  CV-B Backend.
+- [ ]  GitHub recruiter test.
+- [ ]  Live Demo working.
+- [ ]  All links checked.
+- [ ]  No fake skills/experience.
+
+### Technical
+
+- [ ]  PHP timed test.
+- [ ]  SQL timed test.
+- [ ]  Laravel live change.
+- [ ]  JD-specific technical mocks.
+- [ ]  Error Log updated.
+- [ ]  Recurring gaps retested.
+
+### Interview
+
+- [ ]  90-second introduction.
+- [ ]  3–5 minute project pitch.
+- [ ]  Company-specific Interview Pack.
+- [ ]  Technical interview.
+- [ ]  Project defense.
+- [ ]  Debugging.
+- [ ]  Behavioral stories.
+- [ ]  Candidate questions.
+
+### HR / Offer
+
+- [ ]  Career-change answer.
+- [ ]  No-degree answer.
+- [ ]  Salary framework.
+- [ ]  Availability answer.
+- [ ]  Offer checklist.
+
+### Campaign
+
+- [ ]  Up to **35 quality applications Week 8**, adjusted downward when real interviews/tests require time.
+- [ ]  Baseline cumulative target around **125**, but no artificial quota chasing.
+- [ ]  Follow-ups tracked.
+- [ ]  Every active application has Next Action.
+- [ ]  Every real interview has post-mortem.
+- [ ]  Every recurring failure has remediation.
+
+---
+
+# Kết thúc 8 tuần — Em chưa “học xong code”
+
+Đây là distinction quan trọng nhất của toàn roadmap.
+
+Ngày đầu em có thể nghĩ con đường là:
+
+```text
+Học PHP
+→ Học Laravel
+→ Học Node
+→ Học thêm...
+→ Một ngày nào đó đủ giỏi
+→ Apply
+```
+
+**Không.**
+
+Con đường đúng mà 8 tuần này đang train là:
+
+```text
+Learn Fundamentals
+        ↓
+      Build
+        ↓
+      Ship
+        ↓
+      Apply
+        ↓
+    Interview
+        ↓
+      Fail
+        ↓
+ Understand Why
+        ↓
+   Fix That Gap
+        ↓
+      Retest
+        ↓
+      Apply
+        ↺
+```
+
+Em không có bằng Đại học để recruiter dùng làm một tín hiệu truyền thống.
+
+Vậy em phải tạo những tín hiệu khác rõ hơn:
+
+**GitHub chứng minh em build.**
+
+**Live Demo chứng minh em ship.**
+
+**Coding test chứng minh em tự code.**
+
+**Technical interview chứng minh em hiểu.**
+
+**Error Log chứng minh em biết học từ feedback.**
+
+**Node mini-project chứng minh kiến thức của em transfer được sang stack khác.**
+
+Và quan trọng nhất:
+
+> **Đừng cố chứng minh rằng em biết mọi thứ. Hãy chứng minh rằng những gì em nói em biết thì em thực sự làm được — và những gì chưa biết thì em có khả năng học rất nhanh.**
+
+---
+
+# Sau D56
+
+Nếu chưa có offer, sáng D57 **không mở khóa học mới**.
+
+Mở:
+
+```text
+Job Tracker
+Interview Error Log
+Calendar
+```
+
+Xem bottleneck hiện tại.
+
+Chọn **3 việc có khả năng đưa mình gần offer nhất trong ngày đó**.
+
+Làm.
+
+Ngày hôm sau lặp lại.
+
+> **Từ đây roadmap không còn chạy theo Day 57, Day 58, Day 59 nữa.**
+>
+> **Nó chạy theo Application → Interview → Feedback → Fix → Next Interview.**
+>
+> Đích cuối cùng không phải hoàn thành roadmap.
+>
+> **Đích cuối cùng là ngày em mở Job Tracker và đổi một dòng từ `Final Interview` thành `Offer`.**

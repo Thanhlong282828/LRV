@@ -1,0 +1,1857 @@
+# Week 5
+
+# Tuần 5 — REST API + Testing + Documentation + Deployment
+
+## Mục tiêu của tuần
+
+Đến cuối Week 4, Mini Shop đã có **business flow đủ tốt cho một Junior portfolio**. Từ Week 5 trở đi, không tiếp tục nhồi thêm Cart/Wishlist/Shipping/Payment feature chỉ để project trông to hơn.
+
+Bây giờ cần biến project đó thành thứ **có thể đưa cho recruiter hoặc technical interviewer xem**.
+
+### Vị trí Week 5 trong roadmap 8 tuần
+
+| Tuần   | Trọng tâm                    | Kết quả                                            |
+| ------ | ----------------------------- | -------------------------------------------------- |
+| W1     | PHP Core                     | Tự code requirement nhỏ                            |
+| W2     | SQL + PHP/MySQL              | Database fundamentals                              |
+| W3     | Laravel Fundamentals         | Tự build CRUD                                      |
+| W4     | Business Flow                | Auth → Cart → Checkout → Order                     |
+| **W5** | **API + Testing + Deploy**   | **Flagship project production-ready ở mức Junior** |
+| W6     | Coding Test + Interview      | Technical interview readiness                      |
+| W7     | Node.js Basic + Job Campaign | Mở rộng job pool                                   |
+| W8     | Interview/Application Sprint | Tối ưu funnel để landing job                       |
+
+> **Mục tiêu cuối Week 5:** CV có một project với **GitHub URL + Live Demo URL + API Documentation + Tests**.
+>
+> Từ Week 6 trở đi, thời gian build project sẽ giảm mạnh. Trọng tâm chuyển sang **pass tuyển dụng**.
+
+---
+
+# 1. Weekly Summary
+
+| Ngày    | Chủ đề                  | Technical Output                            | Job/Career Output                        | GitHub / Portfolio Output | Definition of Done                    |
+| ------- | ----------------------- | ------------------------------------------- | ---------------------------------------- | ------------------------- | ------------------------------------- |
+| **D29** | REST API Fundamentals   | Product API GET/POST/PUT/DELETE             | Apply 2 jobs + phân tích API requirement | `day29-product-api`       | CRUD API chạy đúng                    |
+| **D30** | API Validation & Auth   | JSON errors + protected endpoints           | Apply 2 jobs                             | `day30-api-auth`          | API auth/authorization hoạt động      |
+| **D31** | API Design + Postman    | Category/Order API + Postman Collection     | Apply 2 jobs + CV v0.3                   | `day31-api-docs`          | API người khác test được              |
+| **D32** | Automated Testing       | Feature Tests cho critical flows            | Apply 2 jobs                             | `day32-testing`           | ≥12 automated tests PASS              |
+| **D33** | Project Hardening       | Security/config/logging/error handling      | Apply 2 jobs + GitHub cleanup            | `day33-hardening`         | Không secret + production-safe basics |
+| **D34** | Deployment              | Mini Shop live trên internet                | Apply 3 jobs                             | `day34-deployment`        | Recruiter mở được Live Demo           |
+| **D35** | **Week 5 Release Exam** | Fresh deploy + smoke test + project defense | Apply 3 jobs + funnel review             | `v1.0.0`                  | Flagship Project RELEASED             |
+
+### Target cuối Week 5
+
+- Không tăng JD dataset vô hạn; 45 JD đã đủ baseline.
+- **16 applications trong Week 5.**
+- Cumulative applications: **38**.
+- REST API.
+- API authentication/authorization.
+- Postman Collection.
+- Automated tests.
+- Deployment.
+- Live Demo.
+- README hoàn chỉnh.
+- CV v0.3.
+- GitHub repo có thể gửi recruiter.
+- Mini Shop được đóng version:
+
+> **v1.0.0**
+
+---
+
+# D29 — REST API Fundamentals
+
+## Mục tiêu
+
+Hiểu sự khác nhau giữa:
+
+```text
+Browser → Controller → HTML View
+```
+
+và:
+
+```text
+Client → API → JSON
+```
+
+Không học API bằng cách thuộc:
+
+> REST là Representational State Transfer...
+
+Phải tự build API chạy được.
+
+---
+
+# Phase 1 — API Read
+
+Tạo:
+
+```text
+GET /api/products
+```
+
+Expected:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Keyboard",
+      "price": 350000,
+      "stock": 10
+    }
+  ]
+}
+```
+
+Không trả HTML.
+
+---
+
+# Phase 2 — Product Detail
+
+```text
+GET /api/products/{id}
+```
+
+Product tồn tại:
+
+```text
+200 OK
+```
+
+Không tồn tại:
+
+```text
+404
+```
+
+Không trả:
+
+```text
+200 OK
+"Product not found"
+```
+
+---
+
+# Phase 3 — Create
+
+```text
+POST /api/products
+```
+
+Input:
+
+```json
+{
+  "name": "Keyboard",
+  "category_id": 1,
+  "price": 350000,
+  "stock": 10
+}
+```
+
+Success:
+
+```text
+201 Created
+```
+
+---
+
+# Phase 4 — Update
+
+```text
+PUT /api/products/{id}
+```
+
+Update DB.
+
+Return JSON.
+
+---
+
+# Phase 5 — Delete
+
+```text
+DELETE /api/products/{id}
+```
+
+Delete đúng Product.
+
+---
+
+# HTTP Status Exercise
+
+Tạo:
+
+`http-status-notes.md`
+
+Tự giải thích:
+
+```text
+200
+201
+400
+401
+403
+404
+422
+500
+```
+
+Không cần học 50 status codes.
+
+Chỉ cần biết những code thường gặp.
+
+---
+
+## Prompt ChatGPT D29
+
+> Tôi đã biết Laravel CRUD trả HTML và đang học REST API.
+>
+> API hiện tại:
+>
+> [PASTE ROUTES]
+>
+> Tôi không muốn bạn viết API cho tôi.
+>
+> Đóng vai Backend Interviewer.
+>
+> Với mỗi endpoint, hỏi tôi:
+>
+> 1. HTTP method nào?
+> 2. URL nào?
+> 3. Input ở đâu?
+> 4. Expected JSON response?
+> 5. HTTP status nào?
+>
+> Nếu tôi chọn sai, giải thích tại sao.
+>
+> Sau đó đưa tôi một requirement API mới để tôi tự thiết kế endpoint.
+>
+> Hỏi từng câu một.
+
+---
+
+# Career Task D29
+
+Không tìm thêm 20 JD.
+
+Dùng 45 JD hiện có.
+
+Đếm chính xác:
+
+```text
+REST API
+API
+Web Service
+JSON
+```
+
+Ghi:
+
+> API requirement xuất hiện: **X/45**
+
+Sau đó apply **2 jobs**.
+
+Cumulative:
+
+> **24 applications**
+
+---
+
+## Knowledge Check D29
+
+1. API giải quyết vấn đề gì?
+2. JSON khác HTML response thế nào?
+3. GET dùng khi nào?
+4. POST?
+5. PUT/PATCH?
+6. DELETE?
+7. `200`?
+8. `201`?
+9. `404`?
+10. `422`?
+11. URL `/api/products/5` chứa thông tin gì?
+12. API client có nhất thiết phải là browser không?
+
+### DoD D29
+
+- Product API List.
+- Detail.
+- Create.
+- Update.
+- Delete.
+- Correct basic status codes.
+- JSON response.
+- ≥10/12 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D30 — API Authentication + Authorization
+
+## Mục tiêu
+
+Web authentication Week 4 chưa đồng nghĩa API authentication đã được giải quyết.
+
+Hôm nay API phải phân biệt:
+
+> **Ai đang gọi? Người đó có quyền gì?**
+
+---
+
+# Endpoint Matrix
+
+Tạo trước:
+
+`api-permissions.md`
+
+| Endpoint       | Guest | User | Admin |
+| -------------- | ----- | ---- | ----- |
+| GET Products   | ✓     | ✓    | ✓     |
+| GET Product    | ✓     | ✓    | ✓     |
+| POST Product   | ✗     | ✗    | ✓     |
+| PUT Product    | ✗     | ✗    | ✓     |
+| DELETE Product | ✗     | ✗    | ✓     |
+| GET My Orders  | ✗     | ✓    | ✓     |
+| GET Own Order  | ✗     | ✓    | ✓     |
+
+---
+
+# Authentication
+
+Dùng cơ chế phù hợp với Laravel project hiện tại.
+
+Không cần tự invent JWT implementation.
+
+Mục tiêu hiểu:
+
+```text
+Credentials
+    ↓
+Authentication
+    ↓
+Token/Session mechanism
+    ↓
+Authenticated Request
+    ↓
+Authorization
+```
+
+---
+
+# Test Cases
+
+### Guest
+
+```text
+POST /api/products
+```
+
+→ `401`
+
+### Normal User
+
+Authenticated nhưng:
+
+```text
+DELETE /api/products/1
+```
+
+→ `403`
+
+### Admin
+
+→ Success.
+
+### User A
+
+```text
+GET /api/orders/{order-of-user-B}
+```
+
+→ Reject.
+
+---
+
+## Prompt ChatGPT D30
+
+> Tôi đang bảo vệ Laravel REST API.
+>
+> Đây là endpoint permission matrix:
+>
+> [PASTE]
+>
+> Không viết authentication code.
+>
+> Đóng vai API Security Reviewer.
+>
+> Đưa cho tôi từng request scenario.
+>
+> Tôi phải trả lời:
+>
+> 1. Request authenticated hay chưa?
+> 2. User role là gì?
+> 3. Request nên Success / 401 / 403?
+> 4. Vì sao?
+>
+> Sau câu trả lời, đánh giá Correct / Partial / Incorrect.
+>
+> Cho tôi 12 scenarios, từng cái một.
+
+---
+
+# Job Application D30
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **26**
+
+Nếu nhận coding test/interview:
+
+**Ưu tiên interview thật hơn roadmap.**
+
+Không nói:
+
+> “Đợi em học hết Week 8 rồi interview.”
+
+Real interview chính là training tốt nhất.
+
+---
+
+## Knowledge Check D30
+
+1. `401` và `403` khác nhau thế nào?
+2. Authentication vs Authorization?
+3. API token dùng để làm gì?
+4. Token có nên commit GitHub không?
+5. Public endpoint là gì?
+6. Protected endpoint?
+7. Normal User gọi Admin API phải trả gì?
+8. User A xem Order B là auth hay authorization problem?
+9. HTTPS liên quan token thế nào ở mức cơ bản?
+10. Hide endpoint khỏi frontend có bảo vệ API không?
+
+### DoD D30
+
+- API authentication.
+- Role protection.
+- Ownership protection.
+- Permission Matrix.
+- ≥10 security test cases.
+- ≥8/10 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D31 — API Design + Postman Documentation
+
+## Mục tiêu
+
+API em chạy trên máy em chưa đủ.
+
+Một developer khác phải có khả năng:
+
+> **đọc documentation → gọi API thành công.**
+
+---
+
+# Part 1 — Category API
+
+Implement:
+
+```text
+GET    /api/categories
+POST   /api/categories
+PUT    /api/categories/{id}
+DELETE /api/categories/{id}
+```
+
+Permissions giống business rules hiện có.
+
+---
+
+# Part 2 — Order API
+
+User:
+
+```text
+GET /api/orders
+GET /api/orders/{id}
+```
+
+Chỉ own orders.
+
+Admin có thể:
+
+```text
+GET /api/admin/orders
+PUT /api/admin/orders/{id}/status
+```
+
+Không cần API cho mọi feature trong project.
+
+**Scope vừa đủ.**
+
+---
+
+# Part 3 — Consistent JSON
+
+Không để mỗi endpoint trả một kiểu.
+
+Ví dụ success:
+
+```json
+{
+  "data": {},
+  "message": "Product created successfully"
+}
+```
+
+Validation error có structure nhất quán.
+
+---
+
+# Part 4 — Postman Collection
+
+Collection:
+
+```text
+Mini Shop API
+│
+├── Authentication
+├── Products
+├── Categories
+└── Orders
+```
+
+Mỗi request có:
+
+- method;
+- URL;
+- headers;
+- body;
+- example response.
+
+Dùng environment variable cho:
+
+```text
+base_url
+token
+```
+
+Không hard-code token thật vào collection public.
+
+---
+
+## API Documentation
+
+README thêm:
+
+```text
+## API
+
+Base URL
+
+Authentication
+
+Products
+
+Categories
+
+Orders
+
+Postman Collection
+```
+
+---
+
+## Prompt ChatGPT D31
+
+> Tôi đã build REST API cho Mini Shop.
+>
+> Đây là endpoint list:
+>
+> [PASTE]
+>
+> Đóng vai Backend Developer lần đầu nhận API của tôi.
+>
+> Không redesign API ngay.
+>
+> Hãy thử hiểu API chỉ từ documentation.
+>
+> Với từng vấn đề chưa rõ, hỏi tôi một câu.
+>
+> Sau đó tạo checklist:
+>
+> - naming inconsistency;
+> - missing status codes;
+> - unclear permissions;
+> - missing request example;
+> - missing response example.
+>
+> Không viết documentation thay tôi cho đến khi tôi tự sửa version đầu tiên.
+
+---
+
+# Career Task D31 — CV v0.3
+
+Mini Shop bullets có thể thêm factual evidence:
+
+```text
+- Designed REST APIs for products, categories and orders with JSON responses and HTTP status handling.
+- Implemented authenticated and role-protected API endpoints.
+- Documented and tested API endpoints using Postman.
+```
+
+Chỉ ghi nếu đã làm thật.
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **28**
+
+---
+
+## Knowledge Check D31
+
+1. API documentation phục vụ ai?
+2. Postman dùng để làm gì?
+3. Collection là gì?
+4. Environment variable giúp gì?
+5. Vì sao không hard-code production token?
+6. Consistent JSON response quan trọng thế nào?
+7. Endpoint naming nên dùng noun hay action tùy tiện?
+8. API versioning là gì ở mức concept?
+9. Có cần expose mọi database table thành API không?
+10. API design bắt đầu từ DB hay use case?
+
+Câu 10 mong đợi:
+
+> **Use case/consumer requirement trước**, không phải “có table thì tạo API”.
+
+### DoD D31
+
+- Product API.
+- Category API.
+- Order API.
+- Consistent JSON.
+- Postman Collection.
+- Environment variables.
+- README API section.
+- ≥8/10 questions.
+- CV v0.3.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D32 — Automated Testing
+
+## Mục tiêu
+
+Cho đến hiện tại phần lớn test bằng tay.
+
+Hôm nay bắt đầu trả lời:
+
+> **“Làm sao biết sửa code mới không làm hỏng chức năng cũ?”**
+
+Không cần TDD expert.
+
+Không chase 100% coverage.
+
+---
+
+# Part 1 — First Test
+
+Viết automated test đơn giản:
+
+> Product List API returns `200`.
+
+Chạy test.
+
+Sau đó cố tình phá route.
+
+Chạy lại.
+
+Quan sát:
+
+> **FAIL**
+
+Fix.
+
+Chạy:
+
+> **PASS**
+
+Phải trải nghiệm cycle này.
+
+---
+
+# Part 2 — Critical Flow Tests
+
+Tạo ít nhất **12 automated tests** cho các flow quan trọng.
+
+Ví dụ:
+
+```text
+Guest can view products
+Guest cannot create product
+Admin can create product
+Invalid product data is rejected
+Normal user cannot delete product
+User can login
+Wrong password rejected
+User can view own orders
+User cannot view another user's order
+Checkout creates order
+Checkout creates order items
+Checkout reduces stock
+```
+
+Không cần test getter/setter vô nghĩa chỉ để tăng số lượng.
+
+---
+
+# Part 3 — Transaction Test
+
+Tạo test cho checkout failure.
+
+Expected:
+
+```text
+Order không bị tạo dở dang
+OrderItems không bị tạo dở dang
+Stock không bị update một phần
+```
+
+---
+
+# Part 4 — Regression Experiment
+
+Chọn một feature đã có test.
+
+Cố tình phá implementation.
+
+Run tests.
+
+Expected:
+
+> Test phát hiện regression.
+
+Sau đó fix.
+
+---
+
+## Prompt ChatGPT D32
+
+> Tôi đang học automated testing trong Laravel.
+>
+> Project có:
+>
+> Auth
+> Product
+> Category
+> Cart
+> Checkout
+> Order
+> API
+>
+> Tôi không muốn chase 100% coverage.
+>
+> Đóng vai Senior Developer.
+>
+> Hãy interview tôi để chọn **12 test cases có business value cao nhất**.
+>
+> Với mỗi feature, hỏi:
+>
+> 1. Nếu feature này hỏng thì impact gì?
+> 2. Happy path nào quan trọng?
+> 3. Permission failure nào nguy hiểm?
+> 4. Edge case nào đáng automate?
+>
+> Không viết test code.
+>
+> Sau khi tôi chọn test cases, review priority.
+
+---
+
+# Job Application D32
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **30**
+
+Nếu job yêu cầu testing:
+
+Bây giờ CV có evidence thật.
+
+---
+
+## Knowledge Check D32
+
+1. Automated test giải quyết vấn đề gì?
+2. Manual test có còn cần không?
+3. Feature test là gì ở mức em hiểu?
+4. Regression là gì?
+5. Test happy path đủ chưa?
+6. Authorization có đáng test không?
+7. Validation có đáng test không?
+8. Checkout transaction có đáng test không?
+9. Test fail có nghĩa implementation chắc chắn sai không?
+10. 100% coverage có đồng nghĩa app không bug không?
+
+### DoD D32
+
+- ≥12 automated tests.
+- Auth tests.
+- Authorization tests.
+- Validation tests.
+- Checkout tests.
+- Transaction test.
+- Regression experiment.
+- Test suite PASS.
+- ≥8/10 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D33 — Project Hardening
+
+## Mục tiêu
+
+Trước khi deploy, dọn những lỗi Junior project thường mắc.
+
+Không thêm feature.
+
+---
+
+# 1. Secret Audit
+
+Kiểm tra repository.
+
+Không được có:
+
+```text
+DB_PASSWORD
+APP_KEY
+API TOKEN
+REAL EMAIL PASSWORD
+PRIVATE KEY
+```
+
+`.env` ignored.
+
+Có:
+
+```text
+.env.example
+```
+
+với placeholder.
+
+---
+
+# 2. Production Error Behavior
+
+Local:
+
+```text
+APP_DEBUG=true
+```
+
+Production:
+
+```text
+APP_DEBUG=false
+```
+
+Không để stack trace public.
+
+---
+
+# 3. Logging
+
+Tạo một error có kiểm soát.
+
+Xem log.
+
+Phải biết:
+
+> “Nếu production có 500, tôi xem log ở đâu?”
+
+Không cần centralized logging.
+
+---
+
+# 4. Validation Review
+
+Kiểm tra toàn bộ write operations:
+
+```text
+Register
+Product Create
+Product Update
+Category Create
+Category Update
+Cart Quantity
+Checkout
+Order Status
+API Create/Update
+```
+
+Input user → phải có validation phù hợp.
+
+---
+
+# 5. Authorization Review
+
+Thử bypass UI bằng direct request.
+
+Test:
+
+```text
+Normal User → Admin Product API
+Normal User → Admin Web Route
+User A → User B Order
+Guest → Protected API
+```
+
+---
+
+# 6. N+1 Introduction
+
+Không học optimization sâu.
+
+Chỉ làm experiment.
+
+Product List hiển thị Category.
+
+Quan sát queries.
+
+Hiểu vấn đề:
+
+```text
+1 query Products
++
+N queries Categories
+```
+
+Sau đó thử eager loading.
+
+So sánh.
+
+Ghi:
+
+`performance-notes.md`
+
+```text
+What was N+1?
+
+Where did I observe it?
+
+How did eager loading change query behavior?
+```
+
+---
+
+# 7. Pagination Review
+
+Không endpoint/list nào load hàng nghìn record vô hạn nếu có khả năng data lớn.
+
+---
+
+## Prompt ChatGPT D33 — Security/Production Review
+
+> Tôi chuẩn bị deploy Laravel project.
+>
+> Không đề xuất architecture mới.
+>
+> Không thêm Redis/Docker/Queue nếu không cần.
+>
+> Hãy đóng vai Junior Project Security Reviewer.
+>
+> Review theo checklist:
+>
+> 1. secrets;
+> 2. debug mode;
+> 3. validation;
+> 4. authentication;
+> 5. authorization;
+> 6. ownership;
+> 7. error handling;
+> 8. logging;
+> 9. N+1;
+> 10. pagination.
+>
+> Với mỗi mục, hỏi tôi evidence cụ thể trong project.
+>
+> Nếu tôi không có evidence, đánh dấu NEEDS CHECK.
+>
+> Không tự kết luận PASS chỉ dựa vào mô tả.
+
+---
+
+# Career Task D33 — GitHub Cleanup
+
+Repository root phải sạch.
+
+Không có:
+
+```text
+test2.php
+abc.php
+old.php
+backup/
+final-final/
+```
+
+README phải có:
+
+```text
+Project Overview
+Live Demo (placeholder nếu D34 chưa deploy)
+Features
+Tech Stack
+Screenshots
+Installation
+Demo Accounts
+API
+Postman
+Testing
+```
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **32**
+
+---
+
+## Knowledge Check D33
+
+1. Vì sao `.env` không commit?
+2. Nếu secret từng commit rồi xóa file thì đã an toàn chưa?
+3. Production debug tại sao phải off?
+4. Log dùng để làm gì?
+5. Validation khác authorization?
+6. N+1 là gì?
+7. Eager loading giúp gì?
+8. Pagination giúp gì?
+9. `500` nghĩa gì?
+10. Nếu production lỗi nhưng local không lỗi, em bắt đầu kiểm tra gì?
+
+### DoD D33
+
+- Secret audit.
+- `.env.example`.
+- Debug config.
+- Logging understood.
+- Validation review.
+- Authorization review.
+- N+1 experiment.
+- Pagination review.
+- README cleanup.
+- ≥8/10 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D34 — Deployment Day
+
+## Mục tiêu
+
+Cuối hôm nay:
+
+> **Một người khác có thể mở URL project từ internet.**
+
+Không chỉ localhost.
+
+---
+
+# Deployment Checklist
+
+Platform tùy điều kiện hiện tại.
+
+Không cần đổi sang platform “xịn” nếu đã có VPS/hosting chạy được Laravel.
+
+Cần:
+
+```text
+PHP runtime
+Database
+Environment variables
+Public web server
+HTTPS
+```
+
+---
+
+# Production Environment
+
+Không copy `.env` local nguyên xi.
+
+Production có:
+
+```text
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://...
+```
+
+DB credentials production.
+
+---
+
+# Database
+
+Run migrations.
+
+Seed **demo data**, không seed data rác.
+
+---
+
+# Demo Accounts
+
+README:
+
+```text
+ADMIN
+
+Email:
+Password:
+
+USER
+
+Email:
+Password:
+```
+
+Dùng account demo.
+
+Không dùng personal account/password.
+
+---
+
+# Production Smoke Test
+
+Sau deploy, test như recruiter.
+
+### Guest
+
+```text
+Open homepage
+View products
+Register
+Login
+```
+
+### User
+
+```text
+Add cart
+Update cart
+Checkout
+View order
+```
+
+### Admin
+
+```text
+Login
+Create Product
+Edit Product
+View Orders
+Update Status
+```
+
+### API
+
+```text
+GET Products
+Protected endpoint
+Unauthorized request
+Admin request
+```
+
+Không kết luận:
+
+> “Deploy success vì homepage mở được.”
+
+---
+
+# HTTPS
+
+Public portfolio phải dùng HTTPS nếu platform hỗ trợ.
+
+Không gửi recruiter:
+
+```text
+http://123.45.67.89:8000
+```
+
+nếu có khả năng cấu hình domain/HTTPS phù hợp.
+
+---
+
+## Prompt ChatGPT D34 — Deployment Debugger
+
+> Tôi đang deploy Laravel Mini Shop.
+>
+> Local chạy đúng.
+>
+> Production hiện tại:
+>
+> [PLATFORM / SERVER]
+>
+> Error:
+>
+> [ERROR]
+>
+> Expected:
+>
+> [EXPECTED]
+>
+> Không đưa 10 lệnh một lúc.
+>
+> Debug theo layers:
+>
+> 1. DNS/URL;
+> 2. Web server;
+> 3. PHP;
+> 4. Laravel;
+> 5. Environment;
+> 6. Database;
+> 7. Permissions;
+> 8. Logs.
+>
+> Mỗi lần yêu cầu tôi kiểm tra đúng một layer.
+>
+> Chờ output rồi mới tiếp tục.
+>
+> Không yêu cầu tôi paste secrets.
+
+---
+
+# Job Application D34
+
+Bây giờ có Live Demo.
+
+Apply **3 jobs**.
+
+Cumulative:
+
+> **35**
+
+Update CV ngay khi URL stable.
+
+---
+
+## Knowledge Check D34
+
+1. Local và production khác nhau gì?
+2. Environment variable?
+3. Production DB?
+4. Migration production dùng để làm gì?
+5. HTTPS?
+6. Web server làm gì?
+7. `APP_DEBUG=false` tại sao?
+8. Nếu homepage 500 thì bước đầu tiên?
+9. Nếu app chạy nhưng DB connection fail thì kiểm tra gì?
+10. Nếu login fail thì deploy có đạt không?
+11. Log production xem ở đâu trong setup của em?
+12. Nếu deploy version mới hỏng thì cần nghĩ tới điều gì?
+
+### DoD D34
+
+- Public URL.
+- HTTPS.
+- DB connected.
+- Migrations.
+- Demo data.
+- Guest flow.
+- User flow.
+- Admin flow.
+- API smoke test.
+- ≥10/12 questions.
+- +3 applications.
+
+---
+
+# D35 — WEEK 5 RELEASE EXAM
+
+Week 5 không thi bằng một CRUD mới.
+
+Bài thi là:
+
+> **Em có thể release và defend một project của chính mình như một Junior Developer không?**
+
+---
+
+# Part 1 — Fresh Setup Test
+
+Tạo environment/folder sạch.
+
+Follow chính README.
+
+Thực hiện:
+
+```text
+clone
+install dependencies
+configure env
+generate key
+migrate
+seed
+run
+test
+```
+
+Nếu phải dựa vào trí nhớ để bổ sung step:
+
+> README FAIL.
+
+Sửa README.
+
+---
+
+# Part 2 — Automated Test
+
+Run toàn bộ test suite.
+
+Expected:
+
+> **PASS**
+
+Nếu fail:
+
+Không được bỏ qua vì:
+
+> “Production vẫn chạy mà.”
+
+Tìm root cause.
+
+---
+
+# Part 3 — Production Smoke Test
+
+Chạy checklist D34 lại từ đầu.
+
+Ghi:
+
+`release-checklist.md`
+
+| Area          | Test                 | Result |
+| ------------- | -------------------- | ------ |
+| Auth          | Login                | PASS   |
+| Product       | List                 | PASS   |
+| Cart          | Add                  | PASS   |
+| Checkout      | Order created        | PASS   |
+| Authorization | User → Admin         | PASS   |
+| API           | Product GET          | PASS   |
+| API           | Unauthorized request | PASS   |
+| Tests         | Automated suite      | PASS   |
+
+---
+
+# Part 4 — GitHub Release
+
+Tag:
+
+```text
+v1.0.0
+```
+
+Release notes:
+
+```text
+Mini Shop v1.0.0
+
+Core:
+- Authentication
+- Role authorization
+- Product/Category management
+- Cart
+- Checkout
+- Orders
+
+API:
+- Product
+- Category
+- Orders
+
+Quality:
+- Validation
+- Database transactions
+- Automated tests
+- API documentation
+
+Demo:
+[URL]
+```
+
+Không gọi:
+
+> Enterprise Production System.
+
+---
+
+# Part 5 — Project Defense Exam
+
+Không AI.
+
+Chuẩn bị trả lời như interviewer đang mở GitHub.
+
+### Project
+
+1. Project giải quyết vấn đề gì?
+2. User types?
+3. Main business flow?
+4. Tech stack?
+5. Vì sao chọn Laravel?
+
+### Database
+
+1. Main tables?
+2. Order/OrderItem?
+3. Vì sao lưu unit_price?
+4. Transaction dùng ở đâu?
+5. Nếu checkout fail giữa chừng?
+
+### Laravel
+
+1. Route/Controller/Model?
+2. Validation?
+3. Authentication?
+4. Authorization?
+5. Eloquent relationship?
+
+### API
+
+1. API khác web routes?
+2. 401 vs 403?
+3. REST endpoints thiết kế thế nào?
+4. API protected thế nào?
+5. Postman dùng thế nào?
+
+### Testing
+
+1. Em test gì?
+2. Tại sao test checkout?
+3. Feature test?
+4. Regression?
+5. Test fail thì làm gì?
+
+### Production
+
+1. Project deploy ở đâu?
+2. Environment config?
+3. Secret management?
+4. Log?
+5. Nếu production lỗi thì debug thế nào?
+
+---
+
+# Part 6 — Live Change
+
+Timebox:
+
+> **45 phút — không AI**
+
+Requirement:
+
+> Admin cần API:
+>
+> `GET /api/admin/dashboard`
+>
+> trả:
+>
+> - total users;
+> - total products;
+> - total orders;
+> - total revenue;
+> - orders by status.
+
+Requirements:
+
+- Admin only.
+- JSON.
+- Correct status codes.
+- Có automated test.
+
+Không cần UI.
+
+Mục tiêu kiểm tra toàn bộ chain:
+
+```text
+Requirement
+→ Route
+→ Authorization
+→ Query
+→ Controller
+→ JSON
+→ Test
+```
+
+Commit:
+
+```text
+week 5 release exam - unaided change
+```
+
+---
+
+# Part 7 — ChatGPT Final Project Review
+
+Sau commit:
+
+> Tôi đã hoàn thành Mini Shop v1.0.0 và đang chuẩn bị dùng project này để ứng tuyển Junior PHP/Laravel Backend.
+>
+> Đây là:
+>
+> README:
+>
+> [PASTE]
+>
+> Database design:
+>
+> [PASTE]
+>
+> API list:
+>
+> [PASTE]
+>
+> Test list:
+>
+> [PASTE]
+>
+> Deployment:
+>
+> [DESCRIPTION]
+>
+> Không đề xuất thêm feature chỉ để project lớn hơn.
+>
+> Đóng vai Technical Interviewer + Senior Laravel Reviewer.
+>
+> PHASE 1:
+>
+> Đánh giá project theo tiêu chuẩn Junior Developer:
+>
+> - fundamentals;
+> - Laravel;
+> - database;
+> - business logic;
+> - API;
+> - testing;
+> - deployment.
+>
+> PHASE 2:
+>
+> Chỉ ra 5 weaknesses có khả năng bị interviewer đào sâu nhất.
+>
+> PHASE 3:
+>
+> Hỏi tôi 20 câu dựa trực tiếp trên project, từng câu một.
+>
+> PHASE 4:
+>
+> Sau interview, tạo Remedial Backlog tối đa 5 items.
+>
+> Không thêm Redis/Docker/microservices/CQRS nếu evidence hiện tại không cho thấy chúng cần thiết.
+>
+> Bắt đầu Phase 1.
+
+---
+
+# Job Campaign D35
+
+Apply **3 jobs**.
+
+Week 5:
+
+| Ngày      | Applications |
+| --------- | ------------ |
+| D29       | 2            |
+| D30       | 2            |
+| D31       | 2            |
+| D32       | 2            |
+| D33       | 2            |
+| D34       | 3            |
+| D35       | 3            |
+| **Total** | **16**       |
+
+Cumulative:
+
+> **38 applications**
+
+---
+
+# Application Funnel Review
+
+38 applications bắt đầu đủ để quan sát tín hiệu ban đầu, nhưng vẫn tránh kết luận chỉ từ một con số.
+
+| Stage                | Count | Rate |
+| -------------------- | ----- | ---- |
+| Applications         | 38    | 100% |
+| HR Contacts          |       |      |
+| Coding Tests         |       |      |
+| Technical Interviews |       |      |
+| Final Interviews     |       |      |
+| Rejected             |       |      |
+| No Response          |       |      |
+| Offers               |       |      |
+
+## Chẩn đoán theo funnel
+
+### Ít hoặc không có HR Contact
+
+Điều tra:
+
+- CV positioning;
+- job targeting;
+- CV keywords;
+- project visibility;
+- experience/education filtering;
+- application quality.
+
+**Không mặc định kết luận technical skill yếu.**
+
+### Có HR Contact nhưng fail Coding Test
+
+Priority Week 6:
+
+> **Coding test.**
+
+### Qua test nhưng fail Technical
+
+Priority:
+
+> PHP / SQL / Laravel explanation + project defense.
+
+### Technical tốt nhưng fail HR/communication
+
+Priority:
+
+> Communication + story + project explanation.
+
+---
+
+# CV v0.4 — Candidate Ready
+
+CV lúc này nên đủ để gửi nghiêm túc.
+
+Headline:
+
+> **Junior Backend Developer — PHP/Laravel**
+
+Project:
+
+### Mini Shop — Laravel/MySQL
+
+Có thể mô tả factual:
+
+```text
+- Built an end-to-end Laravel application covering authentication, role-based authorization, product management, cart, checkout and order management.
+- Designed relational MySQL schema and used database transactions to maintain checkout consistency.
+- Developed REST APIs with authentication, authorization, validation and consistent JSON responses.
+- Added automated tests for authentication, authorization, product validation and critical checkout flows.
+- Deployed the application publicly and documented setup, API usage and demo access.
+```
+
+Links:
+
+```text
+Live Demo
+GitHub
+```
+
+Không ghi skill chưa làm.
+
+---
+
+# GitHub Standard cuối Week 5
+
+Recruiter mở repository phải thấy ngay:
+
+```text
+README
+Live Demo
+Features
+Tech Stack
+Screenshots
+Installation
+API Documentation
+Postman
+Tests
+Demo Credentials
+```
+
+Repo history phải cho thấy:
+
+> project được build từng bước.
+
+Không squash mọi thứ thành:
+
+```text
+final project
+```
+
+---
+
+# Week 5 Final Scorecard
+
+| Category               | Weight   |
+| ---------------------- | -------- |
+| REST API               | **15%**  |
+| API Auth/Authorization | **10%**  |
+| Automated Testing      | **15%**  |
+| Deployment             | **15%**  |
+| Live Change Exam       | **15%**  |
+| Project Defense        | **10%**  |
+| README/GitHub/API Docs | **10%**  |
+| Job Campaign/Funnel    | **10%**  |
+| **TOTAL**              | **100%** |
+
+### ≥80 — PASS
+
+Project **feature freeze**.
+
+Sang Week 6.
+
+### 65–79 — CONDITIONAL PASS
+
+Chỉ sửa những issue trực tiếp ảnh hưởng:
+
+- project chạy;
+- tests;
+- security;
+- deploy;
+- interview explanation.
+
+Không thêm feature.
+
+### <65 — REMEDIAL
+
+Fix project tối đa 2–3 ngày.
+
+Không reset roadmap.
+
+---
+
+# Definition of Done — WEEK 5
+
+### REST API
+
+- [ ]  Product List/Detail/Create/Update/Delete.
+- [ ]  Category API.
+- [ ]  Order API.
+- [ ]  JSON responses.
+- [ ]  Correct common HTTP status codes.
+- [ ]  API Authentication.
+- [ ]  API Authorization.
+- [ ]  Ownership protection.
+
+### Documentation
+
+- [ ]  Postman Collection.
+- [ ]  Environment variables.
+- [ ]  Example requests.
+- [ ]  Example responses.
+- [ ]  API README.
+
+### Testing
+
+- [ ]  ≥12 automated tests.
+- [ ]  Authentication test.
+- [ ]  Authorization test.
+- [ ]  Product validation tests.
+- [ ]  Checkout tests.
+- [ ]  Transaction rollback test.
+- [ ]  Test suite PASS.
+
+### Hardening
+
+- [ ]  Secret audit.
+- [ ]  `.env` ignored.
+- [ ]  `.env.example`.
+- [ ]  Production debug disabled.
+- [ ]  Error handling checked.
+- [ ]  Logging understood.
+- [ ]  Basic N+1 exercise.
+- [ ]  Pagination.
+
+### Deployment
+
+- [ ]  Public URL.
+- [ ]  HTTPS.
+- [ ]  Production DB.
+- [ ]  Migrations.
+- [ ]  Demo data.
+- [ ]  Demo accounts.
+- [ ]  Guest smoke test.
+- [ ]  User smoke test.
+- [ ]  Admin smoke test.
+- [ ]  API smoke test.
+
+### Release
+
+- [ ]  Fresh setup from README succeeds.
+- [ ]  `release-checklist.md`.
+- [ ]  `v1.0.0`.
+- [ ]  Release notes.
+- [ ]  Live Change completed.
+- [ ]  Project Defense completed.
+
+### Career
+
+- [ ]  CV v0.4.
+- [ ]  Live Demo in CV.
+- [ ]  GitHub in CV.
+- [ ]  **16 applications Week 5**.
+- [ ]  **38 cumulative applications**.
+- [ ]  Application Funnel updated.
+- [ ]  Interview/Test feedback captured.
+- [ ]  Remedial Backlog ≤5 items.
+
+---
+
+> **Sau Week 5: DỪNG BUILD**
+>
+> Đây là một discipline rất quan trọng.
+>
+> Em sẽ luôn tìm thấy thứ có thể thêm:
+>
+> Docker. Redis. Queue. WebSocket. CQRS. Repository Pattern. Microservices. Elasticsearch. Kubernetes...
+>
+> Nhưng mục tiêu không phải tạo project phức tạp nhất.
+>
+> **Mục tiêu là landing a developer job.**
+>
+> Đến đây em đã có đủ material để chứng minh năng lực Junior:
+>
+> **PHP → SQL → Laravel → Business Logic → API → Testing → Git → Deployment.**
+>
+> Nếu cứ build tiếp, rất dễ rơi lại vào trạng thái **học mãi nhưng chưa đi phỏng vấn**.
+>
+> Từ **Week 6**, tỷ lệ thời gian sẽ đảo ngược:
+>
+> **~70% Coding Test + Technical Interview + Project Defense + Applications**
+>
+> **~30% sửa đúng những knowledge gaps mà interview thật phát hiện.**
+>
+> Week 6 sẽ là tuần chuyển từ **“Developer Training Mode” → “Candidate Mode.”**
