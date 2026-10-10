@@ -1,1529 +1,1811 @@
-# Week 3
+# Week 4
 
-# Tuần 3 — Laravel Fundamentals: Build CRUD như một Junior Developer
+# Tuần 4 — Laravel Business Flow: Từ CRUD → Application thật
 
 ## Mục tiêu của tuần
 
-Hai tuần đầu đã xây nền:
+Ba tuần đầu đã xây được nền tảng:
 
-**Week 1:** PHP Core → Function → OOP → Debugging → Git
+| Tuần   | Trọng tâm                | Kết quả                                                            |
+| ------ | ------------------------ | ------------------------------------------------------------------ |
+| W1     | PHP Core                 | Tự biến requirement thành code                                     |
+| W2     | SQL + PHP/MySQL          | Hiểu database và CRUD                                              |
+| W3     | Laravel Fundamentals     | Tự build Laravel CRUD                                              |
+| **W4** | **Laravel Business Flow** | **Build application có user, permission và transaction flow thật** |
+| W5     | REST API + Testing + Deploy | Flagship project online                                         |
+| W6     | Coding Test + Interview  | Technical interview readiness                                      |
+| W7     | Node.js Basic + Job Campaign | Mở rộng job pool                                               |
+| W8     | Interview + Application Sprint | Tối ưu funnel để landing job                                  |
 
-**Week 2:** Database → SQL → JOIN → Reporting → PHP/MySQL
+Week 4 **không tạo project mới**.
 
-Từ Week 3 bắt đầu Laravel.
+Tiếp tục `Mini Shop` từ Week 3 và biến nó từ:
 
-Điểm quan trọng: **không học Laravel bằng cách xem một khóa tutorial từ đầu đến cuối.** Những gì đã tự làm bằng PHP/MySQL trong Week 2 sẽ được xây lại bằng Laravel để hiểu framework đang giúp giải quyết việc gì.
+> “Project CRUD Product/Category”
 
-### Vị trí Week 3 trong roadmap 8 tuần
+thành:
 
-| Tuần   | Trọng tâm                | Kết quả lớn                                  |
-| ------ | ------------------------ | -------------------------------------------- |
-| W1     | PHP Core                 | Tự biến requirement nhỏ thành code           |
-| W2     | SQL + PHP/MySQL          | Hiểu database và CRUD                        |
-| **W3** | **Laravel Fundamentals** | **Tự build CRUD Laravel từ project trắng**   |
-| W4     | Laravel Business App     | Login → Role → Cart → Order                  |
-| W5     | REST API + Deploy        | Flagship project online                      |
-| W6     | Coding Test + Interview  | Sẵn sàng technical interview                 |
-| W7     | Node.js basic + Job Campaign | Mở rộng JD có thể apply                  |
-| W8     | Interview & Application Sprint | Tối ưu funnel để landing job             |
+> **“Một application có user thật sự sử dụng và có business flow.”**
 
-> **Week 3 không cần làm project hoành tráng.**
->
-> Mục tiêu duy nhất là đến cuối tuần, khi được giao:
->
-> **“Tạo Laravel CRUD quản lý Customer.”**
->
-> em có thể mở project trắng và tự làm từ đầu.
+Flow mục tiêu cuối tuần:
+
+```text
+Register / Login
+       ↓
+Browse Products
+       ↓
+Add to Cart
+       ↓
+Update Quantity
+       ↓
+Checkout
+       ↓
+Create Order
+       ↓
+View Order
+       ↓
+Admin Confirm
+       ↓
+Completed / Cancelled
+```
+
+Đây sẽ là phần quan trọng nhất của flagship project.
 
 ---
 
 # 1. Weekly Summary
 
-| Ngày    | Chủ đề                         | Coding Output                                  | Job Search / Career Output                | GitHub Output              | Definition of Done                           |
-| ------- | ------------------------------ | ---------------------------------------------- | ----------------------------------------- | -------------------------- | -------------------------------------------- |
-| **D15** | Laravel Project & Request Flow | Laravel Mini Shop chạy + DB connection         | +5 JD Laravel → tổng 30                   | `day15-laravel-start`      | Project chạy + hiểu request flow cơ bản      |
-| **D16** | Migration, Model, Eloquent     | Category + Product DB bằng Laravel             | Phân tích Laravel frequency trong 30 JD   | `day16-model-migration`    | Migration + relationship chạy                |
-| **D17** | Product CRUD                   | List/Create/Edit/Delete Product                | Apply 1 job                               | `day17-product-crud`       | CRUD Product hoàn chỉnh                      |
-| **D18** | Validation & Errors            | Validation + error messages                    | +5 JD → tổng 35                           | `day18-validation`         | Invalid input không vào DB                    |
-| **D19** | Search, Filter, Pagination     | Search/filter/sort/pagination Product          | Apply 2 jobs                              | `day19-product-query`      | Product listing usable                       |
-| **D20** | Category CRUD + Relationship   | Category CRUD + Product/Category               | Apply 2 jobs + review CV v0.1             | `day20-category-crud`      | 2 resources liên kết đúng                    |
-| **D21** | **Week 3 Exam**                | Customer CRUD từ Laravel project trắng         | Apply 2 jobs + Market Review              | `day21-week3-exam`         | CRUD hoàn thành ≤3h không AI                  |
+| Ngày    | Chủ đề                       | Coding Output                                      | Job Search / Career Output                            | GitHub Output            | Definition of Done                                      |
+| ------- | ---------------------------- | -------------------------------------------------- | ----------------------------------------------------- | ------------------------ | ------------------------------------------------------- |
+| **D22** | Authentication               | Register/Login/Logout                              | +5 JD → tổng 40                                       | `day22-authentication`   | User tự register/login/logout được                      |
+| **D23** | Authorization & Roles        | Admin/User + route protection                      | Phân tích Auth/Role requirement trong 40 JD + Apply 2 | `day23-authorization`    | User không truy cập Admin được                          |
+| **D24** | Shopping Cart                | Add/Update/Remove Cart                             | +5 JD → tổng 45                                       | `day24-cart`             | Cart tính đúng qty/subtotal/total                       |
+| **D25** | Checkout + Transaction       | Cart → Order + OrderItems                          | Apply 2 jobs                                          | `day25-checkout`         | Checkout tạo dữ liệu đúng và không tạo order dở dang    |
+| **D26** | Order Management             | Order History + Detail + Status                    | Review CV v0.2 + Apply 2                              | `day26-orders`           | User/Admin có đúng quyền với Order                      |
+| **D27** | Business Rules + Debugging   | Stock, duplicate checkout, invalid status          | Apply 2 + Project README v0.2                         | `day27-business-rules`   | ≥10 business test cases PASS                            |
+| **D28** | **Week 4 Exam**              | Coupon Feature + Change Request không AI           | Apply 2 + Funnel Review                               | `day28-week4-exam`       | Feature hoàn thành ≤3h + giải thích được design         |
 
-### Target cuối Week 3
+### Target cuối Week 4
 
-- Job Tracker: **35 JD**.
-- Applications Week 2: 5.
-- Applications Week 3: **7**.
-- Cumulative applications: **12**.
-- Laravel Mini Shop bắt đầu trở thành **flagship project**.
-- Một Laravel CRUD hoàn chỉnh.
-- Một CRUD khác được build trong exam **không AI**.
-- CV v0.1 bắt đầu có Laravel project thật để ghi.
+- Job Tracker: **45 JD**.
+- Week 4 applications: **10**.
+- Cumulative applications: **22**.
+- Mini Shop có Authentication + Authorization.
+- Cart hoạt động.
+- Checkout hoạt động.
+- Orders hoạt động.
+- Có business rules thật.
+- Có transaction.
+- D28 tự thêm một feature mới không AI.
+- CV đã có một project đủ để bắt đầu nói chuyện nghiêm túc trong interview.
 
 ---
 
-# D15 — Laravel: Framework đang làm gì cho mình?
+# D22 — Authentication: Register / Login / Logout
 
 ## Mục tiêu
 
-Không học thuộc:
+Hôm nay trả lời được:
 
-> Laravel là PHP framework theo MVC...
+> **“Application biết user hiện tại là ai bằng cách nào?”**
 
-Mục tiêu là hiểu:
+Không cần tự viết authentication system từ số 0.
 
-> Week 2 mình đã tự viết PHP + MySQL. Laravel đang giúp mình tổ chức những phần đó như thế nào?
+Được phép dùng authentication package/scaffolding phù hợp với Laravel version đang sử dụng.
+
+Nhưng:
+
+> **Không được chạy installer xong rồi coi như đã học Authentication.**
 
 ---
 
-## Phase 1 — Tạo project
+# Phase 1 — Requirement
+
+Application cần:
+
+```text
+Guest
+├── Register
+└── Login
+
+Authenticated User
+├── Products
+├── Cart
+├── Orders
+└── Logout
+```
+
+---
+
+# Phase 2 — Register
+
+User nhập:
+
+```text
+Name
+Email
+Password
+Confirm Password
+```
+
+Validation:
+
+```text
+Name required
+Email required
+Email valid
+Email unique
+Password required
+Password confirmation
+```
+
+Register thành công:
+
+→ User được lưu database.
+
+→ Password **không được lưu plain text**.
+
+---
+
+# Phase 3 — Login
+
+Correct credentials:
+
+```text
+Email + Password
+→ Login
+```
+
+Wrong credentials:
+
+```text
+→ Reject
+→ Error message
+```
+
+---
+
+# Phase 4 — Protected Page
 
 Tạo:
 
-```
-mini-shop-laravel
+```text
+/profile
 ```
 
-Project phải:
+Guest truy cập:
 
-- chạy local;
-- connect MySQL;
-- `.env` không push GitHub;
-- database riêng;
-- Git repository sạch.
+```text
+/profile
+```
+
+→ bị yêu cầu login.
+
+Authenticated user:
+
+→ xem được.
 
 ---
 
-## Phase 2 — Tạo route đầu tiên
+# Phase 5 — Logout
 
-Tạo:
+Logout xong:
 
-```
-/products
-```
-
-Ban đầu chưa cần database.
-
-Route trả:
-
-```
-Product List
-```
-
-Sau đó chuyển logic sang Controller.
-
-Mục tiêu nhìn thấy:
-
-```
-Browser
-   ↓
-Route
-   ↓
-Controller
-   ↓
-Response
-```
+→ `/profile` không truy cập được nữa.
 
 ---
 
-## Phase 3 — So sánh PHP thuần và Laravel
+## Authentication Test Cases
 
-Tạo:
-
-`notes/php-vs-laravel.md`
-
-Điền bảng:
-
-| Week 2 PHP thuần | Laravel |
-| ---------------- | ------- |
-| `products.php`   | ?       |
-| SQL connection   | ?       |
-| Query Product    | ?       |
-| HTML             | ?       |
-| URL handling     | ?       |
-
-Không cần câu trả lời hoàn hảo.
-
-Mục tiêu là **tự hình thành mental model**.
+| Case                     | Expected       |
+| ------------------------ | -------------- |
+| Register valid           | Success        |
+| Duplicate email          | Reject         |
+| Invalid email            | Reject         |
+| Password mismatch        | Reject         |
+| Correct login            | Success        |
+| Wrong password           | Reject         |
+| Guest → `/profile`       | Redirect/Login |
+| Logged user → `/profile` | Success        |
+| Logout → `/profile`      | Reject         |
 
 ---
 
-## Prompt ChatGPT D15 — Laravel Tutor
+## Prompt ChatGPT D22
 
-> Tôi đã học PHP Core và PHP/MySQL trước khi học Laravel.
+> Tôi đang học Authentication trong Laravel.
 >
-> Week 2 tôi tự làm Product CRUD bằng PHP thuần.
+> Tôi đã dùng:
 >
-> Bây giờ tôi đang học Laravel.
+> **[ghi package/scaffolding/cách implement]**
 >
-> Tôi không muốn học thuộc framework.
+> Nhưng tôi không muốn chỉ biết chạy command.
 >
-> Hãy dạy tôi Laravel bằng cách mapping những thứ tôi đã biết.
+> Hãy đóng vai Senior Laravel Developer và kiểm tra tôi có hiểu authentication flow không.
 >
-> Với request:
+> Không viết code.
 >
-> `GET /products`
+> Hỏi tôi từng câu theo flow:
 >
-> hãy hỏi tôi từng bước:
+> Register
 >
-> 1. Browser gửi gì?
-> 2. Route làm gì?
-> 3. Controller làm gì?
-> 4. Model sẽ làm gì?
-> 5. View làm gì?
+> → Validate
+>
+> → Store User
+>
+> → Password Hash
+>
+> → Login
+>
+> → Session
+>
+> → Middleware
+>
+> → Logout
 >
 > Mỗi lần chỉ hỏi một câu.
 >
-> Nếu tôi sai, giải thích ở level Junior rồi hỏi lại.
+> Nếu tôi sai, giải thích concept ở mức Junior rồi hỏi một câu kiểm tra lại.
 >
-> Không viết project hoặc code hoàn chỉnh cho tôi.
+> Không chuyển câu tiếp theo cho đến khi tôi hiểu.
 
 ---
 
-# Job Search D15
+# Job Search D22
 
-Tìm thêm **5 JD**, nhưng lần này ưu tiên:
+Tìm thêm **5 JD**.
 
+Tổng:
+
+> **40 JD**
+
+Đặc biệt ghi nhận:
+
+```text
+Authentication
+Authorization
+Role/Permission
+Session
+JWT
+OAuth
 ```
-Junior Laravel Developer
-Fresher Laravel
-PHP Laravel Developer
-Backend PHP Laravel
-Laravel Intern
-```
 
-Job Tracker:
+Không thấy JWT rồi lập tức học JWT.
 
-**25 → 30 jobs.**
-
-Ghi riêng Laravel requirement:
-
-```
-Laravel required
-Laravel preferred
-Framework experience
-Version mentioned?
-```
+Chỉ **thu thập dữ liệu thị trường**.
 
 ---
 
-## Knowledge Check D15
+## Knowledge Check D22
 
-1. Laravel giải quyết vấn đề gì?
-2. Framework khác language thế nào?
-3. Laravel có thay thế PHP không?
-4. Route dùng để làm gì?
-5. Controller dùng để làm gì?
-6. Model dùng để làm gì?
-7. View dùng để làm gì?
-8. Request bắt đầu từ đâu?
-9. Response cuối cùng đi đâu?
-10. `.env` dùng để làm gì?
-11. Vì sao không push `.env`?
-12. Laravel biết connect database nào bằng cách nào?
+1. Authentication trả lời câu hỏi gì?
+2. Authorization trả lời câu hỏi gì?
+3. Register khác Login thế nào?
+4. Password có nên lưu plain text không?
+5. Hash khác encryption ở mức em hiểu thế nào?
+6. Session dùng để làm gì?
+7. Laravel biết user hiện tại là ai bằng cách nào ở mức high-level?
+8. Middleware authentication làm gì?
+9. Guest truy cập protected route thì chuyện gì xảy ra?
+10. Logout cần thay đổi trạng thái gì?
+11. Duplicate email tại sao phải reject?
+12. Authentication thành công có đồng nghĩa user được phép làm mọi thứ không?
 
-### DoD D15
+### DoD D22
 
-- Laravel project chạy.
-- MySQL connection hoạt động.
-- `/products` route chạy.
-- Controller hoạt động.
-- Có `php-vs-laravel.md`.
-- ≥10/12 questions.
+- Register.
+- Login.
+- Logout.
+- Password hashed.
+- Protected route.
+- 9/9 auth tests.
+- ≥10/12 Knowledge Check.
 - +5 JD.
 - GitHub push.
 
 ---
 
-# D16 — Migration + Model + Eloquent
+# D23 — Authorization: Admin vs User
 
 ## Mục tiêu
 
-Hiểu Laravel đang thay thế phần nào của SQL/PHP Week 2.
+Hôm qua:
 
-Hôm nay chưa CRUD UI.
+> **“Anh là ai?”**
 
----
+Hôm nay:
 
-## Part 1 — Migration
+> **“Anh được phép làm gì?”**
 
-Tạo:
-
-```
-categories
-products
-```
-
-Products có:
-
-```
-id
-category_id
-name
-price
-stock
-timestamps
-```
-
-Chạy migration.
-
-Sau đó kiểm tra MySQL thật:
-
-> Tables có thực sự được tạo không?
+Đây là hai vấn đề khác nhau.
 
 ---
 
-## Migration Experiment
+# Roles
 
-Thêm:
+Chỉ cần:
 
+```text
+ADMIN
+USER
 ```
-description
-```
 
-vào Product bằng migration mới.
-
-Không xóa DB rồi tạo tay.
-
-Sau đó rollback.
-
-Sau đó migrate lại.
-
-Phải quan sát DB thay đổi thật.
+Không build permission system phức tạp.
 
 ---
 
-# Part 2 — Model
-
-Tạo:
-
-```
-Product
-Category
-```
-
-Tạo dữ liệu bằng Laravel.
-
-Query:
-
-```
-all products
-product id = X
-products price > X
-```
-
-So sánh với SQL Week 2.
-
----
-
-# Part 3 — Relationship
-
-Thiết lập:
-
-```
-Category
-   ↓ hasMany
-Products
-
-Product
-   ↓ belongsTo
-Category
-```
-
-Test:
-
-> Lấy Product → Category Name.
-
-và:
-
-> Lấy Category → tất cả Products.
-
----
-
-## Prompt ChatGPT D16
-
-> Tôi đã biết SQL và đang học Laravel Eloquent.
->
-> Schema:
->
-> Category 1 → N Product.
->
-> Tôi muốn tự thiết lập relationship.
->
-> Không viết Model code cho tôi.
->
-> Hãy kiểm tra tư duy bằng cách hỏi lần lượt:
->
-> 1. Foreign key nằm table nào?
-> 2. Product nhìn sang Category là relationship gì?
-> 3. Category nhìn sang Product là relationship gì?
-> 4. Model nào cần method nào?
->
-> Chỉ khi tôi trả lời đúng concept mới chuyển câu tiếp theo.
-
----
-
-# Job Market Task D16
-
-Dùng 30 JD hiện tại.
-
-Đếm:
-
-```
-PHP
-Laravel
-MySQL
-Git
-REST API
-HTML/CSS
-JavaScript
-Node
-Docker
-Testing
-```
-
-Sau đó trả lời:
-
-> **Laravel xuất hiện trong bao nhiêu /30 jobs?**
-
-Và:
-
-> Trong các job Laravel, skill nào thường xuất hiện cùng Laravel?
-
-Ghi vào:
-
-`market-notes-week03.md`
-
----
-
-## Knowledge Check D16
-
-1. Migration để làm gì?
-2. Migration khác tạo table trực tiếp bằng phpMyAdmin thế nào?
-3. Tại sao migration hữu ích khi làm team?
-4. Model đại diện cho gì?
-5. Eloquent là gì ở mức em hiểu?
-6. Eloquent có nghĩa database không còn SQL không?
-7. `hasMany` nghĩa là gì?
-8. `belongsTo` nghĩa là gì?
-9. Foreign key nằm đâu?
-10. `rollback` làm gì?
-11. Nếu thêm column vào production, tại sao không nên sửa migration cũ tùy tiện?
-12. Timestamps thường gồm gì?
-
-### DoD D16
-
-- Migration Category.
-- Migration Product.
-- Add-column migration.
-- Rollback chạy.
-- Product model.
-- Category model.
-- Relationship hoạt động.
-- ≥10/12 questions.
-- Market analysis updated.
-- GitHub push.
-
----
-
-# D17 — Product CRUD
-
-## Mục tiêu
-
-Hôm nay build feature đầu tiên thật sự:
-
-> **Product Management**
-
----
-
-# Requirement
-
-URLs:
-
-```
-GET    /products
-GET    /products/create
-POST   /products
-GET    /products/{id}/edit
-PUT    /products/{id}
-DELETE /products/{id}
-```
-
-UI không cần đẹp.
-
----
-
-## Feature 1 — Product List
-
-Hiển thị:
-
-| ID | Product | Category | Price | Stock | Actions |
-| -- | ------- | -------- | ----- | ----- | ------- |
-
-Data từ database.
-
----
-
-## Feature 2 — Create
-
-Form:
-
-```
-Name
-Category
-Price
-Stock
-```
-
-Submit → database.
-
----
-
-## Feature 3 — Edit
-
-Click Edit.
-
-Form phải load **data hiện tại**.
-
-Update → DB thay đổi.
-
----
-
-## Feature 4 — Delete
-
-Delete đúng Product.
-
-Sau Delete quay lại Product List.
-
----
-
-# Coding Rule
-
-Không chạy:
-
-```
-php artisan make:model Product -a
-```
-
-rồi không hiểu Laravel tạo cái gì.
-
-Nếu dùng generator, phải mở từng file và biết:
-
-> File này làm gì?
-
----
-
-## Prompt ChatGPT D17 — Feature Coach
-
-> Tôi đang tự build Product CRUD Laravel.
->
-> Feature hiện tại:
->
-> **[LIST / CREATE / EDIT / DELETE]**
->
-> Tôi muốn tự implement.
->
-> Không viết Controller/Model/View cho tôi.
->
-> Hãy giúp tôi breakdown feature theo flow:
->
-> Request
->
-> → Route
->
-> → Controller
->
-> → Model/Database
->
-> → View/Redirect
->
-> Hỏi tôi:
->
-> “Bước tiếp theo request cần đi đâu?”
->
-> Mỗi lần chỉ hỏi một bước.
->
-> Nếu tôi trả lời sai, giải thích concept nhưng không đưa code solution.
-
----
-
-# Job Application D17
-
-Chọn **1 job** trong Target Jobs.
-
-Apply.
-
-Không yêu cầu match 100%.
-
-Update Job Tracker:
-
-```
-Applied Date
-CV Version
-Status
-Notes
-```
-
-### Nếu job hỏi expected salary
-
-Tự research và quyết định.
-
-Không bỏ application chỉ vì form hơi dài.
-
----
-
-## Knowledge Check D17
-
-1. CRUD viết tắt của gì?
-2. `GET /products` làm gì?
-3. GET và POST khác nhau thế nào?
-4. Controller nhận request từ đâu?
-5. Controller gọi Model để làm gì?
-6. View nhận data từ đâu?
-7. Sau Create tại sao thường redirect?
-8. Edit khác Update thế nào?
-9. Delete cần biết gì để xóa đúng Product?
-10. Route parameter `{id}` dùng để làm gì?
-11. Resource route giải quyết vấn đề gì?
-12. Nếu Create thành công nhưng Product List không thấy Product, em debug theo flow nào?
-
-### DoD D17
-
-- List.
-- Create.
-- Edit.
-- Update.
-- Delete.
-- DB thay đổi thật.
-- ≥10/12 questions.
-- 1 application.
-- GitHub push.
-
----
-
-# D18 — Validation & Error Handling
-
-## Mục tiêu
-
-Product CRUD chạy được chưa đủ.
-
-User sẽ nhập dữ liệu ngu.
-
-App phải chịu được.
-
----
-
-# Validation Rules
-
-Product:
-
-```
-name:
-required
-
-category:
-required
-must exist
-
-price:
-required
-numeric
-> 0
-
-stock:
-required
-integer
->= 0
-```
-
----
-
-# Test Cases
-
-| Input                    | Expected |
-| ------------------------ | -------- |
-| Empty name               | Reject   |
-| Price = -100             | Reject   |
-| Price = abc              | Reject   |
-| Stock = -1               | Reject   |
-| Stock = 2.5              | Reject   |
-| Category không tồn tại   | Reject   |
-| Valid Product            | Success  |
-
-Error phải hiển thị cho user.
-
-Không chỉ:
-
-> Database error.
-
----
-
-# Old Input
-
-User nhập:
-
-```
-Name: Keyboard ABC
-Price: -100
-```
-
-Validation fail.
-
-Form reload.
-
-**Name không được mất.**
-
-Đây là UX rất cơ bản nhưng đáng học.
-
----
-
-## Prompt ChatGPT D18
-
-> Tôi đang thêm validation vào Laravel Product CRUD.
->
-> Requirement:
->
-> [PASTE RULES]
->
-> Đây là implementation hiện tại:
->
-> [CODE]
->
-> Không rewrite code.
->
-> Hãy đóng vai QA Engineer.
->
-> Đưa cho tôi từng test case một để phá form.
->
-> Tôi sẽ chạy và trả Actual Result.
->
-> Sau đó đánh giá PASS/FAIL.
->
-> Nếu FAIL, đừng sửa code. Hãy chuyển sang Debugging Mode và chỉ cho tôi một bước kiểm tra tiếp theo.
-
----
-
-# Job Search D18
-
-Tìm thêm **5 JD**.
-
-Job Tracker:
-
-**30 → 35 jobs.**
-
-Lần này chú ý thêm:
-
-```
-Testing
-PHPUnit
-Unit Test
-Feature Test
-TDD
-```
-
-Chỉ ghi nhận.
-
-**Chưa học testing hôm nay.**
-
-Nếu testing xuất hiện nhiều, nó sẽ ảnh hưởng priority Week 5–6.
-
----
-
-## Knowledge Check D18
-
-1. Validation để làm gì?
-2. Client-side validation có đủ không?
-3. Server-side validation để làm gì?
-4. `required` nghĩa gì?
-5. `exists` giúp kiểm tra gì?
-6. Price numeric nhưng âm có hợp lệ không?
-7. Stock = 2.5 có hợp lệ không?
-8. Error message phục vụ ai?
-9. Validation nên xảy ra trước hay sau khi lưu DB?
-10. Nếu validation fail, DB có nên thay đổi không?
-
-### DoD D18
-
-- 7/7 test cases.
-- Error hiển thị rõ.
-- Old input giữ lại.
-- DB không chứa invalid product.
-- ≥9/10 questions.
-- Job Tracker = 35.
-- GitHub push.
-
----
-
-# D19 — Search + Filter + Sort + Pagination
-
-## Mục tiêu
-
-Biến CRUD demo thành một listing gần với application thực tế.
-
----
-
-# Chuẩn bị Data
-
-Database phải có ít nhất:
-
-> **50 Products**
-
-Không test pagination bằng 5 products.
+# Permission Matrix
+
+Trước khi code, tạo:
+
+`permission-matrix.md`
+
+| Action          | Guest | User | Admin |
+| --------------- | ----- | ---- | ----- |
+| View Products   | ✓     | ✓    | ✓     |
+| Add Cart        | ✗     | ✓    | ✓     |
+| View Own Orders | ✗     | ✓    | ✓     |
+| Create Product  | ✗     | ✗    | ✓     |
+| Edit Product    | ✗     | ✗    | ✓     |
+| Delete Product  | ✗     | ✗    | ✓     |
+| Manage Category | ✗     | ✗    | ✓     |
+| Manage Orders   | ✗     | ✗    | ✓     |
+
+**Design permission trước khi code.**
 
 ---
 
 # Requirements
 
-Product List có:
+Normal User thử:
 
-### Search
-
-```
-Keyword: keyboard
+```text
+/products/create
 ```
 
-Search theo name.
+→ Reject.
 
-### Category Filter
+Admin:
 
+→ Access.
+
+---
+
+# Security Test
+
+Không chỉ hide button.
+
+Ví dụ User không thấy:
+
+> Delete Product
+
+nhưng cố gõ URL trực tiếp hoặc gửi request thủ công.
+
+→ **Vẫn phải bị reject.**
+
+Đây là distinction quan trọng:
+
+> **UI hiding ≠ Authorization.**
+
+---
+
+## Prompt ChatGPT D23
+
+> Tôi đang implement Authorization cho Mini Shop.
+>
+> Roles:
+>
+> ADMIN
+>
+> USER
+>
+> Permission matrix:
+>
+> [PASTE]
+>
+> Không viết middleware/policy/code cho tôi.
+>
+> Hãy đóng vai Security Reviewer.
+>
+> Mỗi lần đưa cho tôi một scenario, ví dụ:
+>
+> “Normal User gửi trực tiếp DELETE request tới Product.”
+>
+> Tôi sẽ trả lời:
+>
+> 1. Request có được phép không?
+> 2. Tôi sẽ enforce rule ở đâu?
+>
+> Sau đó đánh giá Correct / Partial / Incorrect.
+>
+> Cho tôi 10 scenarios, từng scenario một.
+
+---
+
+# Job Application D23
+
+Apply **2 jobs**.
+
+Ưu tiên:
+
+- PHP/Laravel.
+- Fresher/Junior.
+- Backend.
+- Core requirements match tương đối.
+
+Cumulative applications:
+
+> **14**
+
+---
+
+## Knowledge Check D23
+
+1. Authentication và Authorization khác nhau thế nào?
+2. Role là gì?
+3. User đã login có chắc được delete Product không?
+4. Hide Delete button đã đủ security chưa?
+5. Vì sao?
+6. Middleware có thể dùng để làm gì?
+7. Policy/Gate là gì ở mức em hiểu hiện tại?
+8. User cố gõ admin URL trực tiếp thì chuyện gì phải xảy ra?
+9. Authorization nên enforce ở frontend hay backend?
+10. Tại sao không cần build permission system 20 tables lúc này?
+
+### DoD D23
+
+- Admin/User roles.
+- Permission Matrix.
+- Admin routes protected.
+- Direct URL/request test.
+- Normal user không modify Product/Category.
+- ≥8/10 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D24 — Shopping Cart
+
+## Mục tiêu
+
+Bắt đầu business flow thật.
+
+Không còn đơn thuần:
+
+> Create Product.
+
+Bây giờ user thực hiện một **process nhiều bước**.
+
+---
+
+# Requirement
+
+Authenticated user:
+
+```text
+Product
+   ↓
+Add to Cart
+   ↓
+Cart
 ```
-All
-Accessory
-Laptop
-Phone
-...
+
+Cart item gồm:
+
+```text
+Product
+Price
+Quantity
+Subtotal
 ```
 
-### Price Range
+Cart có:
 
-```
-Min Price
-Max Price
-```
-
-### Sort
-
-```
-Price Low → High
-Price High → Low
-Newest
-```
-
-### Pagination
-
-```
-10 products/page
+```text
+Grand Total
 ```
 
 ---
 
-# Combined Test
+# Features
 
-Phải support:
+### Add
 
-> Search `keyboard`
->
-> Category `Accessory`
->
-> Price 100k–1M
->
-> Sort Low → High
->
-> Page 2
+User:
 
-Không phải mỗi chức năng chỉ chạy riêng.
+> Add Keyboard.
 
----
+Cart:
 
-## Prompt ChatGPT D19
+```text
+Keyboard × 1
+```
 
-> Tôi đang build Product Listing Laravel.
->
-> Filters:
->
-> - keyword;
-> - category;
-> - min price;
-> - max price;
-> - sort;
-> - pagination.
->
-> Không viết Eloquent query cho tôi.
->
-> Hãy đóng vai reviewer.
->
-> Tôi sẽ gửi query hiện tại.
->
-> Kiểm tra từng requirement.
->
-> Nếu một filter không hoạt động, hãy hỏi tôi lần lượt:
->
-> 1. Request có nhận parameter không?
-> 2. Controller có đọc đúng không?
-> 3. Query có apply condition không?
-> 4. Pagination có giữ query parameters không?
->
-> Mỗi lần chỉ kiểm tra một bước.
+Add lần nữa:
+
+```text
+Keyboard × 2
+```
+
+Không tạo hai dòng Keyboard nếu design chọn tăng quantity.
+
+### Update Quantity
+
+```text
+2 → 5
+```
+
+Subtotal tự đổi.
+
+### Remove
+
+Remove Product.
+
+### Clear Cart
+
+Xóa toàn bộ Cart.
 
 ---
 
-# Job Application D19
+# Business Rules
+
+Không cho:
+
+```text
+quantity = 0
+quantity = -5
+quantity > stock
+```
+
+---
+
+# Design Decision
+
+Trước khi code, tự trả lời:
+
+> Cart lưu ở Session hay Database?
+
+Không có một đáp án bắt buộc ở level này.
+
+Nhưng phải ghi:
+
+`cart-design.md`
+
+```text
+I chose:
+
+WHY:
+
+Advantages:
+
+Disadvantages:
+
+Alternative:
+```
+
+**Khả năng giải thích trade-off quan trọng hơn chọn “đáp án chuẩn”.**
+
+---
+
+## Cart Test Cases
+
+| Scenario               | Expected                  |
+| ---------------------- | ------------------------- |
+| Add Product            | qty=1                     |
+| Add same Product again | qty increases             |
+| Update qty             | subtotal updates          |
+| qty=0                  | reject/remove theo design |
+| qty<0                  | reject                    |
+| qty>stock              | reject                    |
+| Remove                 | item disappears           |
+| Clear                  | empty cart                |
+| Multiple Products      | total correct             |
+
+---
+
+## Prompt ChatGPT D24 — Design Review
+
+> Tôi cần implement Shopping Cart trong Laravel.
+>
+> Tôi đang cân nhắc:
+>
+> A. Session Cart
+>
+> B. Database Cart
+>
+> Context:
+>
+> Đây là portfolio project cho Junior Developer, không phải production e-commerce lớn.
+>
+> Không chọn thay tôi.
+>
+> Hãy interview tôi bằng 6 câu về:
+>
+> - persistence;
+> - anonymous vs logged-in user;
+> - complexity;
+> - multiple devices;
+> - database design;
+> - scope của project.
+>
+> Sau đó yêu cầu tôi tự chọn một approach và giải thích trade-off.
+>
+> Cuối cùng review reasoning của tôi, không review theo kiểu “A luôn đúng/B luôn sai”.
+
+---
+
+# Job Search D24
+
+Tìm thêm **5 JD**.
+
+Total:
+
+> **45 JD**
+
+Sau 45 JD, **tạm dừng việc tăng dataset JD liên tục**.
+
+45 là đủ để nhìn pattern ban đầu.
+
+Từ đây ưu tiên:
+
+> Apply → Response → Interview → Gap
+
+hơn là tiếp tục collect vô hạn.
+
+---
+
+## Knowledge Check D24
+
+1. Cart khác Order thế nào?
+2. Cart có phải historical record không?
+3. Subtotal tính thế nào?
+4. Total tính thế nào?
+5. Add cùng Product hai lần nên xử lý thế nào?
+6. Tại sao phải check stock?
+7. Session Cart có ưu điểm gì?
+8. Database Cart có ưu điểm gì?
+9. Nếu user logout/login máy khác, Session Cart có vấn đề gì?
+10. Tại sao không cần over-engineer Cart lúc này?
+
+### DoD D24
+
+- Add.
+- Update.
+- Remove.
+- Clear.
+- Stock validation.
+- Total đúng.
+- 9 test cases.
+- `cart-design.md`.
+- Job Tracker = **45**.
+- GitHub push.
+
+---
+
+# D25 — Checkout + Database Transaction
+
+## Mục tiêu
+
+Đây là ngày quan trọng nhất Week 4.
+
+Cart là dữ liệu tạm.
+
+Checkout biến nó thành:
+
+> **Business record thật.**
+
+Flow:
+
+```text
+Cart
+ ↓
+Validate
+ ↓
+Order
+ ↓
+OrderItems
+ ↓
+Stock Update
+ ↓
+Clear Cart
+```
+
+---
+
+# Requirement
+
+User click:
+
+> Checkout
+
+Application phải:
+
+### 1. Validate
+
+- User logged in.
+- Cart không empty.
+- Products vẫn tồn tại.
+- Stock vẫn đủ.
+
+### 2. Create Order
+
+```text
+user_id
+status = pending
+total
+created_at
+```
+
+### 3. Create OrderItems
+
+Mỗi item lưu:
+
+```text
+order_id
+product_id
+quantity
+unit_price
+```
+
+### 4. Update Stock
+
+Ví dụ:
+
+```text
+Keyboard stock = 10
+
+Buy = 2
+
+New stock = 8
+```
+
+### 5. Clear Cart
+
+**Chỉ clear nếu checkout thành công.**
+
+---
+
+# Transaction Experiment
+
+Cố tình tạo lỗi sau khi:
+
+> Order đã được tạo
+
+nhưng trước khi:
+
+> OrderItems tạo xong.
+
+Quan sát database.
+
+Nếu Order tồn tại nhưng không có Items:
+
+> Data đã inconsistent.
+
+Sau đó implement transaction.
+
+Test lại.
+
+Expected:
+
+```text
+ALL SUCCESS
+→ COMMIT
+
+ANY FAILURE
+→ ROLLBACK EVERYTHING
+```
+
+Đây là cách học transaction tốt hơn thuộc định nghĩa.
+
+---
+
+## Prompt ChatGPT D25
+
+> Tôi đang implement Checkout.
+>
+> Flow:
+>
+> Cart
+>
+> → Validate Stock
+>
+> → Create Order
+>
+> → Create OrderItems
+>
+> → Update Stock
+>
+> → Clear Cart
+>
+> Không viết code.
+>
+> Hãy đóng vai Senior Backend Developer.
+>
+> Hỏi tôi từng bước:
+>
+> 1. Nếu step này fail thì database đang ở state nào?
+> 2. Data nào có nguy cơ inconsistent?
+> 3. Operation nào cần nằm chung transaction?
+>
+> Sau khi tôi tự xác định transaction boundary, review reasoning.
+>
+> Tiếp theo cho tôi 5 failure scenarios để tự test.
+
+---
+
+# Job Application D25
 
 Apply **2 jobs**.
 
 Cumulative:
 
-Week 2 = 5
-
-Week 3 D17 = 1
-
-D19 = 2
-
-**Total = 8.**
-
-Nếu đã nhận rejection:
-
-Ghi:
-
-```
-Rejected
-```
-
-Nếu không có reason:
-
-Ghi:
-
-```
-Reason: Unknown
-```
-
-**Không tự invent lý do.**
+> **16 applications**
 
 ---
 
-## Knowledge Check D19
+## Knowledge Check D25
 
-1. Search khác filter thế nào?
-2. Sort khác filter thế nào?
-3. Pagination giải quyết vấn đề gì?
-4. Tại sao không load 100,000 products một lần?
-5. Keyword từ đâu vào Controller?
-6. Filter category cần query column nào?
-7. Min/Max price tạo conditions gì?
-8. Pagination có liên quan SQL LIMIT/OFFSET mà Week 2 đã học không?
-9. Nếu đổi page làm mất search keyword thì lỗi nằm ở loại flow nào?
-10. Nếu search `"abc"` không có result thì app nên error hay empty result?
+1. Checkout khác Add to Cart thế nào?
+2. Order và OrderItem relationship?
+3. Vì sao OrderItem lưu `unit_price`?
+4. Vì sao không lấy current Product price khi xem order cũ?
+5. Transaction giải quyết vấn đề gì?
+6. Commit nghĩa là gì?
+7. Rollback nghĩa là gì?
+8. Nếu Create Order success nhưng Create Items fail thì sao?
+9. Clear Cart nên xảy ra lúc nào?
+10. Stock nên update khi nào?
+11. Nếu stock thay đổi giữa Add Cart và Checkout thì phải làm gì?
+12. Tại sao phải validate lại khi Checkout?
 
-### DoD D19
+### DoD D25
 
-- ≥50 products.
-- Search.
-- Category filter.
-- Price range.
-- Sort.
-- Pagination.
-- Combined filters hoạt động.
-- ≥8/10 questions.
+- Checkout.
+- Order created.
+- OrderItems created.
+- Stock updated.
+- Cart cleared.
+- Transaction.
+- Failure simulation.
+- Rollback verified.
+- ≥10/12 questions.
 - +2 applications.
 - GitHub push.
 
 ---
 
-# D20 — Category CRUD + Relationship
+# D26 — Order Management + Status
 
 ## Mục tiêu
 
-Kiểm tra xem Product CRUD là **hiểu thật** hay chỉ nhớ code hôm trước.
+Một Order sau Checkout không biến mất.
 
-Hôm nay build Category CRUD.
-
-Không copy ProductController rồi Find/Replace toàn bộ.
+Nó có lifecycle.
 
 ---
 
-# Requirement
+# User Features
 
-```
-/categories
-/categories/create
-/categories/{id}/edit
-```
+### My Orders
 
-Features:
-
-- List.
-- Create.
-- Edit.
-- Delete.
-
-Category List hiển thị:
-
-| Category | Number of Products | Actions |
-| -------- | ------------------ | ------- |
-
----
-
-# Business Rule
-
-Nếu Category đang có Product:
-
-> **Không cho Delete.**
-
-User nhận message:
-
-> Category cannot be deleted because it contains products.
-
-Không cần đúng wording này.
-
----
-
-# Product Integration
-
-Product Create/Edit:
-
-Category phải lấy từ database.
-
-Không hard-code:
-
-```
-Laptop
-Phone
-Accessory
+```text
+/my-orders
 ```
 
----
+User chỉ thấy **order của chính mình**.
 
-## Challenge — Không AI 30 phút
+Không được thấy order người khác.
 
-Thêm:
+### Order Detail
 
-> **Category Detail**
-
-URL:
-
-```
-/categories/{id}
+```text
+/my-orders/{id}
 ```
 
 Hiển thị:
 
-```
-Category: Accessory
-
-Products:
-Keyboard
-Mouse
-USB
-...
-```
-
----
-
-# Job Application D20
-
-Apply thêm **2 jobs**.
-
-Total applications:
-
-**10.**
-
----
-
-# CV v0.1 Review
-
-CV hiện tại phải bắt đầu có project:
-
-### Mini Shop Management
-
-Không viết:
-
-> Built an amazing scalable e-commerce platform.
-
-Viết fact.
-
-Ví dụ structure:
-
-```
-Mini Shop Management — Laravel/MySQL
-
-- Built product and category CRUD.
-- Implemented server-side validation.
-- Added search, category/price filtering, sorting and pagination.
-- Designed relational MySQL schema and Eloquent relationships.
-```
-
-Chỉ ghi feature **đã làm thật**.
-
----
-
-## Prompt ChatGPT CV D20
-
-> Tôi đang ứng tuyển Junior Backend PHP/Laravel.
->
-> Đây là project tôi thực sự đã build:
->
-> [FEATURE LIST]
->
-> Đây là phần CV tôi viết:
->
-> [CV]
->
-> Không invent thêm feature.
->
-> Không exaggerate.
->
-> Review từng bullet theo 3 tiêu chí:
->
-> 1. Recruiter có hiểu tôi đã làm gì không?
-> 2. Có evidence trong GitHub không?
-> 3. Bullet có quá chung chung không?
->
-> Với bullet yếu, giải thích vấn đề và yêu cầu tôi tự viết lại trước khi bạn đề xuất wording.
-
----
-
-## Knowledge Check D20
-
-1. Category/Product relationship là gì?
-2. Foreign key nằm table nào?
-3. Product lấy Category Name bằng relationship nào?
-4. Category lấy Products bằng relationship nào?
-5. Tại sao không hard-code category trong form?
-6. Tại sao không cho delete Category đang được sử dụng?
-7. Nếu vẫn muốn delete thì có những lựa chọn business nào?
-8. `count products` có cần load tất cả products không?
-9. Route Category Detail khác Edit thế nào?
-10. Tại sao hôm nay không được copy nguyên Product CRUD?
-
-### DoD D20
-
-- Category CRUD.
-- Product count.
-- Delete protection.
-- Category Detail.
-- Product form dùng DB categories.
-- ≥8/10 questions.
-- +2 applications.
-- CV project updated.
-- GitHub push.
-
----
-
-# D21 — WEEK 3 EXAM
-
-## Mục tiêu
-
-Đây là bài quan trọng nhất tuần.
-
-Cần chứng minh:
-
-> **Không có tutorial, không ChatGPT, vẫn build được một Laravel CRUD mới.**
-
----
-
-# Part 1 — Exam: Customer Management
-
-Tạo từ **Laravel project trắng**.
-
-Không dùng Mini Shop code.
-
-### Customer fields
-
-```
-id
-name
-email
-phone
-date_of_birth
-status
-created_at
-updated_at
-```
-
-Status:
-
-```
-active
-inactive
-```
-
----
-
-# Requirements
-
-### Customer List
-
-```
-/customers
-```
-
-Hiển thị:
-
-```
-Name
-Email
-Phone
-Age/Date of Birth
+```text
+Order #123
+Date
 Status
-Actions
-```
 
-### Create Customer
+Keyboard × 2    700,000
+Mouse × 1       200,000
 
-Validation:
-
-```
-name required
-email required + valid
-email unique
-phone required
-date_of_birth valid date
-status valid
-```
-
-### Edit Customer
-
-Load existing values.
-
-Update DB.
-
-### Delete Customer
-
-Xóa đúng Customer.
-
-### Search
-
-Search:
-
-```
-name OR email OR phone
-```
-
-### Filter
-
-```
-status = active/inactive
-```
-
-### Pagination
-
-```
-10/page
+Total           900,000
 ```
 
 ---
 
-# Timebox
+# Admin Features
 
-**180 phút.**
-
+```text
+/admin/orders
 ```
-00–15    Read requirement + plan
-15–35    DB + Model
-35–65    Routes + Controller
-65–125   CRUD
-125–150  Search/filter/pagination
-150–170  Test
+
+Admin thấy tất cả Orders.
+
+Có thể update:
+
+```text
+pending
+confirmed
+completed
+cancelled
+```
+
+---
+
+# Status Rules
+
+Không cho mọi transition tùy ý.
+
+Ví dụ đơn giản:
+
+```text
+pending
+├── confirmed
+└── cancelled
+
+confirmed
+├── completed
+└── cancelled
+
+completed
+└── END
+
+cancelled
+└── END
+```
+
+Tạo:
+
+`order-status-rules.md`
+
+trước khi code.
+
+---
+
+# Authorization Test
+
+User A:
+
+```text
+/my-orders/101
+```
+
+nếu Order 101 thuộc User B:
+
+→ **403/Not Allowed**
+
+Không chỉ hide link.
+
+---
+
+# Career Task D26 — CV v0.2
+
+Cập nhật Mini Shop project.
+
+Bây giờ có thể ghi factual bullets như:
+
+```text
+Mini Shop — Laravel/MySQL
+
+- Built product/category management with validation, search, filtering and pagination.
+- Implemented user authentication and role-based authorization.
+- Built cart-to-checkout flow with order and order-item persistence.
+- Used database transactions to prevent partial checkout data.
+- Implemented user order history and admin order status management.
+```
+
+Không thêm:
+
+```text
+highly scalable
+enterprise-grade
+production architecture
+```
+
+nếu chưa chứng minh.
+
+---
+
+# Apply D26
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **18**
+
+---
+
+## Knowledge Check D26
+
+1. Order status dùng để làm gì?
+2. Vì sao không cho `completed → pending` tùy tiện?
+3. State transition là gì theo cách em hiểu?
+4. User A có được xem Order User B không?
+5. Authentication đủ để bảo vệ Order Detail chưa?
+6. Authorization check cần dựa vào gì?
+7. Admin khác User ở Order Management thế nào?
+8. Vì sao historical Order cần giữ Product price lúc mua?
+9. Nếu Product bị rename sau này, order cũ nên hiển thị gì? Có trade-off gì?
+10. Cancelled order có trả stock không? Đây là technical hay business decision?
+
+Câu 10 không có một đáp án duy nhất.
+
+Mục tiêu:
+
+> nhận ra đây là **business rule cần làm rõ**.
+
+### DoD D26
+
+- My Orders.
+- Order Detail.
+- Ownership protection.
+- Admin Order List.
+- Status update.
+- Status rules.
+- ≥8/10 questions.
+- CV v0.2.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D27 — Business Rules + Debugging Day
+
+## Mục tiêu
+
+Không thêm feature.
+
+Hôm nay cố tình:
+
+> **PHÁ BUSINESS FLOW.**
+
+Đây là ngày biến một người biết CRUD thành người bắt đầu biết làm backend.
+
+---
+
+# Business Test Suite
+
+Tạo:
+
+`business-test-cases.md`
+
+Ít nhất:
+
+| #  | Scenario                              | Expected              |
+| -- | ------------------------------------- | --------------------- |
+| 1  | Checkout empty cart                   | Reject                |
+| 2  | Buy > stock                           | Reject                |
+| 3  | Product deleted after Add Cart        | Checkout reject       |
+| 4  | Product price changed after Add Cart  | Theo design đã chọn   |
+| 5  | Double-click Checkout                 | Không tạo duplicate ngoài ý muốn |
+| 6  | User views another user's order       | Reject                |
+| 7  | Normal user accesses Admin            | Reject                |
+| 8  | completed → pending                   | Reject                |
+| 9  | cancelled → completed                 | Reject                |
+| 10 | Error midway Checkout                 | Rollback              |
+| 11 | Invalid quantity                      | Reject                |
+| 12 | Product stock exactly equals qty      | Success               |
+
+---
+
+# Case quan trọng — Double Checkout
+
+User double-click:
+
+> Checkout Checkout
+
+hoặc browser resend request.
+
+Quan sát:
+
+> Có tạo 2 Orders không?
+
+Ở level Junior, chưa bắt buộc build hệ thống idempotency hoàn chỉnh.
+
+Nhưng phải:
+
+1. Nhận ra problem.
+2. Reproduce được.
+3. Có một solution hợp lý với scope project.
+4. Giải thích limitation.
+
+---
+
+# Debug Report
+
+Chọn ít nhất **3 bugs** tìm được.
+
+Ghi:
+
+```text
+BUG:
+
+BUSINESS IMPACT:
+
+HOW TO REPRODUCE:
+
+EXPECTED:
+
+ACTUAL:
+
+ROOT CAUSE:
+
+FIX:
+
+RETEST:
+
+WHAT WOULD PREVENT THIS BUG:
+```
+
+---
+
+## Prompt ChatGPT D27 — QA Mode
+
+> Tôi đã build Mini Shop với:
+>
+> Authentication
+>
+> Authorization
+>
+> Product
+>
+> Category
+>
+> Cart
+>
+> Checkout
+>
+> Order
+>
+> Order Status
+>
+> Tôi muốn tìm bug chứ không muốn thêm feature.
+>
+> Đóng vai QA Engineer chuyên test Junior Backend project.
+>
+> Không cho solution.
+>
+> Mỗi lần đưa tôi đúng **một test scenario** thuộc một trong các nhóm:
+>
+> - invalid input;
+> - authorization;
+> - stock;
+> - checkout;
+> - duplicate request;
+> - order status;
+> - transaction failure.
+>
+> Tôi sẽ chạy test và trả Actual Result.
+>
+> Nếu FAIL, chuyển sang Debugging Partner:
+>
+> mỗi lần chỉ yêu cầu tôi kiểm tra một thứ.
+>
+> Tiếp tục cho đến khi đủ 12 test cases.
+
+---
+
+# Job Application D27
+
+Apply **2 jobs**.
+
+Cumulative:
+
+> **20 applications**
+
+---
+
+# README v0.2
+
+Flagship README phải bắt đầu có:
+
+```text
+# Mini Shop
+
+## Overview
+
+## Features
+
+## Tech Stack
+
+## Business Flow
+
+## Database
+
+## Installation
+
+## Demo Credentials
+
+## Screenshots
+
+## What I Learned
+```
+
+### Business Flow
+
+README phải mô tả được:
+
+```text
+Register
+→ Login
+→ Browse
+→ Cart
+→ Checkout
+→ Order
+```
+
+Không cần architecture diagram đẹp.
+
+---
+
+## Knowledge Check D27
+
+1. Happy path là gì?
+2. Edge case là gì?
+3. Bug và missing requirement khác nhau thế nào?
+4. Reproduce bug tại sao quan trọng?
+5. Root cause khác symptom?
+6. Regression là gì ở mức em hiểu?
+7. Double-submit có thể gây vấn đề gì?
+8. Transaction giúp case nào?
+9. Authorization bug nguy hiểm thế nào?
+10. Tại sao phải test invalid state transition?
+11. Tại sao feature chạy happy path chưa có nghĩa feature hoàn thành?
+12. Sau khi fix bug phải làm gì?
+
+### DoD D27
+
+- ≥12 business tests.
+- ≥3 documented bugs.
+- Bugs fixed/retested.
+- README v0.2.
+- ≥10/12 questions.
+- +2 applications.
+- GitHub push.
+
+---
+
+# D28 — WEEK 4 EXAM: Coupon Feature
+
+## Mục tiêu
+
+Week 3 kiểm tra:
+
+> Tự build CRUD được không?
+
+Week 4 phải kiểm tra cao hơn:
+
+> **Đưa business requirement mới vào application đang tồn tại được không?**
+
+---
+
+# Exam Requirement
+
+Business yêu cầu:
+
+> Mini Shop cần hỗ trợ Coupon.
+
+Coupon có:
+
+```text
+code
+discount_percent
+start_date
+end_date
+usage_limit
+used_count
+active
+```
+
+Ví dụ:
+
+```text
+WELCOME10
+
+10% OFF
+
+01/10/2026 → 31/10/2026
+
+Usage Limit: 100
+```
+
+---
+
+# Functional Requirements
+
+### Apply Coupon
+
+Cart Page có:
+
+```text
+Coupon Code: [________]
+
+[Apply]
+```
+
+Valid:
+
+```text
+Subtotal:       1,000,000
+Discount 10%:    -100,000
+Final Total:      900,000
+```
+
+---
+
+# Invalid Cases
+
+Reject nếu:
+
+- code không tồn tại;
+- inactive;
+- chưa tới start date;
+- đã hết hạn;
+- usage limit reached.
+
+---
+
+# Checkout
+
+Order phải lưu đủ thông tin để sau này biết:
+
+> Order này đã được discount bao nhiêu.
+
+Không được phụ thuộc hoàn toàn vào Coupon hiện tại vì Coupon có thể thay đổi sau này.
+
+---
+
+# Exam Timebox
+
+**180 phút — không ChatGPT.**
+
+Được xem Laravel official docs nếu quên syntax.
+
+Không xem tutorial Coupon.
+
+```text
+00–20    Requirement + design
+20–45    Migration + Model
+45–90    Apply Coupon
+90–125   Checkout integration
+125–150  Invalid cases
+150–170  Testing
 170–180  Cleanup
 ```
 
-**Không AI.**
+---
 
-Có thể xem official documentation nếu cần syntax.
+# Bắt buộc viết trước khi code
 
-Không xem project Product cũ.
+`coupon-design.md`
+
+Trả lời:
+
+```text
+Coupon data nằm đâu?
+
+Order cần lưu thêm gì?
+
+Khi nào used_count tăng?
+
+Nếu checkout fail thì used_count có tăng không?
+
+Coupon validation xảy ra khi Apply hay Checkout?
+
+Nếu Coupon expire sau khi Add nhưng trước Checkout thì sao?
+
+Discount tính trên giá nào?
+```
+
+Không cần answer giống một hệ thống production.
+
+Nhưng phải **có reasoning**.
 
 ---
 
-# Commit bắt buộc
+# Commit
 
 Đúng 180 phút:
 
-```
-git commit -m "week 3 laravel exam - unaided"
+```text
+git commit -m "week 4 business feature exam - unaided"
 ```
 
-Dù chưa hoàn thành.
+Dù chưa xong.
 
 ---
 
 # Part 2 — ChatGPT Review
 
-Sau commit mới dùng:
+Sau commit:
 
-> Tôi vừa hoàn thành Laravel Junior Exam trong 180 phút không sử dụng AI và không copy project cũ.
+> Tôi vừa hoàn thành Week 4 Laravel Business Feature Exam không sử dụng AI.
+>
+> Feature: Coupon.
 >
 > Requirement:
 >
 > [PASTE]
 >
-> Đây là code:
+> Design:
 >
-> [PASTE RELEVANT FILES]
+> [PASTE coupon-design.md]
 >
-> Đóng vai Technical Interviewer tuyển Junior Laravel Developer.
+> Code:
 >
-> Không rewrite project.
+> [PASTE RELEVANT CODE]
+>
+> Đóng vai Senior Backend Developer đang review code của Junior.
+>
+> Không rewrite feature.
 >
 > PHASE 1 — Requirement Review
 >
-> Chấm từng requirement PASS / PARTIAL / FAIL.
+> Chấm từng requirement:
 >
-> PHASE 2 — Code Review
+> PASS / PARTIAL / FAIL.
 >
-> Chỉ ra tối đa 7 vấn đề quan trọng nhất.
+> PHASE 2 — Business Logic Review
 >
-> Phân loại:
+> Tìm tối đa 7 vấn đề liên quan:
 >
-> - Bug
-> - Laravel misuse
-> - Readability
-> - Validation
-> - Database
+> - data model;
+> - validation;
+> - discount calculation;
+> - checkout;
+> - transaction;
+> - historical data;
+> - edge cases.
 >
 > PHASE 3 — Technical Interview
 >
-> Hỏi tôi 15 câu dựa trực tiếp trên code.
+> Hỏi tôi 15 câu dựa trực tiếp trên design/code.
 >
 > Hỏi từng câu một.
 >
-> Chờ câu trả lời.
+> Sau mỗi câu đánh giá:
 >
-> Đánh giá Correct / Partial / Incorrect.
+> Correct / Partial / Incorrect.
 >
 > PHASE 4 — Change Request
 >
-> Cho tôi 2 requirement nhỏ để sửa live.
+> Cho tôi đúng 2 requirement changes nhỏ nhưng hợp lý.
 >
-> Không hướng dẫn cách làm.
+> Không hướng dẫn implementation.
 >
 > Bắt đầu Phase 1.
 
-Sau review:
+Sau fix:
 
-```
-git commit -m "week 3 laravel exam - after review"
+```text
+git commit -m "week 4 business feature exam - after review"
 ```
 
 ---
 
-# Part 3 — Job Application D21
+# Part 3 — Live Change Request
+
+Mentor chọn **một** trong các requirement sau mà mentee không biết trước.
+
+### Option A
+
+> Coupon chỉ được sử dụng cho Order ≥500,000.
+
+### Option B
+
+> Coupon chỉ áp dụng cho một Category.
+
+### Option C
+
+> Mỗi User chỉ được dùng Coupon một lần.
+
+### Option D
+
+> Coupon có `max_discount_amount`.
+
+Ví dụ:
+
+```text
+20% OFF
+Max discount = 100,000
+```
+
+Timebox:
+
+> **30 phút — không AI.**
+
+Không nhất thiết hoàn thành 100%.
+
+Đánh giá:
+
+**Requirement understanding → DB impact → logic impact → code → test.**
+
+---
+
+# Part 4 — Job Application D28
 
 Apply thêm **2 jobs**.
 
-Week 3 applications:
+Week 4:
 
-```
-D17    1
-D19    2
-D20    2
-D21    2
-─────────
-TOTAL   7
+```text
+D23   2
+D25   2
+D26   2
+D27   2
+D28   2
+────────
+TOTAL 10
 ```
 
 Cumulative:
 
-> **12 applications.**
+> **22 applications**
 
 ---
 
-# Part 4 — Application Funnel Review
+# Part 5 — Application Funnel Review
 
-Bắt đầu tracking funnel thật.
+Sau 22 applications, bắt đầu nhìn tín hiệu nhưng **chưa vội kết luận từ sample nhỏ**.
 
-| Metric              | Count |
-| ------------------- | ----- |
-| Applications        | 12    |
-| Viewed/Unknown      |       |
-| HR Contact          |       |
-| Coding Test         |       |
-| Technical Interview |       |
-| Rejected            |       |
-| No Response         |       |
-| Offer               |       |
+| Stage                | Count | Rate |
+| -------------------- | ----- | ---- |
+| Applications         | 22    | 100% |
+| HR Contacts          |       |      |
+| Coding Tests         |       |      |
+| Technical Interviews |       |      |
+| Finals               |       |      |
+| Rejections           |       |      |
+| No Response          |       |      |
+| Offers               |       |      |
 
-### Không overreact với data nhỏ
+Mỗi rejection:
 
-Ví dụ:
-
+```text
+Company:
+Role:
+Stage:
+Known Reason:
+Lesson:
+Action:
 ```
-12 applications
-0 interviews
+
+Nếu company không đưa reason:
+
+```text
+Known Reason: Unknown
 ```
 
-Chưa kết luận:
-
-> “Em không đủ trình.”
-
-Nhưng bắt đầu quan sát.
-
-Đến Week 5–6 mới có sample lớn hơn để chẩn đoán funnel.
+Không tự đoán.
 
 ---
 
-# Part 5 — Week 3 Market Review
+# Week 4 Market Review
 
-35 JD hiện có.
+Không cần tìm thêm JD mới trừ khi 45 JD cũ quá giống nhau hoặc không đúng target.
 
-Update:
+Bây giờ chuyển từ:
 
-| Skill          | # / 35 | Level 0–3 | Evidence |
-| -------------- | ------ | --------- | -------- |
-| PHP            |        |           | W1       |
-| OOP            |        |           | W1       |
-| MySQL          |        |           | W2       |
-| Git            |        |           | W1–3     |
-| Laravel        |        |           | W3       |
-| Eloquent       |        |           | W3       |
-| REST API       |        |           | Not yet  |
-| Authentication |        |           | Not yet  |
-| JavaScript     |        |           |          |
-| Node.js        |        |           |          |
-| Testing        |        |           |          |
-| Docker         |        |           |          |
+> **Market Discovery**
+
+sang:
+
+> **Application Feedback**
+
+Update Skill Gap:
+
+| Skill    | Market Demand | Current Level 0–3 | Evidence | Priority |
+| -------- | ------------- | ----------------- | -------- | -------- |
+| PHP      |               |                   |          |          |
+| SQL      |               |                   |          |          |
+| Laravel  |               |                   |          |          |
+| Auth     |               |                   |          |          |
+| REST API |               |                   | Not yet  | W5       |
+| Testing  |               |                   | Not yet  | W5       |
+| Git      |               |                   |          |          |
+| Deploy   |               |                   | Partial  | W5       |
+| Node.js  |               |                   | Not yet  | W7       |
 
 ### Tự trả lời
 
-1. Laravel xuất hiện bao nhiêu /35 JD?
-2. REST API xuất hiện bao nhiêu?
-3. Authentication xuất hiện trực tiếp hoặc gián tiếp bao nhiêu?
-4. Testing xuất hiện bao nhiêu?
-5. Node xuất hiện bao nhiêu?
-6. Docker xuất hiện bao nhiêu?
-7. Ba gap lớn nhất hiện tại là gì?
-8. Những gap nào roadmap Week 4–5 đã chuẩn bị giải quyết?
-
-Câu 8 quan trọng.
-
-Không thấy skill mới trong JD rồi lập tức nhảy sang học.
+1. Sau 22 applications có HR contact chưa?
+2. Có coding test chưa?
+3. Job nào phản hồi tốt nhất?
+4. Stack của những job phản hồi là gì?
+5. Có skill nào JD yêu cầu liên tục mà roadmap chưa cover không?
+6. Skill đó có thực sự cần đổi roadmap ngay không?
+7. Mini Shop hiện đã chứng minh được những skill nào?
+8. Ba gap lớn nhất trước khi technical interview là gì?
 
 ---
 
-# Week 3 Final Mentor Check
+# Week 4 Final Technical Check
 
-## Technical Questions
+Chuẩn bị trả lời mà không Google.
 
-Chuẩn bị trả lời không Google:
+### Authentication / Authorization
 
-1. Laravel giúp gì so với PHP thuần?
-2. Request Laravel đi qua những thành phần nào?
-3. Route làm gì?
-4. Controller làm gì?
-5. Model làm gì?
-6. View làm gì?
-7. Migration dùng để làm gì?
-8. Tại sao không tạo DB thủ công rồi thôi?
-9. Eloquent là gì?
-10. `hasMany`?
-11. `belongsTo`?
-12. CRUD là gì?
-13. GET và POST?
-14. Create và Store khác nhau ở đâu?
-15. Edit và Update?
-16. Validation nên nằm trước hay sau DB write?
-17. Search/filter khác nhau thế nào?
-18. Pagination giải quyết vấn đề gì?
-19. Nếu Category có Product, tại sao không delete?
-20. `.env` để làm gì?
+1. Authentication?
+2. Authorization?
+3. Session?
+4. Middleware?
+5. Role?
+6. Hide button có đủ authorization không?
 
----
+### Cart
 
-# Live Change — 20 phút
+1. Cart khác Order?
+2. Session Cart vs DB Cart?
+3. Cart total tính ở đâu?
+4. Tại sao Checkout phải validate stock lại?
 
-Mở **Customer Exam**, không Mini Shop.
+### Order
 
-Requirement mới:
+1. Order/OrderItem relationship?
+2. Vì sao lưu unit price?
+3. Transaction?
+4. Commit?
+5. Rollback?
+6. Nếu Checkout fail giữa chừng thì sao?
+7. User A xem Order B phải xử lý thế nào?
+8. State transition là gì?
 
-> Customer có thêm field:
->
-> `company`
->
-> Sau đó:
->
-> - Create được company.
-> - Edit được company.
-> - Customer List hiển thị company.
-> - Search tìm được cả company.
+### Debugging / Business
 
-Không ChatGPT.
+1. Happy path?
+2. Edge case?
+3. Root cause?
+4. Double-submit có vấn đề gì?
+5. Tại sao historical data quan trọng?
+6. Business rule khác validation syntax thế nào?
 
-Mục tiêu kiểm tra:
+### Design Judgment
 
-```
-Migration
-→ Model
-→ Form
-→ Validation
-→ Controller
-→ View
-→ Search
-```
+1. Nếu Product price thay đổi sau khi Add Cart nhưng trước Checkout, giá nào nên dùng?
 
-Đây chính là một mini change request giống công việc thực tế.
+Không có một đáp án duy nhất.
+
+Phải biết hỏi lại:
+
+> **Business muốn price lock lúc Add Cart hay price hiện tại lúc Checkout?**
+
+Đây là kiểu câu trả lời bắt đầu thể hiện tư duy developer thật:
+
+> Không tự invent business rule khi requirement chưa rõ.
 
 ---
 
-# Week 3 Scorecard
+# Week 4 Scorecard
 
-| Category                        | Weight   |
-| ------------------------------- | -------- |
-| D21 Laravel Exam                | **30%**  |
-| Live Change                     | **15%**  |
-| Laravel Technical Q&A           | **15%**  |
-| Mini Shop Product CRUD          | **10%**  |
-| Search/Filter/Pagination        | **10%**  |
-| Database/Eloquent understanding | **5%**   |
-| GitHub quality                  | **5%**   |
-| Job Search + Applications       | **10%**  |
-| **TOTAL**                       | **100%** |
+| Category                     | Weight   |
+| ---------------------------- | -------- |
+| D28 Coupon Exam              | **25%**  |
+| Live Change Request          | **15%**  |
+| Checkout + Transaction       | **15%**  |
+| Authentication/Authorization | **10%**  |
+| Cart/Order Business Flow     | **10%**  |
+| Business Testing/Debugging   | **10%**  |
+| Technical Q&A                | **5%**   |
+| GitHub/README                | **5%**   |
+| Job Search/Application       | **5%**   |
+| **TOTAL**                    | **100%** |
 
-**≥80:** PASS → Week 4.
+### ≥80 — PASS
 
-**65–79:** CONDITIONAL PASS → Week 4 + Remedial Backlog.
+Đi tiếp Week 5.
 
-**<65:** sửa đúng Laravel fundamentals bị yếu rồi retest bằng một resource khác, ví dụ Employee Management.
+### 65–79 — CONDITIONAL PASS
+
+Đi Week 5 nhưng thêm weaknesses vào Remedial Backlog.
+
+### <65 — RETEST
+
+Không học lại cả Week 4.
+
+Chọn một feature khác như:
+
+> Wishlist / Address / Shipping Method
+
+và build lại business flow bị yếu.
 
 ---
 
-# Definition of Done — WEEK 3
+# Definition of Done — WEEK 4
 
-- [ ]  Laravel Mini Shop chạy.
-- [ ]  Route → Controller → Model → View hiểu được.
-- [ ]  Product Migration.
-- [ ]  Category Migration.
-- [ ]  Eloquent relationships.
-- [ ]  Product CRUD.
-- [ ]  Category CRUD.
-- [ ]  Validation.
-- [ ]  Error display.
-- [ ]  Search.
-- [ ]  Category filter.
-- [ ]  Price filter.
-- [ ]  Sorting.
-- [ ]  Pagination.
-- [ ]  ≥50 Product test records.
-- [ ]  Delete Category protection.
-- [ ]  Category Detail.
-- [ ]  Customer CRUD Exam.
-- [ ]  Customer search/filter/pagination.
-- [ ]  D21 unaided commit.
-- [ ]  D21 after-review commit.
-- [ ]  GitHub README updated.
-- [ ]  Job Tracker = **35 JD**.
-- [ ]  **7 applications trong Week 3**.
-- [ ]  **12 cumulative applications**.
-- [ ]  CV v0.1 có Laravel project.
-- [ ]  Application Funnel được tracking.
-- [ ]  Week 3 Market Review.
-- [ ]  Score ≥80 hoặc Conditional Pass.
+### Authentication
 
-> **Kết thúc Week 3, em phải đạt một cột mốc rất rõ:**
+- [ ]  Register.
+- [ ]  Login.
+- [ ]  Logout.
+- [ ]  Password hashed.
+- [ ]  Protected routes.
+
+### Authorization
+
+- [ ]  Admin/User.
+- [ ]  Permission Matrix.
+- [ ]  Admin routes protected.
+- [ ]  Direct request authorization tested.
+- [ ]  User không xem Order người khác.
+
+### Cart
+
+- [ ]  Add.
+- [ ]  Update quantity.
+- [ ]  Remove.
+- [ ]  Clear.
+- [ ]  Stock validation.
+- [ ]  Correct subtotal/total.
+- [ ]  `cart-design.md`.
+
+### Checkout
+
+- [ ]  Cart → Order.
+- [ ]  OrderItems.
+- [ ]  Historical unit price.
+- [ ]  Stock update.
+- [ ]  Transaction.
+- [ ]  Rollback tested.
+- [ ]  Cart chỉ clear khi success.
+
+### Order
+
+- [ ]  My Orders.
+- [ ]  Order Detail.
+- [ ]  Admin Orders.
+- [ ]  Status transitions.
+- [ ]  Ownership protection.
+- [ ]  `order-status-rules.md`.
+
+### Quality
+
+- [ ]  ≥12 business test cases.
+- [ ]  ≥3 documented bugs.
+- [ ]  Double-checkout investigated.
+- [ ]  README v0.2.
+- [ ]  CV v0.2.
+
+### Exam
+
+- [ ]  Coupon design.
+- [ ]  Coupon feature.
+- [ ]  Invalid Coupon cases.
+- [ ]  Checkout integration.
+- [ ]  Unaided commit.
+- [ ]  After-review commit.
+- [ ]  Live Change completed/attempted.
+
+### Job Campaign
+
+- [ ]  Job Tracker = **45 JD**.
+- [ ]  **10 applications Week 4**.
+- [ ]  **22 cumulative applications**.
+- [ ]  Funnel updated.
+- [ ]  Rejections tracked without guessing reasons.
+- [ ]  Skill Gap updated.
+
+---
+
+> **Sau Week 4, em cần có một sự thay đổi rõ ràng**
 >
-> Khi interviewer nói **“Em tạo cho anh một CRUD Laravel đơn giản đi”**, em không còn cần tutorial hướng dẫn từng bước.
+> Trước đây khi được hỏi:
 >
-> Em biết bắt đầu từ **requirement → database → migration → model → route → controller → validation → view → test → Git commit**.
+> **“Em có project gì?”**
 >
-> Chưa cần architecture phức tạp. Chưa cần CQRS. Chưa cần Redis. Chưa cần Docker. Chưa cần chạy theo Node vì thấy vài JD nhắc tới nó.
+> câu trả lời có thể chỉ là:
 >
-> **Week 4 sẽ nâng chính Mini Shop này từ một CRUD portfolio thành một application có business flow thật:** Authentication → Authorization → Cart → Checkout → Order → Order Status. Đây là bước quan trọng nhất để project bắt đầu đủ sức dùng làm flagship project khi phỏng vấn.
+> “Em có project Laravel CRUD Product.”
+>
+> Sau tuần này, em phải có thể mở project và kể:
+>
+> **“User có thể register/login, xem product, thêm cart và checkout. Khi checkout em validate lại stock, tạo Order và OrderItems trong transaction để tránh dữ liệu dở dang. User chỉ xem được order của mình; admin quản lý status. Em cũng đã test các case như insufficient stock, duplicate checkout, invalid status transition và rollback khi checkout fail.”**
+>
+> Đây là bước chuyển từ **“người đã học Laravel”** sang **“ứng viên Junior Backend có một project để technical interviewer đào sâu.”**
+>
+> **Week 5 sẽ không tiếp tục nhồi thêm business feature.** Mini Shop đã đủ scope. Tuần tới chuyển sang làm nó **đáng tuyển hơn**: REST API → API authentication → automated testing → API documentation → deployment → live demo. Cuối Week 5 phải có một URL thật mà recruiter/interviewer có thể mở và một GitHub repo đủ sạch để đưa thẳng vào CV.

@@ -158,7 +158,7 @@ Chỉ dùng **sau khi hoàn thành bài**.
 
 ---
 
-# D1 — Product Analyzer
+# D1 — Product Analyzer       <
 
 ## Mục tiêu
 
@@ -286,7 +286,7 @@ Tự trả lời, không Google:
 
 ---
 
-# D2 — Functions & Problem Breakdown
+# D2 — Functions & Problem Breakdown             <
 
 ## Mục tiêu
 
